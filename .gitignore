@@ -12,6 +12,7 @@ __pycache__/
 # Virtual envs
 .venv/
 venv/
+env/
 
 # OS / IDE
 .DS_Store
@@ -24,3 +25,4 @@ venv/
 # Local artifacts
 issue_import.log
 issues.json
+charlottesweb.db
