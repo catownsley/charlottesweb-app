@@ -52,7 +52,56 @@ pytest tests/ -v
 
 ---
 
-## 📚 API Usage Examples
+## � TLS/HTTPS Setup (Optional)
+
+To run the server with HTTPS using self-signed certificates for local development:
+
+### Generate Self-Signed Certificates
+
+```bash
+# Generate development certificates (valid for 365 days)
+./scripts/generate_dev_certs.sh
+```
+
+This creates:
+- `certs/cert.pem` - Self-signed certificate
+- `certs/key.pem` - Private key
+
+### Run with HTTPS
+
+```bash
+# Quick start with HTTPS
+./run_https.sh
+```
+
+The API will be available at:
+- **API:** https://localhost:8443
+- **Interactive Docs:** https://localhost:8443/docs
+
+**Note:** Your browser will show a security warning because this is a self-signed certificate. This is normal for local development. Click "Advanced" → "Proceed to localhost (unsafe)" to continue.
+
+### Manual HTTPS Startup
+
+```bash
+# Or run uvicorn directly with TLS options
+uvicorn src.main:app \
+    --host 0.0.0.0 \
+    --port 8443 \
+    --ssl-keyfile certs/key.pem \
+    --ssl-certfile certs/cert.pem \
+    --reload
+```
+
+### Test HTTPS Endpoint
+
+```bash
+# Use curl with -k flag to ignore self-signed certificate warnings
+curl -k https://localhost:8443/api/v1/health
+```
+
+---
+
+## �📚 API Usage Examples
 
 ### Health Check
 
