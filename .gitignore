@@ -20,3 +20,7 @@ venv/
 # Env files
 .env
 .env.*
+
+# Local artifacts
+issue_import.log
+issues.json

@@ -1,0 +1,394 @@
+# Product Architecture & Vision
+
+## Core Product Philosophy
+
+CharlottesWeb transforms compliance from a manual checklist exercise into **exploitability-driven regulatory intelligence**. We don't just tell you what controls you need—we tell you which vulnerabilities in your actual stack create regulatory risk.
+
+---
+
+## System Architecture
+
+### High-Level Flow
+
+```
+Metadata Input → Rules Engine → Vulnerability Correlation → Risk Scoring → Remediation Roadmap + Evidence Package
+```
+
+### Core Components
+
+#### 1. Metadata Intake Layer
+**Purpose:** Collect architectural metadata without touching PHI.
+
+**Inputs:**
+- Organization profile (industry, size, stage)
+- Data classification (PHI types: demographic, clinical, payment, etc.)
+- Data lifecycle (collection → storage → processing → deletion)
+- Infrastructure (cloud provider, services used, network topology)
+- Application stack (languages, frameworks, dependencies)
+- Access controls (authentication, authorization model, MFA)
+- Logging and monitoring (retention, alerting, SIEM)
+- Third-party integrations (APIs, vendors with data access)
+- AI/ML components (training data, model hosting, inference endpoints)
+
+**Key Principle:** Zero PHI ingestion. We analyze the *architecture*, not the data.
+
+#### 2. HIPAA Rules Engine
+**Purpose:** Map organizational profile to applicable regulatory requirements.
+
+**Logic:**
+- Parse HIPAA Security Rule (Administrative, Physical, Technical Safeguards)
+- Parse HIPAA Privacy Rule (permitted uses, minimum necessary, patient rights)
+- Parse HIPAA Breach Notification Rule (trigger thresholds, timelines)
+- Apply conditional logic based on metadata (e.g., "handles payment data" → PCI-relevant considerations)
+- Generate control applicability matrix
+
+**Data Model:**
+```python
+Control:
+  - id: "HIPAA.164.308(a)(1)(ii)(A)"
+  - title: "Risk Analysis"
+  - category: "Administrative Safeguards"
+  - requirement: "Conduct an accurate and thorough assessment..."
+  - applicability_conditions: [...]
+  - evidence_required: ["risk_assessment_documentation", "asset_inventory"]
+```
+
+#### 3. Vulnerability Intelligence Layer
+**Purpose:** Correlate stack components with known exploitable vulnerabilities.
+
+**Data Sources:**
+- **NVD (National Vulnerability Database):** CVE feeds
+- **CWE (Common Weakness Enumeration):** Vulnerability patterns
+- **CIS Benchmarks:** Configuration baselines
+- **NIST CSF:** Framework crosswalk
+- **Cloud provider security bulletins:** AWS, Azure, GCP advisories
+
+**Correlation Logic:**
+```
+IF stack contains "Django 3.2.10"
+AND CVE-2022-XXXX affects Django < 3.2.11
+AND exploitability score > 7.5
+AND vulnerability impacts "data confidentiality"
+THEN map to HIPAA.164.312(a)(1) - Access Control
+AND severity = HIGH
+```
+
+#### 4. Risk Scoring Engine
+**Purpose:** Prioritize findings by exploitability × regulatory impact.
+
+**Scoring Formula:**
+```
+Risk Score = (CVSS Base Score) × (Regulatory Severity) × (PHI Exposure Likelihood)
+
+Prioritization Buckets:
+- IMMEDIATE (9.0-10.0): Exploitable + PHI access + public exploit exists
+- 30 DAYS (7.0-8.9): High CVSS + regulatory control failure
+- QUARTERLY (4.0-6.9): Medium risk + technical debt
+- ANNUAL (0.0-3.9): Low severity + defense-in-depth gaps
+```
+
+**Output:**
+- Finding ID
+- Affected control(s)
+- Vulnerability details (CVE, CWE, description)
+- Exploitability context (CVSS, exploit availability)
+- Remediation guidance
+- Priority window
+- Responsible team (DevOps, Engineering, Security)
+
+#### 5. Evidence Automation Layer
+**Purpose:** Generate audit-ready documentation.
+
+**Artifacts Generated:**
+- **Control-to-Evidence Mapping:** What evidence satisfies each control
+- **Policy Templates:** Access control policy, incident response plan, logging retention policy
+- **Checklists:** Required documentation by audit phase
+- **Evidence Binder:** Organized package for auditors (PDF/zip export)
+
+**Example Mapping:**
+```
+Control: HIPAA.164.308(a)(6)(ii) - Response and Reporting
+Evidence Required:
+  - Incident response plan document
+  - IR tabletop exercise records (annual)
+  - Breach notification procedures
+  - Historical incident logs
+Status: [Complete | Partial | Missing]
+Owner: [Security Team]
+```
+
+---
+
+## Domain Model
+
+### Core Entities
+
+```python
+Organization:
+  - id: UUID
+  - name: str
+  - industry: str
+  - stage: str (seed, series_a, etc.)
+  - created_at: datetime
+
+MetadataProfile:
+  - id: UUID
+  - organization_id: FK
+  - phi_types: list[str]
+  - cloud_provider: str
+  - infrastructure: dict
+  - applications: list[dict]
+  - access_controls: dict
+  - version: int
+  - created_at: datetime
+
+Control:
+  - id: str (e.g., "HIPAA.164.312(a)(1)")
+  - framework: str ("HIPAA_Security_Rule")
+  - title: str
+  - requirement: text
+  - category: str
+  - evidence_types: list[str]
+
+Assessment:
+  - id: UUID
+  - organization_id: FK
+  - metadata_profile_id: FK
+  - status: str (pending, running, completed, failed)
+  - initiated_at: datetime
+  - completed_at: datetime
+
+Finding:
+  - id: UUID
+  - assessment_id: FK
+  - control_id: FK
+  - title: str
+  - description: text
+  - severity: str (immediate, high, medium, low)
+  - cvss_score: float
+  - cve_ids: list[str]
+  - cwe_ids: list[str]
+  - remediation_guidance: text
+  - priority_window: str
+  - owner: str
+
+EvidenceArtifact:
+  - id: UUID
+  - organization_id: FK
+  - assessment_id: FK
+  - control_id: FK
+  - artifact_type: str (policy, checklist, report)
+  - content: text | blob
+  - status: str (generated, reviewed, approved)
+  - generated_at: datetime
+
+RemediationTask:
+  - id: UUID
+  - finding_id: FK
+  - title: str
+  - description: text
+  - priority: str
+  - due_date: date
+  - assigned_to: str
+  - status: str (open, in_progress, completed)
+```
+
+---
+
+## Technology Decisions
+
+### Backend
+- **Language:** Python 3.11+
+- **Framework:** FastAPI (async, OpenAPI auto-generation, type hints)
+- **Database:** PostgreSQL (JSONB for metadata flexibility)
+- **ORM:** SQLAlchemy 2.0 (async support)
+- **Task Queue:** Celery + Redis (long-running assessments)
+- **Migrations:** Alembic
+
+### Frontend
+- **Framework:** React + TypeScript or Next.js
+- **State Management:** React Query (server state) + Zustand (client state)
+- **UI Components:** shadcn/ui or Radix UI
+- **Charts:** Recharts or Nivo
+
+### Infrastructure
+- **Deployment:** Docker + Kubernetes or fly.io/Render
+- **CI/CD:** GitHub Actions
+- **Secrets:** 1Password/Vault or cloud-native (AWS Secrets Manager, etc.)
+- **Observability:** Sentry (errors) + Datadog/Grafana (metrics)
+
+### Data Sources
+- **NVD:** REST API (rate-limited, cache locally)
+- **CWE:** XML dataset (periodic sync)
+- **CIS Benchmarks:** Manual ingestion (licensed content)
+
+---
+
+## Security & Compliance Design Principles
+
+### Zero PHI Ingestion
+- No patient names, SSNs, medical records, or payment card data
+- Only architectural metadata and configuration details
+- Input validation rejects PHI-like patterns
+
+### Tenant Isolation
+- Row-level security on all queries
+- Organization ID required on every authenticated request
+- API authorization checks enforce boundaries
+
+### Audit Logging
+- All assessment runs logged with timestamp + user
+- Evidence generation tracked for reproducibility
+- Finding acknowledgment and remediation tracked
+
+### Data Retention
+- Assessment results retained per customer preference
+- Vulnerability feed data refreshed weekly
+- Historical posture trends retained for continuous monitoring tier
+
+---
+
+## API Design Principles
+
+### RESTful Endpoints
+```
+POST   /api/v1/organizations
+GET    /api/v1/organizations/{org_id}
+
+POST   /api/v1/organizations/{org_id}/metadata-profiles
+GET    /api/v1/organizations/{org_id}/metadata-profiles/{profile_id}
+
+POST   /api/v1/organizations/{org_id}/assessments
+GET    /api/v1/organizations/{org_id}/assessments/{assessment_id}
+GET    /api/v1/organizations/{org_id}/assessments/{assessment_id}/findings
+GET    /api/v1/organizations/{org_id}/assessments/{assessment_id}/evidence
+
+GET    /api/v1/controls
+GET    /api/v1/controls/{control_id}
+```
+
+### Authentication
+- JWT-based (Auth0, Supabase, or custom)
+- Role-based access control (admin, member, viewer)
+
+### Rate Limiting
+- Per-org assessment runs (prevent abuse)
+- NVD API caching (respect upstream limits)
+
+---
+
+## Deployment Architecture
+
+```
+┌─────────────────┐
+│   Frontend      │  (React/Next.js)
+│   Static Site   │
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│   API Gateway   │  (FastAPI)
+│   /api/v1/*     │
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    │         │
+┌───▼───┐ ┌──▼──────────┐
+│  DB   │ │ Task Queue  │  (Celery + Redis)
+│ (PG)  │ │ Background  │
+└───────┘ │ Assessments │
+          └──────┬──────┘
+                 │
+          ┌──────▼──────┐
+          │ NVD/CWE API │
+          │   Ingestion │
+          └─────────────┘
+```
+
+---
+
+## Development Workflow
+
+### Phase 0: Foundation
+1. Define domain models and migrations
+2. Scaffold FastAPI project structure
+3. Add health check and basic CRUD endpoints
+4. Set up test fixtures and CI pipeline
+
+### Phase 1: Intelligence Engine
+1. Implement metadata intake validation
+2. Seed HIPAA control catalog
+3. Build rules mapping engine (metadata → applicable controls)
+4. Add vulnerability correlation service (CVE/CWE lookup)
+5. Implement risk scoring algorithm
+6. Generate remediation roadmap output
+
+### Phase 2: Evidence Layer
+1. Add control-to-evidence mapping table
+2. Build checklist generation logic
+3. Create policy/template rendering engine
+4. Implement audit binder export (PDF/zip)
+
+### Phase 3: Web Interface
+1. Authentication and org onboarding
+2. Metadata profile intake form
+3. Assessment run workflow
+4. Findings dashboard with filters
+5. Report download and sharing
+
+### Phase 4: Production Readiness
+1. Tenant isolation enforcement
+2. Structured logging and error tracking
+3. Performance optimization
+4. Demo data and pilot scripts
+
+### Phase 5: Continuous Monitoring
+1. Scheduled background assessment jobs
+2. Delta detection (posture changes over time)
+3. Alert/notification system
+4. Trend visualization
+
+---
+
+## Success Metrics
+
+### Product Metrics
+- Time to first assessment: < 10 minutes
+- Findings accuracy: > 90% relevant (no false positives on exploitability)
+- Audit readiness: Evidence package completeness score
+
+### Business Metrics
+- Tier 1 → Tier 2 conversion rate
+- Customer compliance posture improvement (trend over time)
+- Advisory engagement attach rate
+
+---
+
+## Open Questions & Future Considerations
+
+1. **Multi-framework support:** How to extend beyond HIPAA to SOC2, ISO 27001, etc.?
+2. **Evidence ingestion:** Should we pull evidence automatically via API (e.g., AWS IAM snapshots) or require manual upload?
+3. **AI/ML risk module:** How to assess AI model bias, training data privacy, and inference security?
+4. **Global expansion:** GDPR, PIPEDA, LGPD—different data privacy frameworks require localized rule engines.
+5. **Continuous monitoring cadence:** Daily, weekly, or monthly re-assessments? User-configurable?
+
+---
+
+## References
+
+- [HIPAA Security Rule](https://www.hhs.gov/hipaa/for-professionals/security/index.html)
+- [HIPAA Privacy Rule](https://www.hhs.gov/hipaa/for-professionals/privacy/index.html)
+- [HIPAA Breach Notification Rule](https://www.hhs.gov/hipaa/for-professionals/breach-notification/index.html)
+- [NVD (National Vulnerability Database)](https://nvd.nist.gov/)
+- [CWE (Common Weakness Enumeration)](https://cwe.mitre.org/)
+- [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework)
+- [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks/)
+
+---
+
+## Getting Started Today
+
+See [BUSINESS_PLAN.md](BUSINESS_PLAN.md) for market strategy and business context.
+
+See [docs/tickets/TICKET_INDEX.md](docs/tickets/TICKET_INDEX.md) for implementation roadmap and detailed tickets.
+
+Start with ticket **[CW-001]**: Define domain model and architecture decisions.
