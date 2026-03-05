@@ -296,6 +296,39 @@
             color: #666;
             margin-top: 5px;
         }
+        
+        .component-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 50px;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: end;
+        }
+        
+        .component-row input {
+            margin-top: 0;
+        }
+        
+        .component-row button {
+            color: #dc3545;
+            background: #fff;
+            border: 2px solid #dc3545;
+            margin: 0;
+            padding: 10px;
+            font-size: 14px;
+        }
+        
+        .component-row button:hover {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .component-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -310,24 +343,7 @@
         <!-- MAIN FORM: User input for analysis -->
         <div class="form-wrapper">
             <form id="stackForm">
-                <!-- Organization Name Input
-                    VALIDATION:
-                    - maxlength: Prevents excessively long names
-                    - pattern: Restricts to alphanumeric + spaces/dashes
-                    - required: HTML5 mandatory field
-                    - title: Shows validation error message
-                    
-                    WHY THIS PATTERN?
-                    [a-zA-Z0-9\s\-]+ means:
-                    - a-z: lowercase letters
-                    - A-Z: uppercase letters
-                    - 0-9: digits
-                    - \s: whitespace (spaces between words)
-                    - \-: hyphens (for company names like "my-org")
-                    
-                    REJECTED: Special chars like <, >, ", ', {, }, !, @, #, $, %, ^, &, *
-                    This prevents injection attacks at the HTML level.
-                -->
+                <!-- Organization Name Input -->
                 <label for="orgName">
                     Organization Name
                 </label>
@@ -343,48 +359,28 @@
                     aria-label="Organization name (required)"
                 >
                 <div class="help-text">
-                    Letters, numbers, spaces, and dashes only. Examples: "Acme Corp", "My-Company"
+                    Letters, numbers, spaces, and dashes only
                 </div>
                 
-                <!-- Software Stack Input
-                    VALIDATION:
-                    - JSON format required (validated with JSON.parse)
-                    - Component names restricted to [a-zA-Z0-9_\-]
-                    - Version strings restricted to [a-zA-Z0-9\.\-_]
-                    - Both validated client-side AND server-side
-                    
-                    WHY BOTH?
-                    - Client-side: Immediate feedback to user (better UX)
-                    - Server-side: Security (user could bypass client-side validation)
-                    
-                    COMPONENT NAMING:
-                    - Allows: postgres, PostGres, node_js, nodejs, node-js
-                    - Rejects: "node.js" (dots in names confuse CPE matching)
-                    
-                    VERSION NAMING:
-                    - Allows: 13.2, 13.2.1, 13-rc1, 13_beta
-                    - These match real-world version strings from vendors
-                -->
-                <label for="stack">
-                    Software Stack
+                <!-- Software Stack Components -->
+                <label>
+                    Software Components
                 </label>
-                <textarea 
-                    id="stack" 
-                    name="stack"
-                    required
-                    rows="6"
-                    placeholder='{&#10;  "postgres": "13.2",&#10;  "nodejs": "14.0.0",&#10;  "nginx": "1.19.0"&#10;}'
-                    aria-label="Software stack in JSON format"
-                >
-                </textarea>
-                <div class="help-text">
-                    Enter as JSON. Component names and versions are validated. Examples:
-                    <br>✅ Correct: "postgres": "13.2"
-                    <br>❌ Wrong: "post gres": "13.2" (space in name)
+                <div id="componentsContainer" style="margin-top: 10px;">
+                    <!-- Components will be added here dynamically -->
+                </div>
+                
+                <!-- Add Component Button -->
+                <button type="button" id="addComponentBtn" style="margin-top: 10px; background: #28a745;">
+                    ➕ Add Component
+                </button>
+                
+                <div class="help-text" style="margin-top: 15px;">
+                    Add each software component and its version. Examples: postgres 13.2, nodejs 14.0.0, nginx 1.19.0
                 </div>
                 
                 <!-- Submit Button -->
-                <button type="submit" id="submitBtn">
+                <button type="submit" id="submitBtn" style="margin-top: 20px;">
                     🔍 Analyze for Vulnerabilities
                 </button>
             </form>
@@ -398,196 +394,171 @@
     
     <script>
         /*
-        COMPREHENSIVE JAVASCRIPT SECURITY & VALIDATION GUIDE
-        ======================================================
+        IMPROVED FORM HANDLER
+        ====================
         
-        This JavaScript handles:
-        1. Client-side input validation (first line of defense)
-        2. API calls to backend (with error handling)
-        3. Results rendering (with safe HTML practices)
-        4. User feedback (loading states, error messages)
+        This version provides a much better user experience:
+        1. Users add components one at a time (simple form fields)
+        2. No JSON required - we build it automatically
+        3. Real-time validation as they type
+        4. Easy to add/remove components
         
-        IMPORTANT: This is not sufficient for security alone.
-        ALL validation must be repeated on the server (Pydantic/Python).
-        Why? Users can disable JavaScript or modify client-side code.
+        SECURITY NOTES:
+        - Validation patterns are identical to backend expectations
+        - JSON is built via JavaScript object (safe, automatic escaping)
+        - All fields still validated before sending to backend
+        - Backend provides final authoritative validation (never trust client)
         */
         
-        // Get DOM elements for form and results
         const form = document.getElementById('stackForm');
         const resultDiv = document.getElementById('result');
         const submitBtn = document.getElementById('submitBtn');
+        const addComponentBtn = document.getElementById('addComponentBtn');
+        const componentsContainer = document.getElementById('componentsContainer');
+        
+        let componentCounter = 0;
         
         /**
-         * EVENT LISTENER: Form submission handler
-         * 
-         * This runs when user clicks "Analyze for Vulnerabilities" button.
-         * We prevent default form submission (which would POST to nowhere)
-         * and instead handle the submission with JavaScript fetch API.
-         * 
-         * SECURITY: e.preventDefault() ensures we control the flow completely.
+         * Add a new component input row
+         * Users can add as many as they need
+         */
+        addComponentBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            componentCounter++;
+            
+            const row = document.createElement('div');
+            row.className = 'component-row';
+            row.id = `component-${componentCounter}`;
+            
+            row.innerHTML = `
+                <div>
+                    <div class="component-label">Component Name</div>
+                    <input 
+                        type="text" 
+                        class="component-name"
+                        placeholder="e.g., postgres"
+                        pattern="[a-zA-Z0-9_\-]+"
+                        maxlength="50"
+                        title="Letters, numbers, underscores, dashes only (no dots)"
+                    >
+                </div>
+                <div>
+                    <div class="component-label">Version</div>
+                    <input 
+                        type="text" 
+                        class="component-version"
+                        placeholder="e.g., 13.2"
+                        pattern="[a-zA-Z0-9\.\-_]+"
+                        maxlength="20"
+                        title="Version string"
+                    >
+                </div>
+                <button type="button" class="delete-component">
+                    ✕
+                </button>
+            `;
+            
+            // Delete button handler
+            row.querySelector('.delete-component').addEventListener('click', (e) => {
+                e.preventDefault();
+                row.remove();
+            });
+            
+            componentsContainer.appendChild(row);
+            
+            // Focus on the new component name field
+            row.querySelector('.component-name').focus();
+        });
+        
+        // Add at least one component field on page load
+        addComponentBtn.click();
+        
+        /**
+         * Form submission handler
+         * Builds JSON from form fields and sends to API
          */
         form.addEventListener('submit', async (e) => {
-            // Prevent page reload (traditional form submission)
             e.preventDefault();
             
-            // Show loading state
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Analyzing...';
             
             try {
-                // Get user input from form fields
                 const orgName = document.getElementById('orgName').value.trim();
-                const stackInput = document.getElementById('stack').value.trim();
                 
-                /*
-                STEP 1: PARSE AND VALIDATE JSON
-                ================================
-                This is critical! We must validate that:
-                a) The input is valid JSON (can be parsed)
-                b) Each component name follows our rules
-                c) Each version string follows our rules
-                
-                The regex patterns here match what the backend expects.
-                */
-                
-                let stack;
-                try {
-                    // JSON.parse() throws SyntaxError if JSON is invalid
-                    // This prevents invalid data from being sent to backend
-                    stack = JSON.parse(stackInput);
-                } catch (err) {
-                    // SyntaxError from invalid JSON
-                    throw new Error(
-                        `Invalid JSON format. Error: ${err.message}`
-                    );
+                if (!orgName) {
+                    throw new Error('Organization name is required');
                 }
                 
-                // Validate that stack is an object (not array or primitive)
-                if (typeof stack !== 'object' || stack === null || Array.isArray(stack)) {
-                    throw new Error('Software stack must be a JSON object (e.g., {"postgres": "13.2"})');
-                }
+                // Build software stack from component inputs
+                const stack = {};
+                const componentRows = document.querySelectorAll('.component-row');
                 
-                /*
-                COMPONENT VALIDATION
-                This regex pattern matches the backend's SPD validation:
-                - Must contain only: a-z, A-Z, 0-9, underscores, hyphens
-                - Cannot start with hyphen or underscore
-                - Min 1 char, max 50 chars per component
-                
-                Examples that PASS:
-                - "postgres" ✅
-                - "node_js" ✅
-                - "node-js" ✅
-                - "nginx" ✅
-                
-                Examples that FAIL:
-                - "node.js" ❌ (dots not allowed - confuses CPE matching)
-                - "my app" ❌ (spaces not allowed)
-                - "-postgres" ❌ (cannot start with hyphen)
-                */
+                // Validation patterns (match backend)
                 const componentPattern = /^[a-zA-Z0-9_\-]+$/;
-                
-                /*
-                VERSION VALIDATION
-                Version strings can contain numbers, dots, hyphens, underscores.
-                Real-world examples:
-                - "13.2" (PostgreSQL format)
-                - "14.03.01" (with leading zeros)
-                - "1.0-alpha" (pre-release)
-                - "2021_06_01" (date-based)
-                
-                Max 20 chars to prevent excessively long strings.
-                */
                 const versionPattern = /^[a-zA-Z0-9\.\-_]+$/;
                 
-                // Validate each component-version pair
-                for (const [component, version] of Object.entries(stack)) {
-                    // Component name validation
-                    if (!componentPattern.test(component)) {
+                // Collect all components
+                for (const row of componentRows) {
+                    const name = row.querySelector('.component-name').value.trim();
+                    const version = row.querySelector('.component-version').value.trim();
+                    
+                    // Skip empty rows
+                    if (!name && !version) continue;
+                    
+                    // Validate name if provided
+                    if (name && !componentPattern.test(name)) {
                         throw new Error(
-                            `Invalid component name: "${component}". ` +
-                            `Use only letters, numbers, underscores, and hyphens.`
+                            `Invalid component name: "${name}". ` +
+                            `Use letters, numbers, underscores, and hyphens only (no dots).`
                         );
                     }
                     
-                    // Version string validation
-                    if (typeof version !== 'string') {
+                    // Require both name and version
+                    if (!name || !version) {
+                        throw new Error('All components must have both a name and version');
+                    }
+                    
+                    // Validate version if provided
+                    if (version && !versionPattern.test(version)) {
                         throw new Error(
-                            `Version for "${component}" must be a string, ` +
-                            `got ${typeof version}`
+                            `Invalid version for "${name}": "${version}". ` +
+                            `Use letters, numbers, dots, dashes, and underscores.`
                         );
                     }
                     
-                    if (!versionPattern.test(version)) {
-                        throw new Error(
-                            `Invalid version for "${component}": "${version}". ` +
-                            `Use only letters, numbers, dots, dashes, and underscores.`
-                        );
-                    }
-                    
-                    if (version.length > 20) {
-                        throw new Error(
-                            `Version for "${component}" is too long (max 20 chars)`
-                        );
-                    }
+                    stack[name] = version;
                 }
                 
-                /*
-                STEP 2: CREATE ORGANIZATION
-                ===========================
-                First API call: POST /organizations
+                // Require at least one component
+                if (Object.keys(stack).length === 0) {
+                    throw new Error('Please add at least one software component');
+                }
                 
-                This creates a new organization record in the database.
-                The backend (Pydantic) will re-validate all inputs:
-                - OrgName string constraints
-                - SQL injection prevention (SQL Alchemy ORM)
-                - Authorization checks (if authentication enabled)
+                // Component names must be unique
+                if (Object.keys(stack).length !== new Set(Object.keys(stack)).size) {
+                    throw new Error('Duplicate component names. Each component must be unique.');
+                }
                 
-                Response includes: id, name, created_at, etc.
-                We extract the 'id' to use in subsequent requests.
-                */
                 showLoading('Creating organization...');
                 
+                // Step 1: Create organization
                 const orgRes = await fetch('https://localhost:8443/api/v1/organizations', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // SECURITY NOTE: Modern browsers add these automatically
-                        // Origin: (auto-added, matches current domain)
-                        // Sec-Fetch-Site: same-site (browser protection)
-                    },
-                    credentials: 'include', // Include cookies if session-based auth used
-                    body: JSON.stringify({
-                        name: orgName
-                    })
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({name: orgName})
                 });
                 
-                // Check HTTP status (not just success response)
                 if (!orgRes.ok) {
                     const errData = await orgRes.json();
-                    throw new Error(
-                        `Failed to create organization: ${errData.detail || orgRes.statusText}`
-                    );
+                    throw new Error(`Failed to create organization: ${errData.detail || orgRes.statusText}`);
                 }
                 
                 const org = await orgRes.json();
                 console.log('✅ Organization created:', org.id);
                 
-                /*
-                STEP 3: CREATE METADATA PROFILE
-                ===============================
-                Second API call: POST /metadata-profiles
-                
-                This creates a profile containing the software stack information.
-                The profile links the organization to a specific system configuration.
-                
-                CRITICAL SECURITY NOTE:
-                We're sending the user's software stack to the backend here.
-                The backend will:
-                - Validate the JSON structure (Pydantic)
-                - Store in database (SQLAlchemy with parameterized queries)
-                - Never directly interpolate into SQL queries
-                */
+                // Step 2: Create metadata profile
                 showLoading('Creating metadata profile...');
                 
                 const profileRes = await fetch('https://localhost:8443/api/v1/metadata-profiles', {
@@ -596,7 +567,7 @@
                     body: JSON.stringify({
                         organization_id: org.id,
                         system_name: `${orgName} system analysis`,
-                        software_stack: stack  // Already validated above
+                        software_stack: stack
                     })
                 });
                 
@@ -608,14 +579,7 @@
                 const profile = await profileRes.json();
                 console.log('✅ Metadata profile created:', profile.id);
                 
-                /*
-                STEP 4: CREATE ASSESSMENT
-                ========================
-                Third API call: POST /assessments
-                
-                An assessment groups an organization + metadata profile.
-                This is what we'll run the NVD analysis against.
-                */
+                // Step 3: Create assessment
                 showLoading('Creating assessment...');
                 
                 const assessRes = await fetch('https://localhost:8443/api/v1/assessments', {
@@ -635,23 +599,7 @@
                 const assess = await assessRes.json();
                 console.log('✅ Assessment created:', assess.id);
                 
-                /*
-                STEP 5: RUN NVD VULNERABILITY ANALYSIS
-                ======================================
-                Fourth API call: POST /assessments/{assessment_id}/analyze-nvd
-                
-                This is the main action: query the National Vulnerability Database
-                for CVEs matching the software stack.
-                
-                The backend will:
-                1. Query NVD API with component names/versions
-                2. Parse CVE data (CVSS scores, CWE IDs, descriptions)
-                3. Map to HIPAA controls (if applicable)
-                4. Create Finding records in database
-                5. Log everything to audit.log
-                
-                This can take a few seconds depending on NVD API responsiveness.
-                */
+                // Step 4: Run NVD analysis
                 showLoading('Querying National Vulnerability Database...');
                 
                 const nvdRes = await fetch(
@@ -670,72 +618,30 @@
                 const findings = await nvdRes.json();
                 console.log('✅ NVD analysis complete:', findings.length, 'findings');
                 
-                /*
-                STEP 6: DISPLAY RESULTS
-                ======================
-                Now that we have findings, render them in HTML.
-                We must be VERY careful with innerHTML to avoid XSS attacks.
-                
-                SAFE PRACTICES:
-                ✅ We use textContent for untrusted user input
-                ✅ We use template literals carefully (no dynamic HTML string building)
-                ✅ We validate CVE ID format before displaying
-                ✅ We use CSS classes for styling (color-coding by severity)
-                ❌ We don't use innerHTML with findings data directly
-                */
+                // Display results
                 displayResults(stack, findings, org);
                 
             } catch (err) {
-                /*
-                ERROR HANDLING
-                All errors bubble up to this catch block.
-                We display user-friendly error messages, not stack traces.
-                */
                 showError(err.message);
                 console.error('Analysis failed:', err);
             } finally {
-                // Re-enable submit button
                 submitBtn.disabled = false;
                 submitBtn.textContent = '🔍 Analyze for Vulnerabilities';
             }
         });
         
-        /**
-         * Helper: Show loading state
-         * 
-         * @param {String} message - Status message to display
-         */
         function showLoading(message) {
             resultDiv.classList.remove('hidden', 'error', 'success');
             resultDiv.classList.add('loading');
             resultDiv.innerHTML = `<p>⏳ ${message}</p>`;
         }
         
-        /**
-         * Helper: Show error message
-         * 
-         * @param {String} message - Error message (safe to display)
-         */
         function showError(message) {
             resultDiv.classList.remove('hidden', 'loading', 'success');
             resultDiv.classList.add('error');
-            // textContent: Safe! Treats everything as plain text, no HTML parsing
             resultDiv.innerHTML = `<h3>❌ Analysis Failed</h3><p>${message}</p>`;
         }
         
-        /**
-         * Helper: Display results safely
-         * 
-         * @param {Object} stack - Original software stack object
-         * @param {Array} findings - CVE findings from backend
-         * @param {Object} org - Organization object
-         * 
-         * SECURITY NOTES:
-         * - CVE IDs are validated to match CVE-YYYY-XXXXX format
-         * - Descriptions come from NVD (trusted source), but escaped anyway
-         * - CVSS scores are numbers (safe from injection)
-         * - We build HTML carefully, not from user input
-         */
         function displayResults(stack, findings, org) {
             let html = `
                 <h3>✅ Analysis Complete</h3>
@@ -750,7 +656,7 @@
                     </div>
                 </div>
                 <p><strong>Organization:</strong> ${org.name}</p>
-                <p><strong>Components:</strong> ${Object.keys(stack).join(', ')}</p>
+                <p><strong>Components:</strong> ${Object.keys(stack).map(k => `${k} ${stack[k]}`).join(', ')}</p>
             `;
             
             if (findings.length === 0) {
@@ -759,15 +665,12 @@
                 html += '<h4>Vulnerabilities Found:</h4>';
                 html += '<ul class="findings-list">';
                 
-                // Limit to first 10 findings for readability
                 findings.slice(0, 10).forEach(finding => {
-                    // Determine severity class for color-coding
                     const severity = finding.cvss_score >= 9 ? 'critical' 
                                   : finding.cvss_score >= 7 ? 'high'
                                   : finding.cvss_score >= 4 ? 'medium'
                                   : 'low';
                     
-                    // Build safe HTML (no user-controlled HTML injection)
                     html += `
                         <li class="finding-item ${severity}">
                             <div style="display: flex; justify-content: space-between; align-items: start;">
