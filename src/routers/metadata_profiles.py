@@ -1,4 +1,6 @@
 """Metadata profile management endpoints."""
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
@@ -9,6 +11,7 @@ from src.middleware import get_api_key_optional, limiter
 from src.models import MetadataProfile, Organization
 from src.schemas import MetadataProfileCreate, MetadataProfileResponse
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/metadata-profiles", tags=["metadata-profiles"])
 
 
@@ -33,9 +36,18 @@ def create_metadata_profile(
         access_controls=profile_data.access_controls,
         software_stack=profile_data.software_stack,
     )
-    db.add(profile)
-    db.commit()
-    db.refresh(profile)
+
+    try:
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create metadata profile: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create metadata profile. Please try again."
+        )
 
     # Audit log
     log_audit_event(

@@ -1,4 +1,5 @@
 """Evidence collection and management endpoints."""
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -11,6 +12,7 @@ from src.middleware import get_api_key_optional, limiter
 from src.models import Assessment, Control, Evidence
 from src.schemas import EvidenceCreate, EvidenceResponse, EvidenceUpdate
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/evidence", tags=["evidence"])
 
 
@@ -39,9 +41,18 @@ def create_evidence(
         owner=evidence_data.owner,
         due_date=evidence_data.due_date,
     )
-    db.add(evidence)
-    db.commit()
-    db.refresh(evidence)
+
+    try:
+        db.add(evidence)
+        db.commit()
+        db.refresh(evidence)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create evidence: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create evidence item. Please try again."
+        )
 
     # Audit log
     log_audit_event(

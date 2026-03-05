@@ -1,4 +1,6 @@
 """Organization management endpoints."""
+import logging
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
@@ -9,6 +11,7 @@ from src.middleware import get_api_key_optional, limiter
 from src.models import Organization
 from src.schemas import OrganizationCreate, OrganizationResponse
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 
 
@@ -21,14 +24,24 @@ def create_organization(
     api_key: str = Depends(get_api_key_optional),
 ) -> Organization:
     """Create a new organization."""
-    org = Organization(
-        name=org_data.name,
-        industry=org_data.industry,
-        stage=org_data.stage,
-    )
-    db.add(org)
-    db.commit()
-    db.refresh(org)
+    try:
+        org = Organization(
+            name=org_data.name,
+            industry=org_data.industry,
+            stage=org_data.stage,
+        )
+        db.add(org)
+        db.commit()
+        db.refresh(org)
+    except Exception as e:
+        db.rollback()
+        # Log actual error server-side
+        logger.error(f"Failed to create organization: {str(e)}", exc_info=True)
+        # Return safe error message to client
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create organization. Please ensure the application has write access and try again."
+        )
 
     # Audit log
     log_audit_event(

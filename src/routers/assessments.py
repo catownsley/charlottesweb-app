@@ -43,14 +43,22 @@ def create_assessment(
     profile = get_or_404(db, MetadataProfile, assessment_data.metadata_profile_id, "Metadata profile not found")
 
     # Create assessment
-    assessment = Assessment(
-        organization_id=assessment_data.organization_id,
-        metadata_profile_id=assessment_data.metadata_profile_id,
-        status="running",
-    )
-    db.add(assessment)
-    db.commit()
-    db.refresh(assessment)
+    try:
+        assessment = Assessment(
+            organization_id=assessment_data.organization_id,
+            metadata_profile_id=assessment_data.metadata_profile_id,
+            status="running",
+        )
+        db.add(assessment)
+        db.commit()
+        db.refresh(assessment)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create assessment: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create assessment. Please try again."
+        )
 
     # Audit log - assessment created
     log_audit_event(
@@ -88,8 +96,12 @@ def create_assessment(
 
     except Exception as e:
         assessment.status = "failed"  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
-        db.commit()
+        try:
+            db.commit()
+        except:
+            db.rollback()
 
+        logger.error(f"Assessment failed: {str(e)}", exc_info=True)
         # Audit log - assessment failed
         log_audit_event(
             action=AuditAction.ERROR,
@@ -98,10 +110,13 @@ def create_assessment(
             resource_type="assessment",
             resource_id=assessment.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
             success=False,
-            details={"error": str(e), "status": "failed"},
+            details={"status": "failed"},
         )
-
-        raise HTTPException(status_code=500, detail=f"Assessment failed: {str(e)}")
+        # Return safe error message
+        raise HTTPException(
+            status_code=500,
+            detail="Assessment execution failed. Please try again or contact support."
+        )
 
     db.refresh(assessment)
     return assessment
