@@ -91,6 +91,42 @@ class AssessmentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# Threat Intelligence schemas (MITRE ATT&CK)
+class ThreatTechniqueBreachExample(BaseModel):
+    """Schema for real-world breach example."""
+
+    breach: str = Field(description="Name of healthcare breach")
+    impact: str = Field(description="Impact description")
+    date: str = Field(description="When breach occurred")
+
+
+class ThreatTechniqueMitigation(BaseModel):
+    """Schema for MITRE mitigation (countermeasure)."""
+
+    id: str = Field(description="Mitigation ID (e.g., M1032)")
+    name: str = Field(description="Mitigation name")
+    description: str = Field(description="How to mitigate")
+
+
+class ThreatTechnique(BaseModel):
+    """Schema for MITRE ATT&CK technique."""
+
+    id: str = Field(description="Technique ID (e.g., T1078)")
+    name: str = Field(description="Technique name")
+    description: str = Field(description="What attackers do")
+    tactics: list[str] = Field(description="Kill chain phases")
+    url: str = Field(description="MITRE ATT&CK URL")
+    breach_example: Optional[ThreatTechniqueBreachExample] = None
+    primary_mitigation: Optional[ThreatTechniqueMitigation] = None
+
+
+class ThreatContext(BaseModel):
+    """Schema for threat intelligence context added to findings."""
+
+    techniques: list[ThreatTechnique] = Field(description="Attack techniques that exploit this gap")
+    summary: str = Field(description="Executive summary of threat")
+
+
 # Finding schemas
 class FindingResponse(BaseModel):
     """Schema for finding response."""
@@ -109,6 +145,9 @@ class FindingResponse(BaseModel):
     priority_window: Optional[str] = None
     owner: Optional[str] = None
     created_at: datetime
+    threat_context: Optional[ThreatContext] = Field(
+        None, description="Real-world threat intelligence (MITRE ATT&CK)"
+    )
 
     model_config = {"from_attributes": True}
 

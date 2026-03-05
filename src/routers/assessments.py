@@ -10,7 +10,8 @@ from src.audit import AuditAction, AuditLevel, log_audit_event
 from src.config import settings
 from src.database import get_db, get_or_404
 from src.middleware import get_api_key_optional, limiter
-from src.models import Assessment, Control, Finding, MetadataProfile, Organization
+from src.mitre_service import mitre_service
+from src.models import Assessment, Control, Evidence, Finding, MetadataProfile, Organization
 from src.nvd_service import NVDService
 from src.rules_engine import RulesEngine
 from src.schemas import (
@@ -114,11 +115,43 @@ def get_assessment(assessment_id: str, db: Session = Depends(get_db)) -> Assessm
 
 
 @router.get("/{assessment_id}/findings", response_model=list[FindingResponse])
-def get_assessment_findings(assessment_id: str, db: Session = Depends(get_db)) -> List[Finding]:
-    """Get findings for an assessment."""
+def get_assessment_findings(assessment_id: str, db: Session = Depends(get_db)) -> List[FindingResponse]:
+    """Get findings for an assessment with threat intelligence context."""
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
     findings: List[Finding] = db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
-    return findings
+
+    # Enrich each finding with MITRE ATT&CK threat context
+    enriched_findings = []
+    for finding in findings:
+        # Build base response from Finding model
+        finding_dict = {
+            "id": finding.id,
+            "assessment_id": finding.assessment_id,
+            "control_id": finding.control_id,
+            "title": finding.title,
+            "description": finding.description,
+            "severity": finding.severity,
+            "cvss_score": finding.cvss_score,
+            "external_id": finding.external_id,
+            "cve_ids": finding.cve_ids,
+            "cwe_ids": finding.cwe_ids,
+            "remediation_guidance": finding.remediation_guidance,
+            "priority_window": finding.priority_window,
+            "owner": finding.owner,
+            "created_at": finding.created_at,
+        }
+
+        # Add MITRE threat context if CWEs are present
+        if finding.cwe_ids:
+            threat_context = mitre_service.enrich_finding_with_threat_context(
+                cwe_ids=finding.cwe_ids, control_id=finding.control_id or ""
+            )
+            if threat_context and threat_context.get("techniques"):
+                finding_dict["threat_context"] = threat_context
+
+        enriched_findings.append(FindingResponse(**finding_dict))
+
+    return enriched_findings
 
 
 @router.get("/{assessment_id}/roadmap", response_model=RemediationRoadmapResponse)
