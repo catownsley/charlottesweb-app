@@ -76,12 +76,14 @@ charlottesweb-app/
    - Begin with **[CW-001]** Define domain model and architecture decisions
    - Follow Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5
 
-### Technology Stack (Planned)
+### Technology Stack (Current MVP)
 
-- **Backend:** Python 3.11+, FastAPI, PostgreSQL, SQLAlchemy, Celery + Redis
-- **Frontend:** React/Next.js, TypeScript, shadcn/ui
-- **Infrastructure:** Docker, GitHub Actions, cloud deployment (AWS/Azure/Render/fly.io)
-- **Data Sources:** NVD (CVE), CWE, CIS Benchmarks, NIST CSF
+- **Runtime:** Python 3.14.3
+- **Backend API:** FastAPI 0.135.1, Uvicorn 0.41.0, Pydantic 2.12.5
+- **Config:** pydantic-settings 2.13.1, `.env`-based configuration
+- **Database:** SQLite + SQLAlchemy 2.0.48, Alembic 1.18.4
+- **Security:** python-jose 3.5.0, passlib 1.7.4, slowapi 0.1.9
+- **Testing:** pytest 9.0.2, pytest-asyncio 1.3.0, httpx 0.28.1
 
 ## Development Phases
 

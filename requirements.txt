@@ -1,24 +1,24 @@
 # Core API
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-pydantic==2.5.3
-pydantic-settings==2.1.0
+fastapi==0.135.1
+uvicorn[standard]==0.41.0
+pydantic==2.12.5
+pydantic-settings==2.13.1
 
 # Database
-sqlalchemy==2.0.25
-alembic==1.13.1
+sqlalchemy==2.0.48
+alembic==1.18.4
 
 # Security
-python-jose[cryptography]==3.3.0  # JWT token handling
+python-jose[cryptography]==3.5.0  # JWT token handling
 passlib[bcrypt]==1.7.4           # Password hashing
 slowapi==0.1.9                    # Rate limiting
-python-multipart==0.0.6           # Form data parsing
+python-multipart==0.0.22          # Form data parsing
 
 # Testing
-pytest==7.4.4
-pytest-asyncio==0.23.3
-httpx==0.26.0
+pytest==9.0.2
+pytest-asyncio==1.3.0
+httpx==0.28.1
 
 # Utilities
 python-dateutil==2.8.2
-requests==2.31.0
+requests==2.32.5

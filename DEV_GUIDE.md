@@ -8,7 +8,7 @@
 cd /Users/ct/Python/charlottesweb-app
 
 # Create/activate virtual environment (if not already active)
-python3 -m venv ../.venv
+python3.14 -m venv ../.venv
 source ../.venv/bin/activate
 
 # Install dependencies
@@ -417,6 +417,12 @@ cd /Users/ct/Python/charlottesweb-app
 source ../.venv/bin/activate
 python -m src.main
 ```
+
+### Python Version Standard
+
+- Project standard is **Python 3.14.3** (`.python-version`)
+- Canonical virtual environment is **`/Users/ct/Python/.venv`**
+- Remove local project `venv/` if present to avoid conflicts
 
 ### Port Already in Use
 

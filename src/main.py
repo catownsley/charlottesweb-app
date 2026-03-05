@@ -18,7 +18,7 @@ Architecture:
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -210,15 +210,28 @@ async def general_exception_handler(request: Request, exc: Exception):
 app.include_router(router, prefix=settings.api_v1_prefix, tags=["api"])
 
 
+FAVICON_SVG = """<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\" role=\"img\" aria-label=\"CharlottesWeb shield web icon\"><defs><linearGradient id=\"cwShield\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#667eea\"/><stop offset=\"100%\" stop-color=\"#764ba2\"/></linearGradient></defs><path d=\"M32 4C22 10 14 10 10 10v17c0 17 13 28 22 33 9-5 22-16 22-33V10c-4 0-12 0-22-6z\" fill=\"url(#cwShield)\"/><path d=\"M32 10c-7 4-13 4-17 4v13c0 12 9 21 17 26 8-5 17-14 17-26V14c-4 0-10 0-17-4z\" fill=\"none\" stroke=\"#dbe3ff\" stroke-width=\"2\"/><g fill=\"none\" stroke=\"#f5f8ff\" stroke-linecap=\"round\"><circle cx=\"32\" cy=\"30\" r=\"3.5\" stroke-width=\"2\"/><circle cx=\"32\" cy=\"30\" r=\"8\" stroke-width=\"1.8\"/><circle cx=\"32\" cy=\"30\" r=\"12\" stroke-width=\"1.4\"/><path d=\"M32 18v24\" stroke-width=\"1.6\"/><path d=\"M20 30h24\" stroke-width=\"1.6\"/><path d=\"M23.5 21.5l17 17\" stroke-width=\"1.2\"/><path d=\"M40.5 21.5l-17 17\" stroke-width=\"1.2\"/></g></svg>"""
+
+FAVICON_HEADERS = {
+    "Cache-Control": "public, max-age=86400",
+}
+
+
 # ============================================================================
 # FAVICON ROUTE
 # ============================================================================
 # Browsers automatically request /favicon.ico for the page icon.
-# This route prevents a 404 error in the logs. Returns 204 No Content (valid).
+# This route prevents a 404 error in the logs and returns a valid icon.
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    """Return favicon (204 No Content)."""
-    return JSONResponse(status_code=204, content={})
+    """Return branded shield-web favicon (200 OK)."""
+    return Response(content=FAVICON_SVG, media_type="image/svg+xml", headers=FAVICON_HEADERS)
+
+
+@app.head("/favicon.ico", include_in_schema=False)
+async def favicon_head():
+    """Return favicon HEAD response (200 OK)."""
+    return Response(status_code=200, media_type="image/svg+xml", headers=FAVICON_HEADERS)
 
 
 # ============================================================================
