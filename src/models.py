@@ -1,5 +1,5 @@
 """Database models for CharlottesWeb."""
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, String, Text
@@ -13,6 +13,15 @@ def generate_uuid() -> str:
     return str(uuid4())
 
 
+def utcnow() -> datetime:
+    """Return current UTC time with timezone info.
+
+    Returns timezone-aware datetime to prevent ambiguity in conversions.
+    SQLAlchemy stores as naive datetime but we can compare and convert safely.
+    """
+    return datetime.now(timezone.utc)
+
+
 class Organization(Base):
     """Organization entity."""
 
@@ -22,7 +31,7 @@ class Organization(Base):
     name = Column(String, nullable=False)
     industry = Column(String, nullable=True)
     stage = Column(String, nullable=True)  # seed, series_a, series_b, etc.
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     # Relationships
     metadata_profiles = relationship("MetadataProfile", back_populates="organization")
@@ -46,7 +55,7 @@ class MetadataProfile(Base):
     software_stack = Column(JSON, nullable=True)  # technology stack with versions
 
     version = Column(String, default="1", nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     # Relationships
     organization = relationship("Organization", back_populates="metadata_profiles")
@@ -65,7 +74,7 @@ class Control(Base):
     category = Column(String, nullable=True)  # Administrative, Physical, Technical
     evidence_types = Column(JSON, nullable=True)  # list of required evidence
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     # Relationships
     findings = relationship("Finding", back_populates="control")
@@ -81,7 +90,7 @@ class Assessment(Base):
     metadata_profile_id = Column(String, ForeignKey("metadata_profiles.id"), nullable=False)
 
     status = Column(String, default="pending", nullable=False)  # pending, running, completed, failed
-    initiated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    initiated_at = Column(DateTime, default=utcnow, nullable=False)
     completed_at = Column(DateTime, nullable=True)
 
     # Relationships
@@ -111,7 +120,7 @@ class Finding(Base):
     priority_window = Column(String, nullable=True)  # immediate, 30_days, quarterly, annual
     owner = Column(String, nullable=True)  # DevOps, Engineering, Security
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     # Relationships
     assessment = relationship("Assessment", back_populates="findings")
@@ -149,8 +158,8 @@ class Evidence(Base):
 
     # Metadata
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
 
     # Relationships
     control = relationship("Control")

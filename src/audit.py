@@ -28,7 +28,7 @@ Compliance:
 """
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
@@ -64,10 +64,10 @@ audit_logger.propagate = False
 
 class AuditAction(str, Enum):
     """Enumeration of auditable actions.
-    
+
     Categorized by type for easy filtering and reporting.
     Add new actions as features are implemented.
-    
+
     Compliance mapping:
     - Authentication events → SOC 2 CC6.1
     - Data access events → HIPAA 164.312(b)
@@ -118,7 +118,7 @@ class AuditAction(str, Enum):
 
 class AuditLevel(str, Enum):
     """Audit log severity levels.
-    
+
     Maps to standard logging levels but with security context:
     - INFO: Normal operations (most events)
     - WARNING: Suspicious but not critical (failed auth, validation errors)
@@ -144,10 +144,10 @@ def log_audit_event(
     success: bool = True,
 ) -> None:
     """Log an auditable event with comprehensive context.
-    
+
     This is the primary audit logging function. Call it for any security-relevant
     event that should be tracked for compliance, forensics, or monitoring.
-    
+
     Args:
         action: What happened (from AuditAction enum)
         request: FastAPI Request object (captures IP, user agent, path, etc.)
@@ -158,13 +158,13 @@ def log_audit_event(
         details: Additional context (free-form dict, don't include PHI)
         level: Severity/importance (INFO, WARNING, ERROR, CRITICAL)
         success: True if action succeeded, False if failed
-    
+
     Security considerations:
         - NEVER log PHI (Protected Health Information)
         - NEVER log full API keys (last 4 chars only)
         - NEVER log passwords or credentials
         - NEVER log sensitive business data
-        
+
     Log structure:
         {
             "timestamp": "2026-03-04T12:34:56.789",
@@ -184,7 +184,7 @@ def log_audit_event(
             "resource_id": "assessment-abc",
             "details": {"organization_id": "org-456"}
         }
-    
+
     Example usage:
         # Log successful organization creation
         log_audit_event(
@@ -195,7 +195,7 @@ def log_audit_event(
             resource_id=org.id,
             details={"name": org.name},
         )
-        
+
         # Log failed authentication
         log_audit_event(
             action=AuditAction.AUTH_FAILED,
@@ -209,7 +209,7 @@ def log_audit_event(
     log_entry = {
         "action": action.value,
         "success": success,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "level": level.value,
     }
 
@@ -227,7 +227,7 @@ def log_audit_event(
     # User identification (for user-specific actions)
     if user_id:
         log_entry["user_id"] = user_id
-        
+
     # API key tracking (SECURITY: Only last 4 characters)
     # Never log full API keys - they are credentials
     # Last 4 chars provide enough info to identify which key without exposing it
@@ -271,20 +271,20 @@ def log_security_alert(
     severity: AuditLevel = AuditLevel.WARNING,
 ) -> None:
     """Log a security-specific alert (convenience wrapper).
-    
+
     Use this for security events that need immediate attention:
     - Failed authentication attempts
     - Input validation failures
     - Rate limit violations
     - Suspicious patterns
     - Potential attacks
-    
+
     Args:
         request: FastAPI Request object
         alert_type: Category of alert (e.g., "validation_error", "rate_limit_exceeded")
         description: Human-readable description of what happened
         severity: How serious (WARNING or CRITICAL typically)
-    
+
     Example:
         # Log suspicious input
         log_security_alert(
@@ -293,7 +293,7 @@ def log_security_alert(
             description="Detected SQL keywords in user input",
             severity=AuditLevel.WARNING,
         )
-        
+
         # Log rate limit violation
         log_security_alert(
             request=request,
@@ -301,7 +301,7 @@ def log_security_alert(
             description=f"IP {request.client.host} exceeded rate limit",
             severity=AuditLevel.WARNING,
         )
-    
+
     Note:
         All security alerts are marked as success=False
         Review security alerts regularly for patterns

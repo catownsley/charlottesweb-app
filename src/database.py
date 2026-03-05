@@ -1,6 +1,9 @@
 """Database session and engine configuration."""
+from typing import Type, TypeVar
+
+from fastapi import HTTPException
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from src.config import settings
 
@@ -17,6 +20,9 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Base class for models
 Base = declarative_base()
 
+# Type variable for generic model type
+T = TypeVar("T")
+
 
 def get_db():
     """Dependency for getting database sessions."""
@@ -25,3 +31,32 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def get_or_404(db: Session, model: Type[T], entity_id: str, entity_name: str = None) -> T:
+    """Get entity by ID or raise 404 HTTPException.
+
+    Args:
+        db: Database session
+        model: SQLAlchemy model class
+        entity_id: ID of the entity to retrieve
+        entity_name: Human-readable name for error message (defaults to model tablename)
+
+    Returns:
+        Entity instance if found
+
+    Raises:
+        HTTPException: 404 if entity not found
+
+    Example:
+        >>> org = get_or_404(db, Organization, org_id)
+        >>> # Instead of:
+        >>> # org = db.query(Organization).filter(Organization.id == org_id).first()
+        >>> # if not org:
+        >>> #     raise HTTPException(status_code=404, detail="Organization not found")
+    """
+    entity = db.query(model).filter(model.id == entity_id).first()
+    if not entity:
+        name = entity_name or model.__tablename__.rstrip('s').replace('_', ' ')
+        raise HTTPException(status_code=404, detail=f"{name.title()} not found")
+    return entity

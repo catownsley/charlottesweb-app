@@ -56,22 +56,22 @@ def health_check(request: Request) -> HealthResponse:
 @limiter.limit(f"{settings.rate_limit_per_minute * 3}/minute")
 def get_component_versions(request: Request, component_name: str) -> dict:
     """Get known versions of a component for autocomplete suggestions.
-    
+
     Returns the latest versions for popular software components.
     Users can type any version manually; actual CVE analysis searches by component name only.
-    
+
     Args:
         component_name: Name of the component (e.g., 'postgres', 'java', 'nodejs')
-    
+
     Returns:
         Dictionary with 'versions' list of strings (top 3 latest versions)
-    
+
     Example:
         GET /api/v1/components/java/versions
         Response: {"versions": ["21", "20", "19"]}
     """
     component_lower = component_name.lower().strip()
-    
+
     # Common versions for popular components (listed newest first)
     # Organized by component with realistic version strings
     known_versions = {
@@ -88,25 +88,25 @@ def get_component_versions(request: Request, component_name: str) -> dict:
         'docker': ['25', '24', '23', '22', '21', '20', '19'],
         'openssl': ['3.2', '3.1', '3.0', '1.1.1', '1.0.2'],
     }
-    
+
     # Get versions for this component, or use first few letters as fallback
     versions_to_test = known_versions.get(component_lower, [])
-    
+
     if not versions_to_test:
         # Try prefix matching (e.g., "post" matches "postgres")
         for key, versions in known_versions.items():
             if key.startswith(component_lower) or component_lower.startswith(key[:3]):
                 versions_to_test = versions
                 break
-    
+
     # If still no match but component name is provided, return empty gracefully
     if not versions_to_test:
         return {"versions": []}
-    
+
     # Return top 3 latest versions for autocomplete suggestions
     # (User can type any version they want, actual NVD analysis searches by component name only)
     top_versions = versions_to_test[:3]
-    
+
     return {"versions": top_versions}
 
 
@@ -128,7 +128,7 @@ def create_organization(
     db.add(org)
     db.commit()
     db.refresh(org)
-    
+
     # Audit log
     log_audit_event(
         action=AuditAction.ORG_CREATED,
@@ -138,7 +138,7 @@ def create_organization(
         resource_id=org.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
         details={"name": org.name, "industry": org.industry},
     )
-    
+
     return org
 
 
@@ -154,7 +154,7 @@ def get_organization(
     org: Organization | None = db.query(Organization).filter(Organization.id == org_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
-    
+
     # Audit log
     log_audit_event(
         action=AuditAction.DATA_READ,
@@ -163,7 +163,7 @@ def get_organization(
         resource_type="organization",
         resource_id=org.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
     )
-    
+
     return org
 
 
@@ -194,7 +194,7 @@ def create_metadata_profile(
     db.add(profile)
     db.commit()
     db.refresh(profile)
-    
+
     # Audit log
     log_audit_event(
         action=AuditAction.PROFILE_CREATED,
@@ -204,12 +204,13 @@ def create_metadata_profile(
         resource_id=profile.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
         details={"organization_id": profile.organization_id},
     )
-    
+
     return profile
 
 
 @router.get("/metadata-profiles/{profile_id}", response_model=MetadataProfileResponse)
-def get_metadata_profile(profile_id: str, db: Session = Depends(get_db)) -> MetadataProfile:
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def get_metadata_profile(request: Request, profile_id: str, db: Session = Depends(get_db)) -> MetadataProfile:
     """Get metadata profile by ID."""
     profile: MetadataProfile | None = db.query(MetadataProfile).filter(MetadataProfile.id == profile_id).first()
     if not profile:
@@ -219,14 +220,16 @@ def get_metadata_profile(profile_id: str, db: Session = Depends(get_db)) -> Meta
 
 # Control endpoints
 @router.get("/controls", response_model=list[ControlResponse])
-def list_controls(db: Session = Depends(get_db)) -> List[Control]:
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def list_controls(request: Request, db: Session = Depends(get_db)) -> List[Control]:
     """List all controls."""
     controls: List[Control] = db.query(Control).all()
     return controls
 
 
 @router.get("/controls/{control_id}", response_model=ControlResponse)
-def get_control(control_id: str, db: Session = Depends(get_db)) -> Control:
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def get_control(request: Request, control_id: str, db: Session = Depends(get_db)) -> Control:
     """Get control by ID."""
     control: Control | None = db.query(Control).filter(Control.id == control_id).first()
     if not control:
@@ -245,7 +248,7 @@ def create_assessment(
 ) -> Assessment:
     """Create and run a new assessment."""
     from datetime import datetime, timezone
-    
+
     # Verify organization and metadata profile exist
     org: Organization | None = db.query(Organization).filter(Organization.id == assessment_data.organization_id).first()
     if not org:
@@ -268,7 +271,7 @@ def create_assessment(
     db.add(assessment)
     db.commit()
     db.refresh(assessment)
-    
+
     # Audit log - assessment created
     log_audit_event(
         action=AuditAction.ASSESSMENT_CREATED,
@@ -292,7 +295,7 @@ def create_assessment(
         assessment.status = "completed"  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         assessment.completed_at = datetime.now(timezone.utc)  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         db.commit()
-        
+
         # Audit log - assessment completed
         log_audit_event(
             action=AuditAction.ASSESSMENT_RUN,
@@ -306,7 +309,7 @@ def create_assessment(
     except Exception as e:
         assessment.status = "failed"  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         db.commit()
-        
+
         # Audit log - assessment failed
         log_audit_event(
             action=AuditAction.ERROR,
@@ -317,7 +320,7 @@ def create_assessment(
             success=False,
             details={"error": str(e), "status": "failed"},
         )
-        
+
         raise HTTPException(status_code=500, detail=f"Assessment failed: {str(e)}")
 
     db.refresh(assessment)
@@ -354,7 +357,7 @@ def get_remediation_roadmap(
 ) -> RemediationRoadmapResponse:
     """Generate prioritized remediation roadmap for an assessment."""
     from datetime import datetime
-    
+
     # Verify assessment exists
     assessment: Assessment | None = db.query(Assessment).filter(Assessment.id == assessment_id).first()
     if not assessment:
@@ -438,7 +441,7 @@ def get_remediation_roadmap(
         quarterly=quarterly,
         annual=annual,
     )
-    
+
     # Audit log
     log_audit_event(
         action=AuditAction.ROADMAP_GENERATED,
@@ -465,24 +468,24 @@ def analyze_nvd_vulnerabilities(
     api_key: str = Depends(get_api_key_optional),
 ) -> list[Finding]:
     """Analyze software stack for known NVD vulnerabilities.
-    
+
     Queries the National Vulnerability Database (NVD) for CVEs matching
     the software stack specified in the assessment's metadata profile.
     Creates findings for each discovered vulnerability.
-    
+
     Rate limit: Standard (60 req/min)
     """
     # Get assessment and metadata
     assessment: Assessment | None = db.query(Assessment).filter(Assessment.id == assessment_id).first()  # type: ignore[assignment]
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
-    
+
     metadata_profile: MetadataProfile | None = db.query(MetadataProfile).filter(
         MetadataProfile.id == assessment.metadata_profile_id  # type: ignore[attr-defined]
     ).first()
     if not metadata_profile:
         raise HTTPException(status_code=404, detail="Metadata profile not found")
-    
+
     # Get software stack from metadata profile
     software_stack: dict = metadata_profile.software_stack or {}  # type: ignore[attr-defined]
     if not software_stack:
@@ -497,16 +500,16 @@ def analyze_nvd_vulnerabilities(
             level=AuditLevel.INFO,
         )
         return []
-    
+
     # Initialize NVD service with optional API key from config
     nvd_service = NVDService(api_key=settings.nvd_api_key if settings.nvd_api_key else None)
-    
+
     # Analyze software stack for vulnerabilities
     nvd_results = nvd_service.analyze_software_stack(software_stack)
-    
+
     # Create findings from NVD results
     new_findings: list[Finding] = []
-    
+
     for component, cves in nvd_results.items():
         for cve in cves:
             # Check if this CVE finding already exists
@@ -514,21 +517,21 @@ def analyze_nvd_vulnerabilities(
                 Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
                 Finding.external_id == cve["cve_id"],  # type: ignore[attr-defined]
             ).first()
-            
+
             if existing:
                 # Skip if finding already exists
                 continue
-            
+
             # Determine priority window based on CVSS score
             priority_window = nvd_service.get_priority_window_from_cvss(cve["cvss_score"])
             severity = nvd_service.get_severity_from_cvss(cve["cvss_score"])
-            
+
             # Find related controls (security controls affected by this CVE)
             # For now, associate with general "vulnerability_management" controls
             related_controls = db.query(Control).filter(
                 Control.title.contains("vulnerability")  # type: ignore[attr-defined]
             ).all()
-            
+
             # Create finding record
             # NOTE: Do NOT set id manually - let the database generate UUIDs to avoid uniqueness violations
             finding = Finding(
@@ -543,10 +546,10 @@ def analyze_nvd_vulnerabilities(
                 priority_window=priority_window,
                 remediation_guidance=f"Update {component} to a patched version. Check CVE details at https://nvd.nist.gov/vuln/detail/{cve['cve_id']}",
             )
-            
+
             db.add(finding)
             new_findings.append(finding)
-    
+
     # Commit findings to database
     if new_findings:
         try:
@@ -561,7 +564,7 @@ def analyze_nvd_vulnerabilities(
                 status_code=500,
                 detail="Failed to save vulnerability findings. Please try again with a different software stack or contact support."
             )
-    
+
     # Audit log
     log_audit_event(
         action=AuditAction.NVD_QUERY,
@@ -577,7 +580,7 @@ def analyze_nvd_vulnerabilities(
         },
         level=AuditLevel.INFO,
     )
-    
+
     return new_findings
 
 
@@ -595,13 +598,13 @@ def create_evidence(
     control: Control | None = db.query(Control).filter(Control.id == evidence_data.control_id).first()
     if not control:
         raise HTTPException(status_code=404, detail="Control not found")
-    
+
     # Verify assessment exists if provided
     if evidence_data.assessment_id:
         assessment: Assessment | None = db.query(Assessment).filter(Assessment.id == evidence_data.assessment_id).first()
         if not assessment:
             raise HTTPException(status_code=404, detail="Assessment not found")
-    
+
     evidence = Evidence(
         control_id=evidence_data.control_id,
         assessment_id=evidence_data.assessment_id,
@@ -614,7 +617,7 @@ def create_evidence(
     db.add(evidence)
     db.commit()
     db.refresh(evidence)
-    
+
     # Audit log
     log_audit_event(
         action=AuditAction.DATA_CREATE,
@@ -624,7 +627,7 @@ def create_evidence(
         resource_id=evidence.id,  # type: ignore[arg-type]
         details={"control_id": evidence.control_id, "evidence_type": evidence.evidence_type},
     )
-    
+
     return evidence
 
 
@@ -650,19 +653,19 @@ def update_evidence(
     evidence: Evidence | None = db.query(Evidence).filter(Evidence.id == evidence_id).first()
     if not evidence:
         raise HTTPException(status_code=404, detail="Evidence not found")
-    
+
     # Update fields
     update_data = evidence_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(evidence, field, value)
-    
+
     from datetime import datetime, timezone
     if evidence_update.artifact_path or evidence_update.artifact_url:
         evidence.uploaded_at = datetime.now(timezone.utc).replace(tzinfo=None)
-    
+
     db.commit()
     db.refresh(evidence)
-    
+
     # Audit log
     log_audit_event(
         action=AuditAction.DATA_UPDATE,
@@ -672,7 +675,7 @@ def update_evidence(
         resource_id=evidence.id,  # type: ignore[arg-type]
         details={"updated_fields": list(update_data.keys())},
     )
-    
+
     return evidence
 
 
@@ -683,12 +686,12 @@ def generate_evidence_checklist(
 ) -> EvidenceChecklistResponse:
     """Generate evidence checklist for an assessment."""
     from datetime import datetime, timezone
-    
+
     # Verify assessment exists
     assessment: Assessment | None = db.query(Assessment).filter(Assessment.id == assessment_id).first()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
-    
+
     # Get all findings for this assessment
     findings: List[Finding] = (
         db.query(Finding)
@@ -696,10 +699,10 @@ def generate_evidence_checklist(
         .filter(Finding.control_id.isnot(None))
         .all()
     )
-    
+
     # Get unique control IDs from findings
     control_ids = list(set(f.control_id for f in findings if f.control_id))
-    
+
     # Get controls with evidence requirements
     controls: List[Control] = (
         db.query(Control)
@@ -707,29 +710,29 @@ def generate_evidence_checklist(
         .filter(Control.evidence_types.isnot(None))
         .all()
     )
-    
+
     # Get existing evidence for these controls
     existing_evidence: List[Evidence] = (
         db.query(Evidence)
         .filter(Evidence.assessment_id == assessment_id)
         .all()
     )
-    
+
     # Create a map of (control_id, evidence_type) -> evidence
     evidence_map = {
         (ev.control_id, ev.evidence_type): ev
         for ev in existing_evidence
     }
-    
+
     # Generate checklist items
     checklist_items: List[EvidenceChecklistItem] = []
     for control in controls:
         if not control.evidence_types:
             continue
-            
+
         for evidence_type in control.evidence_types:
             evidence = evidence_map.get((control.id, evidence_type))
-            
+
             item = EvidenceChecklistItem(
                 control_id=control.id,
                 control_title=control.title,
@@ -741,13 +744,13 @@ def generate_evidence_checklist(
                 evidence_id=evidence.id if evidence else None,  # type: ignore[attr-defined]
             )
             checklist_items.append(item)
-    
+
     # Calculate statistics
     total_items = len(checklist_items)
     completed = sum(1 for item in checklist_items if item.status == "completed")
     in_progress = sum(1 for item in checklist_items if item.status == "in_progress")
     not_started = sum(1 for item in checklist_items if item.status == "not_started")
-    
+
     return EvidenceChecklistResponse(
         assessment_id=assessment_id,
         organization_id=assessment.organization_id,

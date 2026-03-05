@@ -70,9 +70,10 @@ class Settings(BaseSettings):
 
     # JWT Secret Key: Used to sign JWT tokens
     # CRITICAL: Must be kept secret and unique per environment
-    # Auto-generated if not provided (fine for dev, set explicitly in prod)
+    # Development: Auto-generated if not provided
+    # Production: MUST be explicitly set (errors if missing)
     # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
-    secret_key: str = secrets.token_urlsafe(32)
+    secret_key: str = ""
 
     # JWT algorithm: HS256 (HMAC with SHA-256) - symmetric signing
     # Alternative: RS256 (RSA) for distributed systems
@@ -178,7 +179,22 @@ class Settings(BaseSettings):
 # Singleton settings object loaded at import time
 # Access anywhere with: from src.config import settings
 # ============================================================================
-settings = Settings()
+
+# Pre-initialize settings to allow validation
+_settings = Settings()
+
+# Generate secret key if not provided (development only)
+if not _settings.secret_key:
+    if _settings.is_production:
+        raise ValueError(
+            "SECRET_KEY must be explicitly set in production. "
+            "Generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+        )
+    else:
+        # Auto-generate for development convenience
+        _settings.secret_key = secrets.token_urlsafe(32)
+
+settings = _settings
 
 
 # ============================================================================
