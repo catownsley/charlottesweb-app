@@ -1,5 +1,4 @@
 """Tests for CharlottesWeb API."""
-import os
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -15,14 +14,14 @@ def test_db(tmp_path):
     # Create test database in pytest's tmp_path
     db_file = tmp_path / "test.db"
     test_db_url = f"sqlite:///{db_file}"
-    
+
     # Create engine and session
     engine = create_engine(test_db_url, connect_args={"check_same_thread": False})
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    
+
     # Create all tables
     Base.metadata.create_all(bind=engine)
-    
+
     # Seed controls
     db = TestingSessionLocal()
     from src.models import Control
@@ -46,7 +45,7 @@ def test_db(tmp_path):
         db.add(c)
     db.commit()
     db.close()
-    
+
     # Override get_db dependency
     def override_get_db():
         try:
@@ -54,11 +53,11 @@ def test_db(tmp_path):
             yield db
         finally:
             db.close()
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     yield engine
-    
+
     # Cleanup
     Base.metadata.drop_all(bind=engine)
     app.dependency_overrides.clear()

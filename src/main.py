@@ -34,8 +34,17 @@ from src.middleware import (
     ResponseTimeMiddleware,
     SecurityHeadersMiddleware,
 )
-# Import models to register them with Base.metadata before create_all()
-import src.models  # noqa: F401
+from src.models import Assessment, Control, Evidence, Finding, MetadataProfile, Organization
+
+# Import model classes so SQLAlchemy registers all tables before create_all()
+REGISTERED_MODEL_CLASSES = (
+    Organization,
+    MetadataProfile,
+    Control,
+    Assessment,
+    Finding,
+    Evidence,
+)
 
 # Initialize rate limiter
 # - key_func: How to identify clients (by IP address)
@@ -52,7 +61,7 @@ app = FastAPI(
     title=settings.app_name,
     version=__version__,
     description="HIPAA Compliance-as-Code Platform",
-    
+
     # Security: Disable API documentation in production
     # Interactive docs can leak API structure and be used for reconnaissance
     # Enable in development for convenience
@@ -123,18 +132,18 @@ app.add_middleware(
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle Pydantic validation errors with security in mind.
-    
+
     Triggered when:
     - Request body/query params fail Pydantic validation
     - Type mismatches
     - Missing required fields
     - Value constraints violated
-    
+
     Security considerations:
     - Validation errors might indicate malicious input
     - Log as security alert for monitoring
     - Don't expose internal schema details in production
-    
+
     Development: Return detailed errors for debugging
     Production: Return generic message to prevent reconnaissance
     """
@@ -145,7 +154,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         description=f"Request validation failed: {exc.errors()}",
         severity=AuditLevel.WARNING,
     )
-    
+
     # Production: Generic error message (don't leak schema details)
     # Attackers can use validation errors to map API structure
     if settings.is_production:
@@ -153,7 +162,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={"detail": "Invalid request data"},
         )
-    
+
     # Development: Detailed errors for debugging
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -164,14 +173,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle unexpected exceptions (catch-all handler).
-    
+
     Catches any unhandled exception that propagates to the top level.
-    
+
     Security considerations:
     - Error messages might leak sensitive information
     - Stack traces reveal internal structure
     - Exception types reveal technology stack
-    
+
     All exceptions are logged with context for debugging.
     Production returns generic error to prevent information leakage.
     """
@@ -187,7 +196,7 @@ async def general_exception_handler(request: Request, exc: Exception):
             "error_message": str(exc) if settings.debug else "Internal server error",
         },
     )
-    
+
     # Production: Generic error (don't leak stack traces, error messages)
     # Errors might reveal database structure, file paths, library versions
     if settings.is_production:
@@ -195,7 +204,7 @@ async def general_exception_handler(request: Request, exc: Exception):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Internal server error"},
         )
-    
+
     # Development: Include error message for debugging
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -285,7 +294,7 @@ async def favicon_head():
 try:
     import os
     static_path = os.path.join(os.path.dirname(__file__), '..', 'static')
-    
+
     # Only mount if directory exists (graceful handling if static/ removed)
     if os.path.isdir(static_path):
         app.mount(
@@ -309,13 +318,13 @@ except Exception as e:
 @app.on_event("startup")
 async def startup_event():
     """Log application startup for audit trail.
-    
+
     Runs once when the application starts.
     Logs configuration state for:
     - Incident investigation (when did config change?)
     - Compliance auditing (what security settings are active?)
     - Troubleshooting (what version is running?)
-    
+
     Future enhancements:
     - Database connection pool initialization
     - Cache warming
@@ -326,7 +335,7 @@ async def startup_event():
     # Drop existing tables for development (fresh schema on restart)
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    
+
     log_audit_event(
         action=AuditAction.CONFIG_CHANGED,
         level=AuditLevel.INFO,
@@ -343,9 +352,9 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Log application shutdown for audit trail.
-    
+
     Runs once when the application stops (graceful shutdown).
-    
+
     Future enhancements:
     - Close database connections
     - Flush audit logs
@@ -373,4 +382,4 @@ if __name__ == "__main__":
 
     # Development server (NOT for production)
     # Use gunicorn + uvicorn worker in production
-    uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)

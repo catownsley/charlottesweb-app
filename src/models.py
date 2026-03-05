@@ -1,6 +1,5 @@
 """Database models for CharlottesWeb."""
 from datetime import datetime
-from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, String, Text
@@ -37,7 +36,7 @@ class MetadataProfile(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid)
     organization_id = Column(String, ForeignKey("organizations.id"), nullable=False)
-    
+
     # Metadata fields (stored as JSON for flexibility)
     phi_types = Column(JSON, nullable=True)  # list of PHI categories
     cloud_provider = Column(String, nullable=True)  # aws, azure, gcp
@@ -45,7 +44,7 @@ class MetadataProfile(Base):
     applications = Column(JSON, nullable=True)  # app stack details
     access_controls = Column(JSON, nullable=True)  # auth/authz model
     software_stack = Column(JSON, nullable=True)  # technology stack with versions
-    
+
     version = Column(String, default="1", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -65,7 +64,7 @@ class Control(Base):
     requirement = Column(Text, nullable=False)
     category = Column(String, nullable=True)  # Administrative, Physical, Technical
     evidence_types = Column(JSON, nullable=True)  # list of required evidence
-    
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
@@ -80,7 +79,7 @@ class Assessment(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     organization_id = Column(String, ForeignKey("organizations.id"), nullable=False)
     metadata_profile_id = Column(String, ForeignKey("metadata_profiles.id"), nullable=False)
-    
+
     status = Column(String, default="pending", nullable=False)  # pending, running, completed, failed
     initiated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at = Column(DateTime, nullable=True)
@@ -99,7 +98,7 @@ class Finding(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     assessment_id = Column(String, ForeignKey("assessments.id"), nullable=False)
     control_id = Column(String, ForeignKey("controls.id"), nullable=True)  # nullable for NVD findings
-    
+
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
     severity = Column(String, nullable=False)  # immediate, high, medium, low
@@ -107,11 +106,11 @@ class Finding(Base):
     external_id = Column(String, nullable=True)  # CVE ID for NVD findings
     cve_ids = Column(JSON, nullable=True)  # list of CVE IDs
     cwe_ids = Column(JSON, nullable=True)  # list of CWE IDs
-    
+
     remediation_guidance = Column(Text, nullable=True)
     priority_window = Column(String, nullable=True)  # immediate, 30_days, quarterly, annual
     owner = Column(String, nullable=True)  # DevOps, Engineering, Security
-    
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
@@ -127,27 +126,27 @@ class Evidence(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     control_id = Column(String, ForeignKey("controls.id"), nullable=False)
     assessment_id = Column(String, ForeignKey("assessments.id"), nullable=True)
-    
+
     # Evidence classification
     evidence_type = Column(String, nullable=False)  # policy, config, screenshot, logs, etc.
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
-    
+
     # Status tracking
     status = Column(String, default="not_started", nullable=False)  # not_started, in_progress, completed, not_applicable
     owner = Column(String, nullable=True)  # responsible party
     due_date = Column(DateTime, nullable=True)
-    
+
     # Artifact metadata
     artifact_path = Column(String, nullable=True)  # file storage path
     artifact_url = Column(String, nullable=True)  # external URL if applicable
     artifact_hash = Column(String, nullable=True)  # SHA256 for integrity
     uploaded_at = Column(DateTime, nullable=True)
-    
+
     # Versioning
     version = Column(String, default="1", nullable=False)
     previous_version_id = Column(String, nullable=True)  # self-referential for history
-    
+
     # Metadata
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

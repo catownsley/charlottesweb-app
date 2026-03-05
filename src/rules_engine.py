@@ -1,5 +1,4 @@
 """Rules engine for mapping metadata to HIPAA controls and generating findings."""
-from typing import Any
 import logging
 
 from sqlalchemy.orm import Session
@@ -15,7 +14,7 @@ class RulesEngine:
 
     def __init__(self, db: Session, nvd_api_key: str | None = None):
         """Initialize the rules engine.
-        
+
         Args:
             db: Database session
             nvd_api_key: Optional NVD API key for higher rate limits
@@ -26,7 +25,7 @@ class RulesEngine:
     def run_assessment(self, assessment_id: str) -> list[Finding]:
         """
         Run compliance assessment by applying rules to metadata profile.
-        
+
         Returns list of findings (gaps and risks).
         """
         # Load assessment and metadata
@@ -67,7 +66,7 @@ class RulesEngine:
     ) -> Finding | None:
         """
         Evaluate a single control against metadata profile.
-        
+
         Returns a Finding if there's a gap, None if compliant.
         """
         # Rule 1: Access Control - Check if MFA is enabled
@@ -244,43 +243,43 @@ class RulesEngine:
         self, assessment: Assessment, metadata: MetadataProfile
     ) -> list[Finding]:
         """Check software stack for known vulnerabilities using NVD API.
-        
+
         Args:
             assessment: Current assessment
             metadata: Metadata profile with software_stack
-            
+
         Returns:
             List of findings for vulnerable software components
         """
         findings = []
         software_stack = metadata.software_stack or {}
-        
+
         if not software_stack:
             logger.info("No software stack provided, skipping NVD check")
             return findings
-        
+
         logger.info(f"Analyzing software stack: {software_stack}")
-        
+
         # Analyze stack for vulnerabilities
         vulnerabilities = self.nvd_service.analyze_software_stack(software_stack)
-        
+
         # Look up relevant control for software vulnerabilities
         # We'll map to "Malware Protection" control as a proxy for vuln management
         control = self.db.query(Control).filter(
             Control.id == "HIPAA.164.308(a)(5)(ii)(B)"
         ).first()
-        
+
         if not control:
             # Fallback: create findings without control mapping
             control_id = "HIPAA.164.308(a)(5)(ii)(B)"
         else:
             control_id = control.id
-        
+
         for component, cves in vulnerabilities.items():
             for cve_data in cves:
                 severity = self.nvd_service.get_severity_from_cvss(cve_data["cvss_score"])
                 priority_window = self.nvd_service.get_priority_window_from_cvss(cve_data["cvss_score"])
-                
+
                 finding = Finding(
                     assessment_id=assessment.id,
                     control_id=control_id,
@@ -304,5 +303,5 @@ class RulesEngine:
                 )
                 findings.append(finding)
                 logger.info(f"Created finding for {cve_data['cve_id']} in {component}")
-        
+
         return findings
