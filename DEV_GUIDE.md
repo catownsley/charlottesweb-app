@@ -52,7 +52,71 @@ pytest tests/ -v
 
 ---
 
-## � TLS/HTTPS Setup (Optional)
+## 🔒 Security Configuration
+
+### Environment Variables
+
+Copy the example environment file and configure for your environment:
+
+```bash
+cp .env.example .env
+# Edit .env with your settings
+```
+
+### API Key Authentication (Optional)
+
+For development, API key authentication is **disabled** by default. To enable:
+
+```bash
+# In .env file
+API_KEY_REQUIRED=true
+VALID_API_KEYS=your-dev-key-here
+```
+
+Generate a secure API key:
+```bash
+python -c "from src.security import generate_api_key; print(generate_api_key())"
+```
+
+Use the API key in requests:
+```bash
+curl -H "X-API-Key: your-dev-key-here" http://localhost:8000/api/v1/organizations
+```
+
+### Rate Limiting
+
+Rate limiting is **enabled** by default (60 requests/minute per IP). To adjust:
+
+```bash
+# In .env file
+RATE_LIMIT_PER_MINUTE=120  # Increase limit
+RATE_LIMIT_ENABLED=false   # Or disable entirely
+```
+
+### Audit Logging
+
+All sensitive operations are logged to `audit.log` in JSON format. View logs:
+
+```bash
+# View recent audit events
+tail -f audit.log
+
+# Search for specific actions
+grep "assessment_created" audit.log | python -m json.tool
+```
+
+### Security Best Practices
+
+For development environments:
+- ✅ Use default settings (API keys optional, detailed errors)
+- ✅ Use self-signed certificates for HTTPS testing
+- ✅ Review audit logs periodically
+
+**Before production deployment**, see [SECURITY.md](SECURITY.md) for complete hardening checklist.
+
+---
+
+## 🧪 Testing the Vertical Slice
 
 To run the server with HTTPS using self-signed certificates for local development:
 

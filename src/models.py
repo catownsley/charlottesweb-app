@@ -44,6 +44,7 @@ class MetadataProfile(Base):
     infrastructure = Column(JSON, nullable=True)  # services used
     applications = Column(JSON, nullable=True)  # app stack details
     access_controls = Column(JSON, nullable=True)  # auth/authz model
+    software_stack = Column(JSON, nullable=True)  # technology stack with versions
     
     version = Column(String, default="1", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

@@ -36,6 +36,7 @@ class MetadataProfileCreate(BaseModel):
     infrastructure: Optional[dict[str, Any]] = None
     applications: Optional[dict[str, Any]] = None
     access_controls: Optional[dict[str, Any]] = None
+    software_stack: Optional[dict[str, Any]] = None
 
 
 class MetadataProfileResponse(BaseModel):
@@ -48,6 +49,7 @@ class MetadataProfileResponse(BaseModel):
     infrastructure: Optional[dict[str, Any]] = None
     applications: Optional[dict[str, Any]] = None
     access_controls: Optional[dict[str, Any]] = None
+    software_stack: Optional[dict[str, Any]] = None
     version: str
     created_at: datetime
 
@@ -117,3 +119,46 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     environment: str
+
+
+# Remediation Roadmap schemas
+class RoadmapItem(BaseModel):
+    """Schema for a single remediation action."""
+
+    finding_id: str
+    control_id: str
+    title: str
+    severity: str
+    cvss_score: Optional[float] = None
+    priority_window: str
+    owner: Optional[str] = None
+    remediation_guidance: str
+    cve_ids: Optional[list[str]] = None
+    cwe_ids: Optional[list[str]] = None
+
+
+class RoadmapSummary(BaseModel):
+    """Executive summary of remediation roadmap."""
+
+    total_findings: int
+    critical_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    immediate_actions: int
+    thirty_day_actions: int
+    quarterly_actions: int
+    annual_actions: int
+
+
+class RemediationRoadmapResponse(BaseModel):
+    """Schema for remediation roadmap response."""
+
+    assessment_id: str
+    organization_id: str
+    generated_at: datetime
+    summary: RoadmapSummary
+    immediate: list[RoadmapItem]
+    thirty_days: list[RoadmapItem]
+    quarterly: list[RoadmapItem]
+    annual: list[RoadmapItem]

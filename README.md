@@ -4,10 +4,23 @@
 
 CharlottesWeb automates regulatory mapping by correlating HIPAA requirements with real-world exploitable vulnerabilities (CVE/CWE), producing prioritized remediation roadmaps and audit-ready evidence packages.
 
+## 🔒 Security First
+
+**Production-ready security controls:**
+- API key authentication
+- Rate limiting (60 req/min default)
+- Comprehensive audit logging
+- Security headers (HSTS, CSP, etc.)
+- Request tracing
+- Environment-based secrets management
+
+See [SECURITY.md](SECURITY.md) for complete security documentation.
+
 ## Quick Links
 
 - 📋 **[Business Plan](BUSINESS_PLAN.md)** - Market strategy, competitive landscape, go-to-market, team hiring
 - 🏗️ **[Architecture & Product Vision](ARCHITECTURE.md)** - Technical design, domain model, system architecture, API design
+- 🔒 **[Security Documentation](SECURITY.md)** - Security features, configuration, and best practices
 - 🎫 **[Ticket Index](docs/tickets/TICKET_INDEX.md)** - Phased execution roadmap with detailed tickets
 - 🐛 **[GitHub Issues](https://github.com/catownsley/charlottesweb-app/issues)** - Active implementation backlog
 

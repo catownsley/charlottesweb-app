@@ -1,8 +1,11 @@
 """API routes for CharlottesWeb."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from src import __version__
+from src.audit import AuditAction, log_audit_event
 from src.config import settings
 from src.database import get_db
 from src.models import Assessment, Control, Finding, MetadataProfile, Organization
@@ -17,13 +20,21 @@ from src.schemas import (
     MetadataProfileResponse,
     OrganizationCreate,
     OrganizationResponse,
+    RemediationRoadmapResponse,
+    RoadmapItem,
+    RoadmapSummary,
 )
+from src.security import get_api_key_optional
+
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter()
 
 
 @router.get("/health", response_model=HealthResponse)
-def health_check():
+@limiter.limit(f"{settings.rate_limit_per_minute * 2}/minute")
+def health_check(request: Request):
     """Health check endpoint."""
     return HealthResponse(
         status="healthy",
@@ -34,7 +45,13 @@ def health_check():
 
 # Organization endpoints
 @router.post("/organizations", response_model=OrganizationResponse, status_code=201)
-def create_organization(org_data: OrganizationCreate, db: Session = Depends(get_db)):
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def create_organization(
+    request: Request,
+    org_data: OrganizationCreate,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+):
     """Create a new organization."""
     org = Organization(
         name=org_data.name,
@@ -44,22 +61,53 @@ def create_organization(org_data: OrganizationCreate, db: Session = Depends(get_
     db.add(org)
     db.commit()
     db.refresh(org)
+    
+    # Audit log
+    log_audit_event(
+        action=AuditAction.ORG_CREATED,
+        request=request,
+        api_key=api_key,
+        resource_type="organization",
+        resource_id=org.id,
+        details={"name": org.name, "industry": org.industry},
+    )
+    
     return org
 
 
 @router.get("/organizations/{org_id}", response_model=OrganizationResponse)
-def get_organization(org_id: str, db: Session = Depends(get_db)):
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def get_organization(
+    request: Request,
+    org_id: str,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+):
     """Get organization by ID."""
     org = db.query(Organization).filter(Organization.id == org_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
+    
+    # Audit log
+    log_audit_event(
+        action=AuditAction.DATA_READ,
+        request=request,
+        api_key=api_key,
+        resource_type="organization",
+        resource_id=org.id,
+    )
+    
     return org
 
 
 # Metadata Profile endpoints
 @router.post("/metadata-profiles", response_model=MetadataProfileResponse, status_code=201)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 def create_metadata_profile(
-    profile_data: MetadataProfileCreate, db: Session = Depends(get_db)
+    request: Request,
+    profile_data: MetadataProfileCreate,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
 ):
     """Create a new metadata profile."""
     # Verify organization exists
@@ -74,10 +122,22 @@ def create_metadata_profile(
         infrastructure=profile_data.infrastructure,
         applications=profile_data.applications,
         access_controls=profile_data.access_controls,
+        software_stack=profile_data.software_stack,
     )
     db.add(profile)
     db.commit()
     db.refresh(profile)
+    
+    # Audit log
+    log_audit_event(
+        action=AuditAction.PROFILE_CREATED,
+        request=request,
+        api_key=api_key,
+        resource_type="metadata_profile",
+        resource_id=profile.id,
+        details={"organization_id": profile.organization_id},
+    )
+    
     return profile
 
 
@@ -109,7 +169,13 @@ def get_control(control_id: str, db: Session = Depends(get_db)):
 
 # Assessment endpoints
 @router.post("/assessments", response_model=AssessmentResponse, status_code=201)
-def create_assessment(assessment_data: AssessmentCreate, db: Session = Depends(get_db)):
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def create_assessment(
+    request: Request,
+    assessment_data: AssessmentCreate,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+):
     """Create and run a new assessment."""
     # Verify organization and metadata profile exist
     org = db.query(Organization).filter(Organization.id == assessment_data.organization_id).first()
@@ -133,6 +199,16 @@ def create_assessment(assessment_data: AssessmentCreate, db: Session = Depends(g
     db.add(assessment)
     db.commit()
     db.refresh(assessment)
+    
+    # Audit log - assessment created
+    log_audit_event(
+        action=AuditAction.ASSESSMENT_CREATED,
+        request=request,
+        api_key=api_key,
+        resource_type="assessment",
+        resource_id=assessment.id,
+        details={"organization_id": assessment.organization_id},
+    )
 
     # Run rules engine
     try:
@@ -148,10 +224,32 @@ def create_assessment(assessment_data: AssessmentCreate, db: Session = Depends(g
         from datetime import datetime
         assessment.completed_at = datetime.utcnow()
         db.commit()
+        
+        # Audit log - assessment completed
+        log_audit_event(
+            action=AuditAction.ASSESSMENT_RUN,
+            request=request,
+            api_key=api_key,
+            resource_type="assessment",
+            resource_id=assessment.id,
+            details={"findings_count": len(findings), "status": "completed"},
+        )
 
     except Exception as e:
         assessment.status = "failed"
         db.commit()
+        
+        # Audit log - assessment failed
+        log_audit_event(
+            action=AuditAction.ERROR,
+            request=request,
+            api_key=api_key,
+            resource_type="assessment",
+            resource_id=assessment.id,
+            success=False,
+            details={"error": str(e), "status": "failed"},
+        )
+        
         raise HTTPException(status_code=500, detail=f"Assessment failed: {str(e)}")
 
     db.refresh(assessment)
@@ -176,3 +274,114 @@ def get_assessment_findings(assessment_id: str, db: Session = Depends(get_db)):
 
     findings = db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
     return findings
+
+
+@router.get("/assessments/{assessment_id}/roadmap", response_model=RemediationRoadmapResponse)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def get_remediation_roadmap(
+    request: Request,
+    assessment_id: str,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+):
+    """Generate prioritized remediation roadmap for an assessment."""
+    from datetime import datetime
+    
+    # Verify assessment exists
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    # Get all findings for this assessment
+    findings = db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
+
+    # Group findings by priority window
+    immediate = []
+    thirty_days = []
+    quarterly = []
+    annual = []
+
+    # Count by severity
+    critical_count = 0
+    high_count = 0
+    medium_count = 0
+    low_count = 0
+
+    for finding in findings:
+        # Create roadmap item
+        item = RoadmapItem(
+            finding_id=finding.id,
+            control_id=finding.control_id,
+            title=finding.title,
+            severity=finding.severity,
+            cvss_score=finding.cvss_score,
+            priority_window=finding.priority_window or "quarterly",
+            owner=finding.owner,
+            remediation_guidance=finding.remediation_guidance or "Contact security team for guidance",
+            cve_ids=finding.cve_ids or [],
+            cwe_ids=finding.cwe_ids or [],
+        )
+
+        # Group by priority window
+        priority = finding.priority_window or "quarterly"
+        if priority == "immediate":
+            immediate.append(item)
+        elif priority == "30_days":
+            thirty_days.append(item)
+        elif priority == "quarterly":
+            quarterly.append(item)
+        elif priority == "annual":
+            annual.append(item)
+        else:
+            quarterly.append(item)  # Default to quarterly
+
+        # Count by severity
+        severity = finding.severity.lower()
+        if severity == "critical":
+            critical_count += 1
+        elif severity == "high":
+            high_count += 1
+        elif severity == "medium":
+            medium_count += 1
+        elif severity == "low":
+            low_count += 1
+
+    # Build summary
+    summary = RoadmapSummary(
+        total_findings=len(findings),
+        critical_count=critical_count,
+        high_count=high_count,
+        medium_count=medium_count,
+        low_count=low_count,
+        immediate_actions=len(immediate),
+        thirty_day_actions=len(thirty_days),
+        quarterly_actions=len(quarterly),
+        annual_actions=len(annual),
+    )
+
+    # Build roadmap response
+    roadmap = RemediationRoadmapResponse(
+        assessment_id=assessment_id,
+        organization_id=assessment.organization_id,
+        generated_at=datetime.utcnow(),
+        summary=summary,
+        immediate=immediate,
+        thirty_days=thirty_days,
+        quarterly=quarterly,
+        annual=annual,
+    )
+    
+    # Audit log
+    log_audit_event(
+        action=AuditAction.ROADMAP_GENERATED,
+        request=request,
+        api_key=api_key,
+        resource_type="assessment",
+        resource_id=assessment_id,
+        details={
+            "total_findings": summary.total_findings,
+            "immediate_actions": summary.immediate_actions,
+        },
+    )
+
+    return roadmap
