@@ -336,6 +336,20 @@ async def startup_event():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
+    # Validate security configuration
+    # Check for common misconfigurations that could lead to security issues
+    from src.config import validate_security_config
+    security_warnings = validate_security_config()
+    if security_warnings:
+        for warning in security_warnings:
+            log_security_alert(
+                threat_type="MISCONFIGURATION",
+                severity="high" if "🚨" in warning else "medium",
+                details={"warning": warning},
+            )
+            # Also print to console for visibility during startup
+            print(f"\n{warning}\n")
+
     log_audit_event(
         action=AuditAction.CONFIG_CHANGED,
         level=AuditLevel.INFO,
@@ -345,6 +359,7 @@ async def startup_event():
             "environment": settings.app_env,
             "debug": settings.debug,
             "api_key_required": settings.api_key_required,
+            "security_warnings_count": len(security_warnings),
         },
     )
 
