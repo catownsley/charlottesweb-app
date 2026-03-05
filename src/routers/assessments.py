@@ -333,14 +333,14 @@ def analyze_nvd_vulnerabilities(
             if cwe_ids:
                 # CWE → Control mapping (maps known CWE patterns to security controls)
                 cwe_control_map = {
-                    "CWE-295": "AVODAH.SC-7.1",  # Improper Certificate Validation → TLS/Encryption
-                    "CWE-311": "AVODAH.SC-4.1",  # Missing Encryption → Data Protection
-                    "CWE-798": "AVODAH.SC-2.1",  # Hard-coded Credentials → Access Control
-                    "CWE-347": "AVODAH.SC-12.1", # Improper Verification of Cryptographic Signature → Key Management
-                    "CWE-200": "AVODAH.SC-7.2",  # Information Exposure → Network Security
-                    "CWE-778": "AVODAH.AU-6.1",  # Insufficient Logging → Audit Logging
-                    "CWE-89": "AVODAH.SC-3.1",   # SQL Injection → Input Validation
-                    "CWE-79": "AVODAH.SC-3.1",   # Cross-site Scripting → Input Validation
+                    "CWE-295": "HC.SC-7.1",  # Improper Certificate Validation → TLS/Encryption
+                    "CWE-311": "HC.SC-4.1",  # Missing Encryption → Data Protection
+                    "CWE-798": "HC.SC-2.1",  # Hard-coded Credentials → Access Control
+                    "CWE-347": "HC.SC-12.1", # Improper Verification of Cryptographic Signature → Key Management
+                    "CWE-200": "HC.SC-7.2",  # Information Exposure → Network Security
+                    "CWE-778": "HC.AU-6.1",  # Insufficient Logging → Audit Logging
+                    "CWE-89": "HC.SC-3.1",   # SQL Injection → Input Validation
+                    "CWE-79": "HC.SC-3.1",   # Cross-site Scripting → Input Validation
                 }
 
                 # Check if any CWE maps to a control
@@ -351,7 +351,7 @@ def analyze_nvd_vulnerabilities(
 
                 # If no specific mapping, default to encryption/security control
                 if not control_id:
-                    control_id = "AVODAH.SC-7.1"  # Default: Network Security / TLS
+                    control_id = "HC.SC-7.1"  # Default: Network Security / TLS
 
             # Verify control exists in database
             if control_id:

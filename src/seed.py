@@ -129,7 +129,7 @@ def seed_controls():
         ),
         # Healthcare-specific controls (real-time medical AI translation)
         Control(
-            id="AVODAH.SC-2.1",
+            id="HC.SC-2.1",
             framework="HIPAA_Security_Rule",
             title="Audio Ingestion - API Authentication & Access Control",
             requirement=(
@@ -145,7 +145,7 @@ def seed_controls():
             ],
         ),
         Control(
-            id="AVODAH.SC-7.1",
+            id="HC.SC-7.1",
             framework="HIPAA_Security_Rule",
             title="Transmission Security - TLS Encryption for Audio Streams",
             requirement=(
@@ -161,7 +161,7 @@ def seed_controls():
             ],
         ),
         Control(
-            id="AVODAH.SC-4.1",
+            id="HC.SC-4.1",
             framework="HIPAA_Security_Rule",
             title="Encryption at Rest - RDS, S3, and Key Management",
             requirement=(
@@ -177,7 +177,7 @@ def seed_controls():
             ],
         ),
         Control(
-            id="AVODAH.SC-12.1",
+            id="HC.SC-12.1",
             framework="HIPAA_Security_Rule",
             title="Key Management - KMS Key Rotation & Access Control",
             requirement=(
@@ -193,7 +193,7 @@ def seed_controls():
             ],
         ),
         Control(
-            id="AVODAH.SC-7.2",
+            id="HC.SC-7.2",
             framework="HIPAA_Security_Rule",
             title="Ephemeral Storage - Audio NOT Persisted to Pod Disks",
             requirement=(
@@ -209,7 +209,7 @@ def seed_controls():
             ],
         ),
         Control(
-            id="AVODAH.AU-6.1",
+            id="HC.AU-6.1",
             framework="HIPAA_Security_Rule",
             title="Access Logging - Model API Calls & Translation Requests",
             requirement=(
@@ -225,7 +225,7 @@ def seed_controls():
             ],
         ),
         Control(
-            id="AVODAH.SC-13.1",
+            id="HC.SC-13.1",
             framework="HIPAA_Security_Rule",
             title="Secure Deletion - Audio TTL & Cryptographic Erasure",
             requirement=(
@@ -241,7 +241,7 @@ def seed_controls():
             ],
         ),
         Control(
-            id="AVODAH.UI-1.1",
+            id="HC.UI-1.1",
             framework="HIPAA_Security_Rule",
             title="De-identification - PII Removal Before Archival",
             requirement=(
@@ -257,7 +257,7 @@ def seed_controls():
             ],
         ),
         Control(
-            id="AVODAH.SC-2.2",
+            id="HC.SC-2.2",
             framework="HIPAA_Security_Rule",
             title="IAM Least Privilege - Pod & Database Access Control",
             requirement=(
@@ -273,7 +273,23 @@ def seed_controls():
             ],
         ),
         Control(
-            id="AVODAH.SC-12.2",
+            id="HC.SC-3.1",
+            framework="HIPAA_Security_Rule",
+            title="Input Validation - SQL Injection & XSS Prevention",
+            requirement=(
+                "Implement input validation and output encoding to prevent SQL injection and cross-site scripting attacks. "
+                "Use parameterized queries and HTML/URL encoding for all user inputs."
+            ),
+            category="Technical Safeguards - Input Validation",
+            evidence_types=[
+                "input_validation_policy",
+                "parameterized_query_examples",
+                "security_testing_results",
+                "code_review_records",
+            ],
+        ),
+        Control(
+            id="HC.SC-12.2",
             framework="HIPAA_Security_Rule",
             title="Secret Management - API Key & Database Password Rotation",
             requirement=(
@@ -289,7 +305,7 @@ def seed_controls():
             ],
         ),
         Control(
-            id="AVODAH.AU-2.1",
+            id="HC.AU-2.1",
             framework="HIPAA_Security_Rule",
             title="Incident & Breach Response - Security Event Logging & Procedures",
             requirement=(
@@ -306,7 +322,7 @@ def seed_controls():
             ],
         ),
         Control(
-            id="AVODAH.SC-7.3",
+            id="HC.SC-7.3",
             framework="HIPAA_Security_Rule",
             title="Network Segmentation & WAF - VPC Security Groups & Egress Controls",
             requirement=(
@@ -351,7 +367,7 @@ def seed_controls():
             "transcription": "AWS Transcribe or Whisper",
             "llm": "Self-hosted or AWS Bedrock",
         },
-        applications={"primary": "Avodah Medical Translation AI"},
+        applications={"primary": "Medical Translation AI"},
         access_controls={"auth": "mTLS + API Keys", "rbac": "Kubernetes role-based"},
         software_stack={
             "backend": "FastAPI 0.135.1",
@@ -378,7 +394,7 @@ def seed_controls():
     sample_findings = [
         Finding(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-2.1",
+            control_id="HC.SC-2.1",
             severity="high",
             cvss_score=7.5,
             title="API Key Rotation Not Enforced",
@@ -389,7 +405,7 @@ def seed_controls():
         ),
         Finding(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-7.1",
+            control_id="HC.SC-7.1",
             severity="medium",
             cvss_score=5.0,
             title="TLS Certificate Expiration Not Monitored",
@@ -400,7 +416,7 @@ def seed_controls():
         ),
         Finding(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-4.1",
+            control_id="HC.SC-4.1",
             severity="high",
             cvss_score=8.2,
             title="S3 Backups Not Encrypted",
@@ -411,7 +427,7 @@ def seed_controls():
         ),
         Finding(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-12.1",
+            control_id="HC.SC-12.1",
             severity="high",
             cvss_score=6.8,
             title="KMS Key Rotation Manual, Not Automatic",
@@ -422,7 +438,7 @@ def seed_controls():
         ),
         Finding(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-7.2",
+            control_id="HC.SC-7.2",
             severity="medium",
             cvss_score=4.5,
             title="Ephemeral Storage TTL Unclear",
@@ -433,7 +449,7 @@ def seed_controls():
         ),
         Finding(
             assessment_id=assessment.id,
-            control_id="AVODAH.AU-6.1",
+            control_id="HC.AU-6.1",
             severity="high",
             cvss_score=7.0,
             title="Model API Call Logging Incomplete",
@@ -453,7 +469,7 @@ def seed_controls():
     sample_evidence = [
         Evidence(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-2.1",
+            control_id="HC.SC-2.1",
             evidence_type="api_key_rotation_logs",
             title="API Key Rotation Logs",
             description="CloudTrail logs showing API key lifecycle events",
@@ -464,7 +480,7 @@ def seed_controls():
         ),
         Evidence(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-2.1",
+            control_id="HC.SC-2.1",
             evidence_type="mfa_enforcement_policy",
             title="MFA Enforcement Policy",
             description="Written policy requiring MFA for all user accounts",
@@ -476,7 +492,7 @@ def seed_controls():
         ),
         Evidence(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-7.1",
+            control_id="HC.SC-7.1",
             evidence_type="tls_certificate_configuration",
             title="TLS Certificate Configuration",
             description="Infrastructure configuration demonstrating TLS 1.2+ enforcement",
@@ -484,12 +500,12 @@ def seed_controls():
             owner="devops-team",
             due_date=datetime.now() - timedelta(days=5),
             artifact_path="terraform/tls-config.tf",
-            artifact_url="https://github.com/avodah/infra/blob/main/terraform/tls-config.tf",
+            artifact_url="https://github.com/org-infra/artifact/blob/main/terraform/tls-config.tf",
             notes="TLS 1.2+ enforced on all ALB listeners. Certificate pinning in client SDK.",
         ),
         Evidence(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-4.1",
+            control_id="HC.SC-4.1",
             evidence_type="rds_encryption_configuration",
             title="RDS Encryption Configuration",
             description="AWS RDS encryption-at-rest settings",
@@ -500,7 +516,7 @@ def seed_controls():
         ),
         Evidence(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-4.1",
+            control_id="HC.SC-4.1",
             evidence_type="kms_key_rotation_audit_logs",
             title="KMS Key Rotation Audit Logs",
             description="AWS KMS key management audit trail",
@@ -511,7 +527,7 @@ def seed_controls():
         ),
         Evidence(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-12.1",
+            control_id="HC.SC-12.1",
             evidence_type="kms_key_rotation_schedule",
             title="KMS Key Rotation Schedule",
             description="Configuration demonstrating automatic key rotation",
@@ -522,7 +538,7 @@ def seed_controls():
         ),
         Evidence(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-7.2",
+            control_id="HC.SC-7.2",
             evidence_type="kubernetes_pod_configuration_audit",
             title="Kubernetes Pod Configuration Audit",
             description="K8s pod manifests showing ephemeral storage configuration",
@@ -534,7 +550,7 @@ def seed_controls():
         ),
         Evidence(
             assessment_id=assessment.id,
-            control_id="AVODAH.AU-6.1",
+            control_id="HC.AU-6.1",
             evidence_type="model_api_access_logs",
             title="Model API Access Logs",
             description="Application logs showing API access patterns to translation models",
@@ -545,7 +561,7 @@ def seed_controls():
         ),
         Evidence(
             assessment_id=assessment.id,
-            control_id="AVODAH.SC-13.1",
+            control_id="HC.SC-13.1",
             evidence_type="audio_deletion_audit_logs",
             title="Audio Deletion Audit Logs",
             description="Logs demonstrating automatic audio deletion after processing",
@@ -556,7 +572,7 @@ def seed_controls():
         ),
         Evidence(
             assessment_id=assessment.id,
-            control_id="AVODAH.UI-1.1",
+            control_id="HC.UI-1.1",
             evidence_type="de_identification_ruleset",
             title="De-identification Ruleset",
             description="PII detection and de-identification rules for medical translation output",
