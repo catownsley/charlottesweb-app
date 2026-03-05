@@ -173,6 +173,51 @@
             cursor: not-allowed;
         }
 
+        .btn-secondary {
+            background: #6c757d !important;
+            margin-left: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268 !important;
+        }
+
+        .export-buttons {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .export-buttons button {
+            margin: 0;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .guidance-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .guidance-box h4 {
+            margin-top: 0;
+            color: #856404;
+        }
+
+        .guidance-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .guidance-box li {
+            margin: 5px 0;
+            color: #856404;
+        }
+
         .result {
             background: white;
             padding: 30px;
@@ -577,9 +622,17 @@
                 </div>
 
                 <!-- Submit Button -->
-                <button type="submit" id="submitBtn" style="margin-top: 20px;">
-                    🔍 Analyze for Vulnerabilities
-                </button>
+                <div style="display: flex; align-items: center; margin-top: 20px;">
+                    <button type="submit" id="submitBtn">
+                        🔍 Analyze for Vulnerabilities
+                    </button>
+                    <button type="button" id="tryDemoBtn" class="btn-secondary">
+                        🎬 Try Demo
+                    </button>
+                </div>
+                <div class="help-text" style="margin-top: 8px;">
+                    💡 Try Demo loads real vulnerable software to showcase threat intelligence
+                </div>
             </form>
         </div>
 
@@ -596,6 +649,7 @@
         const submitBtn = document.getElementById('submitBtn');
         const addComponentBtn = document.getElementById('addComponentBtn');
         const componentsContainer = document.getElementById('componentsContainer');
+        const tryDemoBtn = document.getElementById('tryDemoBtn');
 
         console.log('Form elements loaded:', {
             form: !!form,
@@ -934,9 +988,55 @@
             resultDiv.innerHTML = `<h3>❌ Analysis Failed</h3><p>${message}</p>`;
         }
 
+        // Try Demo button - loads real vulnerable software
+        if (tryDemoBtn) {
+            tryDemoBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                // Clear existing components
+                componentsContainer.innerHTML = '';
+                componentCounter = 0;
+
+                // Fill organization name
+                document.getElementById('orgName').value = 'Healthcare Corp Demo';
+
+                // Add real vulnerable software
+                const demoComponents = [
+                    {name: 'apache-tomcat', version: '9.0.62'},
+                    {name: 'openssl', version: '1.0.1'},
+                    {name: 'jenkins', version: '2.375.1'}
+                ];
+
+                demoComponents.forEach(comp => {
+                    addComponentBtn.click();
+                    // Wait a tick for DOM to update
+                    setTimeout(() => {
+                        const lastRow = componentsContainer.lastElementChild;
+                        if (lastRow) {
+                            lastRow.querySelector('.component-name').value = comp.name;
+                            lastRow.querySelector('.component-version').value = comp.version;
+                        }
+                    }, 10);
+                });
+
+                // Scroll to submit button
+                setTimeout(() => {
+                    submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    submitBtn.focus();
+                }, 200);
+            });
+        }
+
         function displayResults(stack, findings, org, assessmentId) {
+            // Store data for export
+            window.currentAssessment = { stack, findings, org, assessmentId };
+
             let html = `
                 <h3>✅ Analysis Complete</h3>
+                <div class="export-buttons">
+                    <button onclick="exportJSON()" title="Download findings as JSON">📥 Export JSON</button>
+                    <button onclick="exportReport()" title="Download human-readable report">📄 Export Report</button>
+                </div>
                 <div class="stats">
                     <div class="stat-box">
                         <div class="stat-value">${Object.keys(stack).length}</div>
@@ -977,6 +1077,19 @@
             if (findings.length === 0) {
                 html += '<p style="color: #28a745; font-weight: 600;">✅ No known vulnerabilities found!</p>';
             } else {
+                // Add guidance section
+                html += `
+                    <div class="guidance-box">
+                        <h4>📋 Next Steps & Remediation Guidance</h4>
+                        <ul>
+                            <li><strong>Priority Windows:</strong> Address CRITICAL/HIGH findings within immediate/30-day timeframes</li>
+                            <li><strong>Threat Intelligence:</strong> Purple cards show MITRE ATT&CK techniques with real breach examples</li>
+                            <li><strong>MITRE Mitigations:</strong> Follow recommended actions to implement defense-in-depth</li>
+                            <li><strong>Compliance:</strong> Document remediation efforts for HIPAA audit evidence</li>
+                            <li><strong>Export:</strong> Use JSON export for ticketing systems or Report for stakeholders</li>
+                        </ul>
+                    </div>
+                `;
                 html += '<h4>🔍 Vulnerabilities Found:</h4>';
                 html += '<ul class="findings-list">';
 
@@ -1132,6 +1245,137 @@
                 checklistLink.setAttribute('aria-expanded', 'false');
                 checklistLink.textContent = 'View Evidence Collection Checklist';
             }
+        }
+
+        // Export functions for report generation
+        function exportJSON() {
+            if (!window.currentAssessment) return;
+
+            const data = {
+                organization: window.currentAssessment.org,
+                assessment_id: window.currentAssessment.assessmentId,
+                stack: window.currentAssessment.stack,
+                findings: window.currentAssessment.findings,
+                export_date: new Date().toISOString(),
+                summary: {
+                    total_vulnerabilities: window.currentAssessment.findings.length,
+                    critical: window.currentAssessment.findings.filter(f => f.cvss_score >= 9).length,
+                    high: window.currentAssessment.findings.filter(f => f.cvss_score >= 7 && f.cvss_score < 9).length,
+                    medium: window.currentAssessment.findings.filter(f => f.cvss_score >= 4 && f.cvss_score < 7).length,
+                    low: window.currentAssessment.findings.filter(f => f.cvss_score < 4).length
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `vulnerability-report-${window.currentAssessment.org.id}-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportReport() {
+            if (!window.currentAssessment) return;
+
+            const { org, stack, findings, assessmentId } = window.currentAssessment;
+            const date = new Date().toLocaleDateString();
+
+            let report = `========================================
+VULNERABILITY ASSESSMENT REPORT
+========================================
+
+Organization: ${org.name}
+Organization ID: ${org.id}
+Assessment ID: ${assessmentId}
+Report Date: ${date}
+Generated by: CharlottesWeb Vulnerability Analyzer
+
+========================================
+SOFTWARE STACK ANALYZED
+========================================
+
+${Object.entries(stack).map(([name, version]) => `  • ${name} ${version}`).join('\n')}
+
+========================================
+EXECUTIVE SUMMARY
+========================================
+
+Total Vulnerabilities: ${findings.length}
+  • Critical (CVSS 9.0+): ${findings.filter(f => f.cvss_score >= 9).length}
+  • High (CVSS 7.0-8.9): ${findings.filter(f => f.cvss_score >= 7 && f.cvss_score < 9).length}
+  • Medium (CVSS 4.0-6.9): ${findings.filter(f => f.cvss_score >= 4 && f.cvss_score < 7).length}
+  • Low (CVSS 0.0-3.9): ${findings.filter(f => f.cvss_score < 4).length}
+
+========================================
+DETAILED FINDINGS
+========================================
+\n`;
+
+            findings.forEach((finding, index) => {
+                const severity = finding.cvss_score >= 9 ? 'CRITICAL'
+                              : finding.cvss_score >= 7 ? 'HIGH'
+                              : finding.cvss_score >= 4 ? 'MEDIUM'
+                              : 'LOW';
+
+                report += `\n[${index + 1}] ${finding.external_id} - ${severity}\n`;
+                report += `${'='.repeat(80)}\n`;
+                report += `Title: ${finding.title}\n`;
+                report += `CVSS Score: ${finding.cvss_score || 'N/A'}\n`;
+                report += `Priority: ${finding.priority_window}\n`;
+                report += `\nDescription:\n${finding.description}\n`;
+
+                if (finding.threat_context && finding.threat_context.techniques) {
+                    report += `\n--- THREAT INTELLIGENCE ---\n`;
+                    report += `${finding.threat_context.summary}\n\n`;
+
+                    finding.threat_context.techniques.forEach(tech => {
+                        report += `MITRE ATT&CK Technique: ${tech.id} - ${tech.name}\n`;
+                        report += `Tactics: ${tech.tactics ? tech.tactics.join(', ') : 'N/A'}\n`;
+
+                        if (tech.breach_example) {
+                            report += `\nReal-World Breach:\n`;
+                            report += `  ${tech.breach_example.breach}\n`;
+                            report += `  Impact: ${tech.breach_example.impact}\n`;
+                            report += `  Date: ${tech.breach_example.date}\n`;
+                        }
+
+                        if (tech.primary_mitigation) {
+                            report += `\nRecommended Mitigation:\n`;
+                            report += `  ${tech.primary_mitigation.name}\n`;
+                            if (tech.primary_mitigation.description) {
+                                report += `  ${tech.primary_mitigation.description}\n`;
+                            }
+                        }
+                        report += `\nMITRE Reference: https://attack.mitre.org/techniques/${tech.id}/\n`;
+                    });
+                }
+
+                report += `\nNVD Reference: https://nvd.nist.gov/vuln/detail/${finding.external_id}\n`;
+                report += `\n`;
+            });
+
+            report += `\n========================================
+NEXT STEPS
+========================================
+
+1. IMMEDIATE (Critical/High): Address within priority windows
+2. THREAT CONTEXT: Review MITRE ATT&CK techniques and breach examples
+3. MITIGATIONS: Implement recommended countermeasures
+4. COMPLIANCE: Document remediation for HIPAA audit evidence
+5. MONITORING: Regularly re-scan stack for new vulnerabilities
+
+========================================
+END OF REPORT
+========================================\n`;
+
+            const blob = new Blob([report], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `vulnerability-report-${org.id}-${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
     </script>
 </body>
