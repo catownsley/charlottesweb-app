@@ -272,31 +272,6 @@ except Exception as e:
     logging.warning(f"Failed to mount static files: {e}. Web UI will not be available.")
 
 
-@app.get("/")
-@limiter.limit(f"{settings.rate_limit_per_minute * 2}/minute")  # 2x rate limit for discovery
-def root(request: Request):
-    """Root endpoint - API discovery and health check.
-    
-    Public endpoint that provides:
-    - API name and version
-    - Environment (dev/staging/prod)
-    - Documentation URLs (if enabled)
-    - Health check endpoint
-    
-    Security:
-    - Higher rate limit (2x) since it's for discovery
-    - No sensitive information exposed
-    - Docs URL disabled in production
-    """
-    return {
-        "name": settings.app_name,
-        "version": __version__,
-        "environment": settings.app_env,
-        "docs": "/docs" if settings.debug else "disabled",
-        "health": f"{settings.api_v1_prefix}/health",
-    }
-
-
 # ============================================================================
 # APPLICATION LIFECYCLE HOOKS
 # ============================================================================
