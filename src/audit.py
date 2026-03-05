@@ -95,6 +95,7 @@ class AuditAction(str, Enum):
     ASSESSMENT_RUN = "assessment_run"          # Assessment executed
     ASSESSMENT_VIEWED = "assessment_viewed"    # Assessment results viewed
     ROADMAP_GENERATED = "roadmap_generated"    # Remediation roadmap created
+    NVD_QUERY = "nvd_query"                     # NVD vulnerability database queried
 
     # Organization Management
     # Track customer onboarding and changes

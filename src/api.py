@@ -1,5 +1,4 @@
 """API routes for CharlottesWeb."""
-from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -8,10 +7,11 @@ from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from src import __version__
-from src.audit import AuditAction, log_audit_event
+from src.audit import AuditAction, AuditLevel, log_audit_event
 from src.config import settings
 from src.database import get_db
 from src.models import Assessment, Control, Finding, MetadataProfile, Organization
+from src.nvd_service import NVDService
 from src.rules_engine import RulesEngine
 from src.schemas import (
     AssessmentCreate,
@@ -389,3 +389,118 @@ def get_remediation_roadmap(
     )
 
     return roadmap
+
+
+# NVD (National Vulnerability Database) endpoints
+@router.post("/assessments/{assessment_id}/analyze-nvd", response_model=list[FindingResponse])
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def analyze_nvd_vulnerabilities(
+    assessment_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+) -> list[Finding]:
+    """Analyze software stack for known NVD vulnerabilities.
+    
+    Queries the National Vulnerability Database (NVD) for CVEs matching
+    the software stack specified in the assessment's metadata profile.
+    Creates findings for each discovered vulnerability.
+    
+    Rate limit: Standard (60 req/min)
+    """
+    # Get assessment and metadata
+    assessment: Assessment | None = db.query(Assessment).filter(Assessment.id == assessment_id).first()  # type: ignore[assignment]
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    
+    metadata_profile: MetadataProfile | None = db.query(MetadataProfile).filter(
+        MetadataProfile.id == assessment.metadata_profile_id  # type: ignore[attr-defined]
+    ).first()
+    if not metadata_profile:
+        raise HTTPException(status_code=404, detail="Metadata profile not found")
+    
+    # Get software stack from metadata profile
+    software_stack: dict = metadata_profile.software_stack or {}  # type: ignore[attr-defined]
+    if not software_stack:
+        # Log and return empty (no software stack provided yet)
+        log_audit_event(
+            action=AuditAction.NVD_QUERY,
+            request=request,
+            api_key=api_key,
+            resource_type="assessment",
+            resource_id=assessment_id,
+            details={"status": "skipped", "reason": "no_software_stack_provided"},
+            level=AuditLevel.INFO,
+        )
+        return []
+    
+    # Initialize NVD service with optional API key from config
+    nvd_service = NVDService(api_key=settings.nvd_api_key if settings.nvd_api_key else None)
+    
+    # Analyze software stack for vulnerabilities
+    nvd_results = nvd_service.analyze_software_stack(software_stack)
+    
+    # Create findings from NVD results
+    new_findings: list[Finding] = []
+    
+    for component, cves in nvd_results.items():
+        for cve in cves:
+            # Check if this CVE finding already exists
+            existing = db.query(Finding).filter(
+                Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
+                Finding.external_id == cve["cve_id"],
+            ).first()
+            
+            if existing:
+                # Skip if finding already exists
+                continue
+            
+            # Determine priority window based on CVSS score
+            priority_window = nvd_service.get_priority_window_from_cvss(cve["cvss_score"])
+            
+            # Find related controls (security controls affected by this CVE)
+            # For now, associate with general "vulnerability_management" controls
+            related_controls = db.query(Control).filter(
+                Control.title.contains("vulnerability")  # type: ignore[attr-defined]
+            ).all()
+            
+            # Create finding record
+            finding = Finding(
+                id=f"finding-nvd-{cve['cve_id'].replace('CVE-', '').replace('-', '')[:20]}",
+                assessment_id=assessment_id,  # type: ignore[arg-type]
+                external_id=cve["cve_id"],
+                title=f"{cve['cve_id']}: {component} vulnerability",
+                description=cve["description"],
+                control_ids=[c.id for c in related_controls],  # type: ignore[attr-defined,assignment]
+                cvss_score=cve["cvss_score"],
+                cwe_ids=cve["cwe_ids"],
+                priority_window=priority_window,
+                source="nvd",
+                remediation_guidance=f"Update {component} to a patched version. Check CVE details at https://nvd.nist.gov/vuln/detail/{cve['cve_id']}",
+            )
+            
+            db.add(finding)
+            new_findings.append(finding)
+    
+    # Commit findings to database
+    if new_findings:
+        db.commit()
+    
+    # Audit log
+    log_audit_event(
+        action=AuditAction.NVD_QUERY,
+        request=request,
+        api_key=api_key,
+        resource_type="assessment",
+        resource_id=assessment_id,
+        details={
+            "software_stack_components": len(software_stack),
+            "cves_found": sum(len(cves) for cves in nvd_results.values()),
+            "findings_created": len(new_findings),
+            "components_analyzed": list(nvd_results.keys()),
+        },
+        level=AuditLevel.INFO,
+    )
+    
+    return new_findings
+
