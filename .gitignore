@@ -27,6 +27,8 @@ issue_import.log
 issues.json
 charlottesweb.db
 test_charlottesweb.db
+audit.log
+app.db
 
 # TLS certificates
 certs/
