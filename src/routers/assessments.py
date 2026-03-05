@@ -326,17 +326,44 @@ def analyze_nvd_vulnerabilities(
             priority_window = nvd_service.get_priority_window_from_cvss(cve["cvss_score"])
             severity = nvd_service.get_severity_from_cvss(cve["cvss_score"])
 
-            # Find related controls (security controls affected by this CVE)
-            # For now, associate with general "vulnerability_management" controls
-            related_controls = db.query(Control).filter(
-                Control.title.contains("vulnerability")  # type: ignore[attr-defined]
-            ).all()
+            # Map CWE IDs to applicable controls
+            control_id = None
+            cwe_ids = cve.get("cwe_ids", [])
+
+            if cwe_ids:
+                # CWE → Control mapping (maps known CWE patterns to security controls)
+                cwe_control_map = {
+                    "CWE-295": "AVODAH.SC-7.1",  # Improper Certificate Validation → TLS/Encryption
+                    "CWE-311": "AVODAH.SC-4.1",  # Missing Encryption → Data Protection
+                    "CWE-798": "AVODAH.SC-2.1",  # Hard-coded Credentials → Access Control
+                    "CWE-347": "AVODAH.SC-12.1", # Improper Verification of Cryptographic Signature → Key Management
+                    "CWE-200": "AVODAH.SC-7.2",  # Information Exposure → Network Security
+                    "CWE-778": "AVODAH.AU-6.1",  # Insufficient Logging → Audit Logging
+                    "CWE-89": "AVODAH.SC-3.1",   # SQL Injection → Input Validation
+                    "CWE-79": "AVODAH.SC-3.1",   # Cross-site Scripting → Input Validation
+                }
+
+                # Check if any CWE maps to a control
+                for cwe in cwe_ids:
+                    if cwe in cwe_control_map:
+                        control_id = cwe_control_map[cwe]
+                        break
+
+                # If no specific mapping, default to encryption/security control
+                if not control_id:
+                    control_id = "AVODAH.SC-7.1"  # Default: Network Security / TLS
+
+            # Verify control exists in database
+            if control_id:
+                control_exists = db.query(Control).filter(Control.id == control_id).first()
+                if not control_exists:
+                    control_id = None
 
             # Create finding record
             # NOTE: Do NOT set id manually - let the database generate UUIDs to avoid uniqueness violations
             finding = Finding(
                 assessment_id=assessment_id,  # type: ignore[arg-type]
-                control_id=related_controls[0].id if related_controls else None,  # type: ignore[attr-defined]
+                control_id=control_id,
                 external_id=cve["cve_id"],
                 title=f"{cve['cve_id']}: {component} vulnerability",
                 description=cve["description"],

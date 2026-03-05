@@ -578,7 +578,7 @@
     <div class="container">
         <!-- HEADER: Branding and purpose statement -->
         <header>
-            <h1>🛡️ CharlottesWeb</h1>
+            <h1><img src="/favicon.svg" alt="Charlotte's Web" style="height: 100px; width: 100px; margin-right: 10px; vertical-align: middle;"> Charlotte's Web</h1>
             <div class="subtitle">Software Stack Vulnerability Analyzer</div>
             <div class="subtitle">Vulnerability Analysis + Audit Evidence Automation</div>
         </header>
@@ -1000,30 +1000,40 @@
                 // Fill organization name
                 document.getElementById('orgName').value = 'Healthcare Corp Demo';
 
-                // Add real vulnerable software
+                // Add real vulnerable software sequentially
                 const demoComponents = [
                     {name: 'apache-tomcat', version: '9.0.62'},
                     {name: 'openssl', version: '1.0.1'},
                     {name: 'jenkins', version: '2.375.1'}
                 ];
 
-                demoComponents.forEach(comp => {
+                let componentIndex = 0;
+
+                function addNextDemoComponent() {
+                    if (componentIndex >= demoComponents.length) {
+                        // All done - scroll to submit button
+                        submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        submitBtn.focus();
+                        return;
+                    }
+
+                    const comp = demoComponents[componentIndex];
+                    componentIndex++;
+
                     addComponentBtn.click();
-                    // Wait a tick for DOM to update
+                    // Wait for DOM to update, fill values, then add next component
                     setTimeout(() => {
                         const lastRow = componentsContainer.lastElementChild;
                         if (lastRow) {
                             lastRow.querySelector('.component-name').value = comp.name;
                             lastRow.querySelector('.component-version').value = comp.version;
                         }
-                    }, 10);
-                });
+                        // Add next component
+                        addNextDemoComponent();
+                    }, 100);
+                }
 
-                // Scroll to submit button
-                setTimeout(() => {
-                    submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    submitBtn.focus();
-                }, 200);
+                addNextDemoComponent();
             });
         }
 
