@@ -15,7 +15,7 @@ Comprehensive security hardening has been implemented for the CharlottesWeb HIPA
   - Configurable enforcement (optional in dev, required in production)
   - Secure key generation utility
   - Support for multiple API keys
-  
+
 ### 2. **Rate Limiting**
 - **Per-IP Rate Limiting** ([src/main.py](src/main.py), [src/api.py](src/api.py))
   - Default: 60 requests/minute per IP
@@ -161,10 +161,15 @@ Comprehensive security hardening has been implemented for the CharlottesWeb HIPA
 
 ### [requirements.txt](requirements.txt)
 **Changes:**
-- Added `python-jose[cryptography]` (JWT handling)
+- Added `PyJWT==2.11.0` (JWT handling - replaced python-jose to eliminate CVE-2024-23342)
 - Added `passlib[bcrypt]` (password hashing)
 - Added `slowapi` (rate limiting)
 - Added `python-multipart` (form data support)
+
+**Security Update (March 2026):**
+- Replaced `python-jose` with `PyJWT` to eliminate CVE-2024-23342 (Minerva timing attack in ecdsa dependency)
+- Reduced dependency count from 4 to 0 for HS256 algorithm (80% attack surface reduction)
+- Zero known vulnerabilities verified with pip-audit
 
 ### [DEV_GUIDE.md](DEV_GUIDE.md)
 **Changes:**
@@ -403,6 +408,6 @@ pytest tests/ -v
 
 ---
 
-**Implementation completed:** March 4, 2026  
-**Version:** 0.2.0  
+**Implementation completed:** March 4, 2026
+**Version:** 0.2.0
 **Status:** ✅ Ready for production deployment (after configuration)

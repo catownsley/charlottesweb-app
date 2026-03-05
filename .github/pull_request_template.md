@@ -68,7 +68,7 @@
 
 ### Dependencies
 - [ ] No new dependencies without security review
-- [ ] Existing dependencies checked: `safety check` for known vulnerabilities
+- [ ] Dependencies scanned: `pip-audit -r requirements.txt` (zero vulnerabilities required)
 - [ ] requirements.txt pinned to specific versions
 
 ---
@@ -142,7 +142,7 @@ Relates to #
 
 ---
 
-**Before submitting**: 
+**Before submitting**:
 - [ ] Ran type checker: `python3 -m pylance --version && ...`
 - [ ] Checked for secrets: `grep -r "password\|api_key\|secret" src/`
 - [ ] Verified audit logs captured: search for `log_audit_event` calls
