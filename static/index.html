@@ -388,6 +388,79 @@
             color: #666;
             margin-bottom: 5px;
         }
+
+        .evidence-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #1a4fb8;
+            font-weight: 600;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .evidence-link:focus {
+            outline: 3px solid rgba(102, 126, 234, 0.35);
+            outline-offset: 2px;
+            border-radius: 3px;
+        }
+
+        .evidence-panel {
+            margin-top: 16px;
+            background: #f4f8ff;
+            border: 1px solid #d9e4ff;
+            border-radius: 6px;
+            padding: 14px;
+        }
+
+        .evidence-panel.hidden {
+            display: none;
+        }
+
+        .evidence-summary {
+            font-size: 13px;
+            color: #333;
+            margin: 8px 0 12px 0;
+        }
+
+        .evidence-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .evidence-item {
+            background: white;
+            border: 1px solid #e3e3e3;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-left: 8px;
+        }
+
+        .status-pill.completed {
+            background: #e7f7eb;
+            color: #1e7a36;
+        }
+
+        .status-pill.in_progress {
+            background: #fff5de;
+            color: #8f5a00;
+        }
+
+        .status-pill.not_started {
+            background: #f0f0f0;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -771,7 +844,7 @@
                 console.log('✅ NVD analysis complete:', findings.length, 'findings');
                 
                 // Display results
-                displayResults(stack, findings, org);
+                displayResults(stack, findings, org, assess.id);
                 
             } catch (err) {
                 showError(err.message);
@@ -795,7 +868,7 @@
             resultDiv.innerHTML = `<h3>❌ Analysis Failed</h3><p>${message}</p>`;
         }
         
-        function displayResults(stack, findings, org) {
+        function displayResults(stack, findings, org, assessmentId) {
             let html = `
                 <h3>✅ Analysis Complete</h3>
                 <div class="stats">
@@ -821,6 +894,17 @@
                         Evidence checklists are now available for this organization's assessments. 
                         Use the API endpoints to track audit evidence collection and generate compliance reports.
                     </p>
+                    <a
+                        href="#"
+                        id="viewEvidenceChecklistLink"
+                        class="evidence-link"
+                        data-assessment-id="${assessmentId}"
+                        aria-controls="evidenceChecklistPanel"
+                        aria-expanded="false"
+                    >
+                        View Evidence Collection Checklist
+                    </a>
+                    <div id="evidenceChecklistPanel" class="evidence-panel hidden" aria-live="polite"></div>
                 </div>
             `;
             
@@ -873,6 +957,65 @@
             resultDiv.classList.remove('hidden', 'loading', 'error');
             resultDiv.classList.add('success');
             resultDiv.innerHTML = html;
+
+            const checklistLink = document.getElementById('viewEvidenceChecklistLink');
+            if (checklistLink) {
+                checklistLink.addEventListener('click', async (event) => {
+                    event.preventDefault();
+                    await loadEvidenceChecklist(checklistLink.dataset.assessmentId || '');
+                });
+            }
+        }
+
+        async function loadEvidenceChecklist(assessmentId) {
+            const checklistPanel = document.getElementById('evidenceChecklistPanel');
+            const checklistLink = document.getElementById('viewEvidenceChecklistLink');
+
+            if (!checklistPanel || !checklistLink || !assessmentId) {
+                return;
+            }
+
+            checklistPanel.classList.remove('hidden');
+            checklistPanel.innerHTML = '<p>⏳ Loading evidence checklist...</p>';
+
+            try {
+                const response = await fetch(`/api/v1/assessments/${encodeURIComponent(assessmentId)}/evidence-checklist`);
+                if (!response.ok) {
+                    throw new Error('Unable to load checklist');
+                }
+
+                const checklist = await response.json();
+                const visibleItems = checklist.items.slice(0, 15);
+                const itemsHtml = visibleItems.map((item) => {
+                    const ownerLabel = item.owner ? ` • Owner: ${item.owner}` : '';
+                    return `
+                        <li class="evidence-item">
+                            <strong>${item.control_title}</strong>
+                            <span class="status-pill ${item.status}">${item.status.replace('_', ' ')}</span>
+                            <div>${item.required_evidence}${ownerLabel}</div>
+                        </li>
+                    `;
+                }).join('');
+
+                checklistPanel.innerHTML = `
+                    <h4 style="margin: 0;">Evidence Collection Checklist</h4>
+                    <p class="evidence-summary">
+                        Total: <strong>${checklist.total_items}</strong> •
+                        Completed: <strong>${checklist.completed}</strong> •
+                        In Progress: <strong>${checklist.in_progress}</strong> •
+                        Not Started: <strong>${checklist.not_started}</strong>
+                    </p>
+                    <ul class="evidence-list">${itemsHtml || '<li class="evidence-item">No checklist items yet for this assessment.</li>'}</ul>
+                    ${checklist.items.length > 15 ? `<p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">Showing first 15 of ${checklist.items.length} items.</p>` : ''}
+                `;
+
+                checklistLink.setAttribute('aria-expanded', 'true');
+                checklistLink.textContent = 'Evidence Checklist Loaded';
+            } catch (error) {
+                checklistPanel.innerHTML = `<p style="color: #b00020; margin: 0;">❌ Could not load evidence checklist. Please try again.</p>`;
+                checklistLink.setAttribute('aria-expanded', 'false');
+                checklistLink.textContent = 'View Evidence Collection Checklist';
+            }
         }
     </script>
 </body>
