@@ -45,7 +45,7 @@ def create_evidence(
 
     # Audit log
     log_audit_event(
-        action=AuditAction.DATA_CREATE,
+        action=AuditAction.DATA_CREATED,
         request=request,
         api_key=api_key,
         resource_type="evidence",
@@ -88,7 +88,7 @@ def update_evidence(
 
     # Audit log
     log_audit_event(
-        action=AuditAction.DATA_UPDATE,
+        action=AuditAction.DATA_UPDATED,
         request=request,
         api_key=api_key,
         resource_type="evidence",
