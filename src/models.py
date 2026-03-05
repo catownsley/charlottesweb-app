@@ -117,3 +117,42 @@ class Finding(Base):
     # Relationships
     assessment = relationship("Assessment", back_populates="findings")
     control = relationship("Control", back_populates="findings")
+
+
+class Evidence(Base):
+    """Evidence artifact for audit compliance."""
+
+    __tablename__ = "evidence"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    control_id = Column(String, ForeignKey("controls.id"), nullable=False)
+    assessment_id = Column(String, ForeignKey("assessments.id"), nullable=True)
+    
+    # Evidence classification
+    evidence_type = Column(String, nullable=False)  # policy, config, screenshot, logs, etc.
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    
+    # Status tracking
+    status = Column(String, default="not_started", nullable=False)  # not_started, in_progress, completed, not_applicable
+    owner = Column(String, nullable=True)  # responsible party
+    due_date = Column(DateTime, nullable=True)
+    
+    # Artifact metadata
+    artifact_path = Column(String, nullable=True)  # file storage path
+    artifact_url = Column(String, nullable=True)  # external URL if applicable
+    artifact_hash = Column(String, nullable=True)  # SHA256 for integrity
+    uploaded_at = Column(DateTime, nullable=True)
+    
+    # Versioning
+    version = Column(String, default="1", nullable=False)
+    previous_version_id = Column(String, nullable=True)  # self-referential for history
+    
+    # Metadata
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    control = relationship("Control")
+    assessment = relationship("Assessment")

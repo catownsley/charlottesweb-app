@@ -113,6 +113,81 @@ class FindingResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# Evidence schemas
+class EvidenceCreate(BaseModel):
+    """Schema for creating evidence."""
+
+    control_id: str
+    assessment_id: Optional[str] = None
+    evidence_type: str  # policy, config, screenshot, logs, report, etc.
+    title: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = None
+    owner: Optional[str] = None
+    due_date: Optional[datetime] = None
+
+
+class EvidenceUpdate(BaseModel):
+    """Schema for updating evidence."""
+
+    status: Optional[str] = None  # not_started, in_progress, completed, not_applicable
+    owner: Optional[str] = None
+    due_date: Optional[datetime] = None
+    artifact_path: Optional[str] = None
+    artifact_url: Optional[str] = None
+    artifact_hash: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class EvidenceResponse(BaseModel):
+    """Schema for evidence response."""
+
+    id: str
+    control_id: str
+    assessment_id: Optional[str] = None
+    evidence_type: str
+    title: str
+    description: Optional[str] = None
+    status: str
+    owner: Optional[str] = None
+    due_date: Optional[datetime] = None
+    artifact_path: Optional[str] = None
+    artifact_url: Optional[str] = None
+    artifact_hash: Optional[str] = None
+    uploaded_at: Optional[datetime] = None
+    version: str
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class EvidenceChecklistItem(BaseModel):
+    """Schema for a single evidence checklist item."""
+
+    control_id: str
+    control_title: str
+    evidence_type: str
+    required_evidence: str
+    status: str
+    owner: Optional[str] = None
+    due_date: Optional[datetime] = None
+    evidence_id: Optional[str] = None
+
+
+class EvidenceChecklistResponse(BaseModel):
+    """Schema for evidence checklist response."""
+
+    assessment_id: str
+    organization_id: str
+    generated_at: datetime
+    total_items: int
+    completed: int
+    in_progress: int
+    not_started: int
+    items: list[EvidenceChecklistItem]
+
+
 # Health check
 class HealthResponse(BaseModel):
     """Schema for health check response."""

@@ -10,13 +10,18 @@ from src import __version__
 from src.audit import AuditAction, AuditLevel, log_audit_event
 from src.config import settings
 from src.database import get_db
-from src.models import Assessment, Control, Finding, MetadataProfile, Organization
+from src.models import Assessment, Control, Evidence, Finding, MetadataProfile, Organization
 from src.nvd_service import NVDService
 from src.rules_engine import RulesEngine
 from src.schemas import (
     AssessmentCreate,
     AssessmentResponse,
     ControlResponse,
+    EvidenceChecklistItem,
+    EvidenceChecklistResponse,
+    EvidenceCreate,
+    EvidenceResponse,
+    EvidenceUpdate,
     FindingResponse,
     HealthResponse,
     MetadataProfileCreate,
@@ -575,3 +580,181 @@ def analyze_nvd_vulnerabilities(
     
     return new_findings
 
+
+# Evidence endpoints (Phase 2)
+@router.post("/evidence", response_model=EvidenceResponse, status_code=201)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def create_evidence(
+    request: Request,
+    evidence_data: EvidenceCreate,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+) -> Evidence:
+    """Create a new evidence item."""
+    # Verify control exists
+    control: Control | None = db.query(Control).filter(Control.id == evidence_data.control_id).first()
+    if not control:
+        raise HTTPException(status_code=404, detail="Control not found")
+    
+    # Verify assessment exists if provided
+    if evidence_data.assessment_id:
+        assessment: Assessment | None = db.query(Assessment).filter(Assessment.id == evidence_data.assessment_id).first()
+        if not assessment:
+            raise HTTPException(status_code=404, detail="Assessment not found")
+    
+    evidence = Evidence(
+        control_id=evidence_data.control_id,
+        assessment_id=evidence_data.assessment_id,
+        evidence_type=evidence_data.evidence_type,
+        title=evidence_data.title,
+        description=evidence_data.description,
+        owner=evidence_data.owner,
+        due_date=evidence_data.due_date,
+    )
+    db.add(evidence)
+    db.commit()
+    db.refresh(evidence)
+    
+    # Audit log
+    log_audit_event(
+        action=AuditAction.DATA_CREATE,
+        request=request,
+        api_key=api_key,
+        resource_type="evidence",
+        resource_id=evidence.id,  # type: ignore[arg-type]
+        details={"control_id": evidence.control_id, "evidence_type": evidence.evidence_type},
+    )
+    
+    return evidence
+
+
+@router.get("/evidence/{evidence_id}", response_model=EvidenceResponse)
+def get_evidence(evidence_id: str, db: Session = Depends(get_db)) -> Evidence:
+    """Get evidence by ID."""
+    evidence: Evidence | None = db.query(Evidence).filter(Evidence.id == evidence_id).first()
+    if not evidence:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+    return evidence
+
+
+@router.patch("/evidence/{evidence_id}", response_model=EvidenceResponse)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def update_evidence(
+    request: Request,
+    evidence_id: str,
+    evidence_update: EvidenceUpdate,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+) -> Evidence:
+    """Update evidence item."""
+    evidence: Evidence | None = db.query(Evidence).filter(Evidence.id == evidence_id).first()
+    if not evidence:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+    
+    # Update fields
+    update_data = evidence_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(evidence, field, value)
+    
+    from datetime import datetime, timezone
+    if evidence_update.artifact_path or evidence_update.artifact_url:
+        evidence.uploaded_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    
+    db.commit()
+    db.refresh(evidence)
+    
+    # Audit log
+    log_audit_event(
+        action=AuditAction.DATA_UPDATE,
+        request=request,
+        api_key=api_key,
+        resource_type="evidence",
+        resource_id=evidence.id,  # type: ignore[arg-type]
+        details={"updated_fields": list(update_data.keys())},
+    )
+    
+    return evidence
+
+
+@router.get("/assessments/{assessment_id}/evidence-checklist", response_model=EvidenceChecklistResponse)
+def generate_evidence_checklist(
+    assessment_id: str,
+    db: Session = Depends(get_db),
+) -> EvidenceChecklistResponse:
+    """Generate evidence checklist for an assessment."""
+    from datetime import datetime, timezone
+    
+    # Verify assessment exists
+    assessment: Assessment | None = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    
+    # Get all findings for this assessment
+    findings: List[Finding] = (
+        db.query(Finding)
+        .filter(Finding.assessment_id == assessment_id)
+        .filter(Finding.control_id.isnot(None))
+        .all()
+    )
+    
+    # Get unique control IDs from findings
+    control_ids = list(set(f.control_id for f in findings if f.control_id))
+    
+    # Get controls with evidence requirements
+    controls: List[Control] = (
+        db.query(Control)
+        .filter(Control.id.in_(control_ids))
+        .filter(Control.evidence_types.isnot(None))
+        .all()
+    )
+    
+    # Get existing evidence for these controls
+    existing_evidence: List[Evidence] = (
+        db.query(Evidence)
+        .filter(Evidence.assessment_id == assessment_id)
+        .all()
+    )
+    
+    # Create a map of (control_id, evidence_type) -> evidence
+    evidence_map = {
+        (ev.control_id, ev.evidence_type): ev
+        for ev in existing_evidence
+    }
+    
+    # Generate checklist items
+    checklist_items: List[EvidenceChecklistItem] = []
+    for control in controls:
+        if not control.evidence_types:
+            continue
+            
+        for evidence_type in control.evidence_types:
+            evidence = evidence_map.get((control.id, evidence_type))
+            
+            item = EvidenceChecklistItem(
+                control_id=control.id,
+                control_title=control.title,
+                evidence_type=evidence_type,
+                required_evidence=evidence_type.replace("_", " ").title(),
+                status=evidence.status if evidence else "not_started",
+                owner=evidence.owner if evidence else None,
+                due_date=evidence.due_date if evidence else None,
+                evidence_id=evidence.id if evidence else None,  # type: ignore[attr-defined]
+            )
+            checklist_items.append(item)
+    
+    # Calculate statistics
+    total_items = len(checklist_items)
+    completed = sum(1 for item in checklist_items if item.status == "completed")
+    in_progress = sum(1 for item in checklist_items if item.status == "in_progress")
+    not_started = sum(1 for item in checklist_items if item.status == "not_started")
+    
+    return EvidenceChecklistResponse(
+        assessment_id=assessment_id,
+        organization_id=assessment.organization_id,
+        generated_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        total_items=total_items,
+        completed=completed,
+        in_progress=in_progress,
+        not_started=not_started,
+        items=checklist_items,
+    )
