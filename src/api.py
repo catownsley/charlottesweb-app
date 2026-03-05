@@ -448,7 +448,7 @@ def analyze_nvd_vulnerabilities(
             # Check if this CVE finding already exists
             existing = db.query(Finding).filter(
                 Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
-                Finding.external_id == cve["cve_id"],
+                Finding.external_id == cve["cve_id"],  # type: ignore[attr-defined]
             ).first()
             
             if existing:
@@ -457,6 +457,7 @@ def analyze_nvd_vulnerabilities(
             
             # Determine priority window based on CVSS score
             priority_window = nvd_service.get_priority_window_from_cvss(cve["cvss_score"])
+            severity = nvd_service.get_severity_from_cvss(cve["cvss_score"])
             
             # Find related controls (security controls affected by this CVE)
             # For now, associate with general "vulnerability_management" controls
@@ -468,14 +469,14 @@ def analyze_nvd_vulnerabilities(
             finding = Finding(
                 id=f"finding-nvd-{cve['cve_id'].replace('CVE-', '').replace('-', '')[:20]}",
                 assessment_id=assessment_id,  # type: ignore[arg-type]
+                control_id=related_controls[0].id if related_controls else None,  # type: ignore[attr-defined]
                 external_id=cve["cve_id"],
                 title=f"{cve['cve_id']}: {component} vulnerability",
                 description=cve["description"],
-                control_ids=[c.id for c in related_controls],  # type: ignore[attr-defined,assignment]
+                severity=severity,
                 cvss_score=cve["cvss_score"],
                 cwe_ids=cve["cwe_ids"],
                 priority_window=priority_window,
-                source="nvd",
                 remediation_guidance=f"Update {component} to a patched version. Check CVE details at https://nvd.nist.gov/vuln/detail/{cve['cve_id']}",
             )
             

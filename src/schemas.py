@@ -97,11 +97,12 @@ class FindingResponse(BaseModel):
 
     id: str
     assessment_id: str
-    control_id: str
+    control_id: Optional[str] = None
     title: str
     description: str
     severity: str
     cvss_score: Optional[float] = None
+    external_id: Optional[str] = None
     cve_ids: Optional[list[str]] = None
     cwe_ids: Optional[list[str]] = None
     remediation_guidance: Optional[str] = None

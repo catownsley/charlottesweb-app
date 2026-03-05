@@ -98,12 +98,13 @@ class Finding(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid)
     assessment_id = Column(String, ForeignKey("assessments.id"), nullable=False)
-    control_id = Column(String, ForeignKey("controls.id"), nullable=False)
+    control_id = Column(String, ForeignKey("controls.id"), nullable=True)  # nullable for NVD findings
     
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
     severity = Column(String, nullable=False)  # immediate, high, medium, low
     cvss_score = Column(Float, nullable=True)
+    external_id = Column(String, nullable=True)  # CVE ID for NVD findings
     cve_ids = Column(JSON, nullable=True)  # list of CVE IDs
     cwe_ids = Column(JSON, nullable=True)  # list of CWE IDs
     

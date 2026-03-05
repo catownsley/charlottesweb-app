@@ -28,11 +28,14 @@ from src import __version__
 from src.api import router
 from src.audit import AuditAction, AuditLevel, log_audit_event, log_security_alert
 from src.config import settings
+from src.database import Base, engine
 from src.middleware import (
     RequestIDMiddleware,
     ResponseTimeMiddleware,
     SecurityHeadersMiddleware,
 )
+# Import models to register them with Base.metadata before create_all()
+import src.models  # noqa: F401
 
 # Initialize rate limiter
 # - key_func: How to identify clients (by IP address)
@@ -295,6 +298,11 @@ async def startup_event():
     - External service health checks
     - Feature flag loading
     """
+    # Ensure all database tables are created with the latest schema
+    # Drop existing tables for development (fresh schema on restart)
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    
     log_audit_event(
         action=AuditAction.CONFIG_CHANGED,
         level=AuditLevel.INFO,
