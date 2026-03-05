@@ -81,11 +81,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Security Header 4: Content Security Policy
         # Strategy: Different policies for different endpoints
-        # - Docs endpoints (/docs, /redoc): Allow inline styles/scripts for Swagger UI
+        # - Docs endpoints (/docs, /redoc): Allow all resources
         # - Root/static files (/): Allow inline styles/scripts for vulnerability analyzer UI
         # - API endpoints: Strict policy (no resources needed)
-        if is_docs_endpoint or request.url.path == "/":
-            # Docs + HTML UI need: inline scripts, inline styles, and fonts
+        if is_docs_endpoint:
+            # Docs page needs to load Swagger UI
+            # Disable CSP for docs to avoid conflicts
+            pass  # Don't set CSP for docs
+        elif request.url.path == "/":
+            # Vulnerability analyzer form needs: inline scripts and styles
             csp = (
                 "script-src 'self' 'unsafe-inline'; "
                 "style-src 'self' 'unsafe-inline'; "
@@ -94,11 +98,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "font-src 'self'; "
                 "default-src 'none'"
             )
+            response.headers["Content-Security-Policy"] = csp
         else:
             # API responses should be JSON only, no scripts/styles needed
             # default-src 'none' blocks all content by default (most secure)
             csp = "default-src 'none'; frame-ancestors 'none'"
-        response.headers["Content-Security-Policy"] = csp
+            response.headers["Content-Security-Policy"] = csp
 
         # Security Header 5: Referrer Policy
         # no-referrer = Never send referrer information
