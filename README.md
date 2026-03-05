@@ -89,12 +89,34 @@ charlottesweb-app/
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| **Phase 0** | Foundation (domain model, backend skeleton, schema) | 🔄 Not Started |
-| **Phase 1** | HIPAA Intelligence Engine (intake, mapping, correlation, scoring) | 🔄 Not Started |
-| **Phase 2** | Audit Evidence Automation (templates, checklists, binder export) | 🔄 Not Started |
+| **Phase 0** | Foundation (domain model, backend skeleton, schema) | ✅ **Complete** |
+| **Phase 1** | HIPAA Intelligence Engine (intake, mapping, correlation, scoring) | ✅ **Complete** |
+| **Phase 2** | Audit Evidence Automation (templates, checklists, binder export) | 🚧 **In Progress** (50%) |
 | **Phase 3** | Web App Workflows (auth, UI, dashboard, reports) | 🔄 Not Started |
 | **Phase 4** | Pilot Readiness (isolation, observability, onboarding) | 🔄 Not Started |
 | **Phase 5** | Continuous Monitoring (scheduled jobs, delta alerts, trends) | 🔄 Not Started |
+
+### ✅ Phase 0 - Foundation (Complete)
+- FastAPI application with health check and CRUD endpoints
+- SQLite database with SQLAlchemy models (Organization, MetadataProfile, Control, Assessment, Finding, Evidence)
+- Pydantic schemas for API validation
+- Security controls: API key auth, rate limiting, audit logging, HTTPS
+- Development guide and E2E test scripts
+
+### ✅ Phase 1 - Intelligence Engine (Complete)
+- 22 HIPAA Security Rule controls seeded (10 baseline + 12 healthcare-specific)
+- Rules engine with NVD vulnerability correlation
+- Finding generation with CVSS scores, CWE IDs, and prioritization
+- Metadata intake workflow (no PHI ingestion)
+- Remediation guidance and priority windows (immediate/30_days/quarterly)
+
+### 🚧 Phase 2 - Audit Evidence (In Progress)
+- ✅ Evidence model with artifact tracking and status workflow
+- ✅ Evidence CRUD API endpoints with audit logging
+- ✅ Evidence checklist generation endpoint (24 evidence requirements across controls)
+- ✅ UI integration: clickable evidence checklist link with inline panel rendering
+- ⏳ Policy templates (CW-203 - not started)
+- ⏳ Audit binder export to PDF/ZIP (CW-204 - not started)
 
 ## Why This Exists
 
