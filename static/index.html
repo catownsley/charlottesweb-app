@@ -3,10 +3,10 @@
 <head>
     <!--
     CHARLOTTESWEB - VULNERABILITY ANALYZER INTERFACE
-    
+
     This HTML interface provides a secure, user-friendly way to analyze software stacks
     for known vulnerabilities using the National Vulnerability Database (NVD) API.
-    
+
     SECURITY CONSIDERATIONS:
     ========================
     1. INPUT VALIDATION (Client-side + Server-side)
@@ -14,22 +14,22 @@
        - JSON parsing validates structure (catches malformed JSON)
        - Regex patterns restrict to alphanumeric chars, numbers, dots, dashes, underscores
        - Server-side validation via Pydantic models provides authoritative checks
-       
+
     2. XSS PREVENTION (Cross-Site Scripting)
        - CSP header (from backend) blocks inline scripts and external script injection
        - innerHTML is used only with validated API responses (not user input)
        - Browser auto-escapes text in textContent and JSON.stringify, no manual escaping needed
-       
+
     3. CSRF PREVENTION (Cross-Site Request Forgery)
        - HTTPS/TLS enforced (localhost:8443)
        - Requests include proper Origin/Referer headers
        - SameSite cookie attribute applied by browser
-       
+
     4. INJECTION PREVENTION (SQL/NoSQL)
        - No direct SQL queries - all data goes through Pydantic validators
        - Backend uses SQLAlchemy ORM with parameterized queries
        - JSON payload structure validated before transmission
-       
+
     WORKFLOW:
     =========
     1. User enters organization name (alphanumeric + spaces/dashes)
@@ -37,20 +37,20 @@
     3. Client validates both inputs before sending
     4. Backend creates org → metadata profile → assessment → runs NVD analysis
     5. Results displayed with CVE details and severity levels
-    
+
     COMPLIANCE:
     ===========
     - HIPAA 164.312(b): Audit controls - all actions tracked in backend audit.log
     - SOC 2 CC6.1: Access controls - API key validation on backend
     - OWASP Top 10: Protected against injection, XSS, CSRF
     -->
-    
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CharlottesWeb - Software Stack Vulnerability Analyzer</title>
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    
+
     <style>
         /*
         STYLING: Minimal, accessible design
@@ -59,11 +59,11 @@
         - Mobile-responsive (max-width ensures readability on phone)
         - Print-friendly (colors work in grayscale)
         */
-        
+
         * {
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             line-height: 1.6;
@@ -72,13 +72,13 @@
             margin: 0;
             padding: 0;
         }
-        
+
         .container {
             max-width: 700px;
             margin: 0 auto;
             padding: 20px;
         }
-        
+
         header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -86,18 +86,18 @@
             border-radius: 8px 8px 0 0;
             margin-bottom: 0;
         }
-        
+
         h1 {
             margin: 0;
             font-size: 28px;
         }
-        
+
         .subtitle {
             font-size: 14px;
             opacity: 0.9;
             margin-top: 5px;
         }
-        
+
         .form-wrapper {
             background: white;
             padding: 30px;
@@ -105,18 +105,18 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }
-        
+
         label {
             display: block;
             margin-top: 20px;
             font-weight: 600;
             color: #222;
         }
-        
+
         label:first-child {
             margin-top: 0;
         }
-        
+
         input[type="text"],
         textarea {
             /* INPUT SECURITY: Proper size and styling for usability */
@@ -129,7 +129,7 @@
             font-size: 14px;
             transition: border-color 0.2s;
         }
-        
+
         input[type="text"]:focus,
         textarea:focus {
             /* Visual feedback on focus - helps with accessibility */
@@ -137,14 +137,14 @@
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
-        
+
         textarea {
             /* Monospace font for JSON readability */
             font-family: "Monaco", "Courier New", monospace;
             resize: vertical;
             min-height: 120px;
         }
-        
+
         button {
             /* BUTTON STYLING: High contrast, clear affordance */
             margin-top: 20px;
@@ -158,21 +158,21 @@
             cursor: pointer;
             transition: background 0.2s, transform 0.1s;
         }
-        
+
         button:hover {
             background: #5568d3;
         }
-        
+
         button:active {
             transform: scale(0.98);
         }
-        
+
         button:disabled {
             /* Disabled state feedback */
             background: #ccc;
             cursor: not-allowed;
         }
-        
+
         .result {
             background: white;
             padding: 30px;
@@ -180,32 +180,32 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             margin-top: 20px;
         }
-        
+
         .result.hidden {
             display: none;
         }
-        
+
         .result.loading {
             text-align: center;
             color: #667eea;
         }
-        
+
         .result.success {
             border-left: 4px solid #28a745;
         }
-        
+
         .result.error {
             border-left: 4px solid #dc3545;
             color: #721c24;
             background-color: #f8d7da;
         }
-        
+
         .findings-list {
             list-style: none;
             padding: 0;
             margin-top: 15px;
         }
-        
+
         .finding-item {
             /* FINDING DISPLAY: Clear formatting for vulnerability details */
             background: #f5f5f5;
@@ -214,28 +214,28 @@
             border-radius: 4px;
             border-left: 4px solid #ff9800;
         }
-        
+
         .finding-item.critical {
             border-left-color: #dc3545;
             background: #fff5f5;
         }
-        
+
         .finding-item.high {
             border-left-color: #ff9800;
             background: #fffaf0;
         }
-        
+
         .finding-item.medium {
             border-left-color: #ffc107;
             background: #fffef0;
         }
-        
+
         .cve-id {
             font-family: monospace;
             font-weight: 600;
             color: #333;
         }
-        
+
         .cvss-score {
             /* CVSS color coding: Red = critical, Orange = high, Yellow = medium, Green = low */
             display: inline-block;
@@ -245,60 +245,126 @@
             font-weight: 600;
             margin-left: 10px;
         }
-        
+
         .cvss-score.critical {
             background: #dc3545;
             color: white;
         }
-        
+
         .cvss-score.high {
             background: #ff9800;
             color: white;
         }
-        
+
         .cvss-score.medium {
             background: #ffc107;
             color: #333;
         }
-        
+
         .cvss-score.low {
             background: #28a745;
             color: white;
         }
-        
+
+        /* THREAT INTELLIGENCE STYLING */
+        .threat-context {
+            margin-top: 12px;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+            color: white;
+        }
+
+        .threat-summary {
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            border-left: 3px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .mitre-technique {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.25);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 4px 4px 4px 0;
+            text-decoration: none;
+            color: white;
+            transition: background 0.2s;
+        }
+
+        .mitre-technique:hover {
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        .breach-example {
+            margin-top: 8px;
+            padding: 10px;
+            background: rgba(220, 53, 69, 0.15);
+            border: 1px solid rgba(220, 53, 69, 0.3);
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .breach-example strong {
+            color: #ffc107;
+        }
+
+        .breach-impact {
+            font-size: 11px;
+            margin-top: 4px;
+            opacity: 0.9;
+        }
+
+        .mitigation-hint {
+            margin-top: 8px;
+            font-size: 12px;
+            padding: 8px;
+            background: rgba(40, 167, 69, 0.15);
+            border-radius: 4px;
+            border-left: 3px solid rgba(40, 167, 69, 0.5);
+        }
+
         .help-text {
             /* Inline help for user guidance */
             font-size: 12px;
             color: #666;
             margin-top: 5px;
         }
-        
+
         .stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
             margin: 20px 0;
         }
-        
+
         .stat-box {
             background: #f5f5f5;
             padding: 15px;
             border-radius: 4px;
             text-align: center;
         }
-        
+
         .stat-value {
             font-size: 32px;
             font-weight: 700;
             color: #667eea;
         }
-        
+
         .stat-label {
             font-size: 12px;
             color: #666;
             margin-top: 5px;
         }
-        
+
         .component-row {
             display: grid;
             grid-template-columns: 1fr 1fr 50px;
@@ -307,7 +373,7 @@
             align-items: end;
             position: relative;
         }
-        
+
         .component-row input {
             width: 100%;
             padding: 10px;
@@ -317,13 +383,13 @@
             margin: 0;
             transition: border-color 0.2s;
         }
-        
+
         .component-row input:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
-        
+
         .version-suggestions {
             /* Dropdown menu for version suggestions */
             position: absolute;
@@ -338,11 +404,11 @@
             display: none;
             margin-top: 2px;
         }
-        
+
         .version-suggestions.show {
             display: block;
         }
-        
+
         .version-suggestions .suggestion {
             padding: 10px 12px;
             cursor: pointer;
@@ -350,21 +416,21 @@
             font-size: 14px;
             transition: background 0.15s;
         }
-        
+
         .version-suggestions .suggestion:last-child {
             border-bottom: none;
         }
-        
+
         .version-suggestions .suggestion:hover {
             background: #f0f0f0;
         }
-        
+
         .version-suggestions .suggestion.selected {
             background: #e8eef7;
             color: #667eea;
             font-weight: 600;
         }
-        
+
         .component-row button {
             color: #dc3545;
             background: #fff;
@@ -376,12 +442,12 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        
+
         .component-row button:hover {
             background: #dc3545;
             color: white;
         }
-        
+
         .component-label {
             font-size: 12px;
             font-weight: 600;
@@ -471,7 +537,7 @@
             <div class="subtitle">Software Stack Vulnerability Analyzer</div>
             <div class="subtitle">Vulnerability Analysis + Audit Evidence Automation</div>
         </header>
-        
+
         <!-- MAIN FORM: User input for analysis -->
         <div class="form-wrapper">
             <form id="stackForm">
@@ -479,12 +545,12 @@
                 <label for="orgName">
                     Organization Name
                 </label>
-                <input 
-                    type="text" 
-                    id="orgName" 
+                <input
+                    type="text"
+                    id="orgName"
                     name="orgName"
-                    required 
-                    maxlength="100" 
+                    required
+                    maxlength="100"
                     placeholder="e.g., Acme Corporation"
                     title="Use letters, numbers, spaces, and dashes only"
                     aria-label="Organization name (required)"
@@ -492,7 +558,7 @@
                 <div class="help-text">
                     Letters, numbers, spaces, and dashes only
                 </div>
-                
+
                 <!-- Software Stack Components -->
                 <label>
                     Software Components
@@ -500,29 +566,29 @@
                 <div id="componentsContainer" style="margin-top: 10px;">
                     <!-- Components will be added here dynamically -->
                 </div>
-                
+
                 <!-- Add Component Button -->
                 <button type="button" id="addComponentBtn" style="margin-top: 10px; background: #28a745;">
                     ➕ Add Component
                 </button>
-                
+
                 <div class="help-text" style="margin-top: 15px;">
                     Add each software component and its version. Examples: postgres 13.2, nodejs 14.0.0, nginx 1.19.0
                 </div>
-                
+
                 <!-- Submit Button -->
                 <button type="submit" id="submitBtn" style="margin-top: 20px;">
                     🔍 Analyze for Vulnerabilities
                 </button>
             </form>
         </div>
-        
+
         <!-- RESULTS SECTION: Displayed after form submission -->
         <div id="result" class="result hidden" role="status" aria-live="polite">
             <!-- Results content will be inserted here by JavaScript -->
         </div>
     </div>
-    
+
     <script>
         // Get form elements
         const form = document.getElementById('stackForm');
@@ -530,16 +596,16 @@
         const submitBtn = document.getElementById('submitBtn');
         const addComponentBtn = document.getElementById('addComponentBtn');
         const componentsContainer = document.getElementById('componentsContainer');
-        
+
         console.log('Form elements loaded:', {
             form: !!form,
             addComponentBtn: !!addComponentBtn,
             submitBtn: !!submitBtn
         });
-        
+
         // Counter for unique component IDs
         let componentCounter = 0;
-        
+
         // Prevent Enter key from submitting form on input fields (only submit button should trigger submission)
         form.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
@@ -549,7 +615,7 @@
             }
         });
 
-        
+
         /**
          * Add a new component input row
          */
@@ -557,18 +623,18 @@
             console.log('Add Component button clicked');
             e.preventDefault();
             e.stopPropagation();
-            
+
             componentCounter++;
-            
+
             const row = document.createElement('div');
             row.className = 'component-row';
             row.id = `component-${componentCounter}`;
-            
+
             row.innerHTML = `
                 <div style="position: relative;">
                     <div class="component-label">Component Name</div>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         class="component-name"
                         placeholder="e.g., postgres"
                         maxlength="50"
@@ -578,8 +644,8 @@
                 </div>
                 <div>
                     <div class="component-label">Version</div>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         class="component-version"
                         placeholder="e.g., 13.2"
                         maxlength="20"
@@ -590,32 +656,32 @@
                     ✕
                 </button>
             `;
-            
+
             // Delete button handler
             row.querySelector('.delete-component').addEventListener('click', (e) => {
                 e.preventDefault();
                 row.remove();
             });
-            
+
             // Version suggestions handler
             const componentNameInput = row.querySelector('.component-name');
             const versionInput = row.querySelector('.component-version');
             const suggestionsBox = row.querySelector('.version-suggestions');
             let suggestionTimeout;
-            
+
             componentNameInput.addEventListener('input', async function(e) {
                 const componentName = e.target.value.trim();
-                
+
                 // Hide suggestions if input is empty
                 if (!componentName || componentName.length < 2) {
                     suggestionsBox.classList.remove('show');
                     return;
                 }
-                
+
                 // Show loading state
                 suggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default;">Loading versions...</div>';
                 suggestionsBox.classList.add('show');
-                
+
                 // Debounce: Only fetch after user stops typing for 300ms
                 clearTimeout(suggestionTimeout);
                 suggestionTimeout = setTimeout(async () => {
@@ -623,21 +689,21 @@
                         const response = await fetch(
                             `https://localhost:8443/api/v1/components/${encodeURIComponent(componentName)}/versions`
                         );
-                        
+
                         if (!response.ok) {
                             suggestionsBox.classList.remove('show');
                             return;
                         }
-                        
+
                         const data = await response.json();
                         const versions = data.versions || [];
-                        
+
                         // Show/hide suggestions based on whether versions were found
                         if (versions.length === 0) {
                             suggestionsBox.classList.remove('show');
                             return;
                         }
-                        
+
                         // Build suggestion HTML
                         suggestionsBox.innerHTML = '';
                         versions.forEach((version, index) => {
@@ -661,32 +727,32 @@
                             });
                             suggestionsBox.appendChild(suggestionEl);
                         });
-                        
+
                         suggestionsBox.classList.add('show');
-                        
+
                     } catch (err) {
                         console.warn('Failed to fetch version suggestions:', err);
                         suggestionsBox.classList.remove('show');
                     }
                 }, 300);  // 300ms debounce delay
             });
-            
+
             // Close suggestions when clicking outside
             document.addEventListener('click', (e) => {
                 if (e.target !== componentNameInput && !suggestionsBox.contains(e.target)) {
                     suggestionsBox.classList.remove('show');
                 }
             }, true);
-            
+
             componentsContainer.appendChild(row);
-            
+
             // Focus on the new component name field
             componentNameInput.focus();
         });
-        
+
         // Add initial component field
         addComponentBtn.click();
-        
+
         /**
          * Form submission handler
          */
@@ -694,45 +760,45 @@
             console.log('Form submit event triggered');
             e.preventDefault();
             e.stopPropagation();
-            
+
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Analyzing...';
-            
+
             (async function() {
             try {
                 const orgName = document.getElementById('orgName').value.trim();
-                
+
                 if (!orgName) {
                     throw new Error('Organization name is required');
                 }
-                
+
                 // Build software stack from component inputs
                 const stack = {};
                 const componentRows = document.querySelectorAll('.component-row');
-                
+
                 // Validation patterns (match backend)
                 const componentPattern = /^[a-zA-Z0-9_-]+$/;
                 const versionPattern = /^[a-zA-Z0-9._-]+$/;
-                
+
                 // Collect all components
                 for (const row of componentRows) {
                     const name = row.querySelector('.component-name').value.trim();
                     const version = row.querySelector('.component-version').value.trim();
-                    
+
                     console.log(`Component row: name="${name}", version="${version}"`);
-                    
+
                     // Skip empty rows (both fields empty)
                     if (!name && !version) {
                         console.log('  → Skipping empty row');
                         continue;
                     }
-                    
+
                     // Warn about incomplete entries but skip them gracefully
                     if (!name || !version) {
                         console.log(`  → Skipping incomplete entry (name=${!!name}, version=${!!version})`);
                         continue;  // Skip partial entries without throwing error
                     }
-                    
+
                     // Validate name if provided
                     if (name && !componentPattern.test(name)) {
                         throw new Error(
@@ -740,7 +806,7 @@
                             `Use letters, numbers, underscores, and hyphens only (no dots).`
                         );
                     }
-                    
+
                     // Validate version if provided
                     if (version && !versionPattern.test(version)) {
                         throw new Error(
@@ -748,25 +814,25 @@
                             `Use letters, numbers, dots, dashes, and underscores.`
                         );
                     }
-                    
+
                     console.log(`  → Adding component: ${name} ${version}`);
                     stack[name] = version;
                 }
-                
+
                 console.log('📦 Final stack:', stack);
-                
+
                 // Require at least one component
                 if (Object.keys(stack).length === 0) {
                     throw new Error('Please add at least one software component');
                 }
-                
+
                 // Component names must be unique
                 if (Object.keys(stack).length !== new Set(Object.keys(stack)).size) {
                     throw new Error('Duplicate component names. Each component must be unique.');
                 }
-                
+
                 showLoading('Creating organization...');
-                
+
                 // Step 1: Create organization
                 const orgRes = await fetch('https://localhost:8443/api/v1/organizations', {
                     method: 'POST',
@@ -774,18 +840,18 @@
                     credentials: 'include',
                     body: JSON.stringify({name: orgName})
                 });
-                
+
                 if (!orgRes.ok) {
                     const errData = await orgRes.json();
                     throw new Error(`Failed to create organization: ${errData.detail || orgRes.statusText}`);
                 }
-                
+
                 const org = await orgRes.json();
                 console.log('✅ Organization created:', org.id);
-                
+
                 // Step 2: Create metadata profile
                 showLoading('Creating metadata profile...');
-                
+
                 const profileRes = await fetch('https://localhost:8443/api/v1/metadata-profiles', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -795,18 +861,18 @@
                         software_stack: stack
                     })
                 });
-                
+
                 if (!profileRes.ok) {
                     const errData = await profileRes.json();
                     throw new Error(`Failed to create metadata profile: ${errData.detail || profileRes.statusText}`);
                 }
-                
+
                 const profile = await profileRes.json();
                 console.log('✅ Metadata profile created:', profile.id);
-                
+
                 // Step 3: Create assessment
                 showLoading('Creating assessment...');
-                
+
                 const assessRes = await fetch('https://localhost:8443/api/v1/assessments', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -815,18 +881,18 @@
                         metadata_profile_id: profile.id
                     })
                 });
-                
+
                 if (!assessRes.ok) {
                     const errData = await assessRes.json();
                     throw new Error(`Failed to create assessment: ${errData.detail || assessRes.statusText}`);
                 }
-                
+
                 const assess = await assessRes.json();
                 console.log('✅ Assessment created:', assess.id);
-                
+
                 // Step 4: Run NVD analysis
                 showLoading('Querying National Vulnerability Database...');
-                
+
                 const nvdRes = await fetch(
                     `https://localhost:8443/api/v1/assessments/${assess.id}/analyze-nvd`,
                     {
@@ -834,18 +900,18 @@
                         headers: {'Content-Type': 'application/json'}
                     }
                 );
-                
+
                 if (!nvdRes.ok) {
                     const errData = await nvdRes.json();
                     throw new Error(`NVD analysis failed: ${errData.detail || nvdRes.statusText}`);
                 }
-                
+
                 const findings = await nvdRes.json();
                 console.log('✅ NVD analysis complete:', findings.length, 'findings');
-                
+
                 // Display results
                 displayResults(stack, findings, org, assess.id);
-                
+
             } catch (err) {
                 showError(err.message);
                 console.error('Analysis failed:', err);
@@ -855,19 +921,19 @@
             }
             })(); // End of async IIFE
         });
-        
+
         function showLoading(message) {
             resultDiv.classList.remove('hidden', 'error', 'success');
             resultDiv.classList.add('loading');
             resultDiv.innerHTML = `<p>⏳ ${message}</p>`;
         }
-        
+
         function showError(message) {
             resultDiv.classList.remove('hidden', 'loading', 'success');
             resultDiv.classList.add('error');
             resultDiv.innerHTML = `<h3>❌ Analysis Failed</h3><p>${message}</p>`;
         }
-        
+
         function displayResults(stack, findings, org, assessmentId) {
             let html = `
                 <h3>✅ Analysis Complete</h3>
@@ -887,11 +953,11 @@
                 </div>
                 <p><strong>Organization:</strong> ${org.name} (ID: ${org.id})</p>
                 <p><strong>Components:</strong> ${Object.keys(stack).map(k => `${k} ${stack[k]}`).join(', ')}</p>
-                
+
                 <div style="background: #e8f5e9; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #28a745;">
                     <h4 style="margin-top: 0; color: #2e7d32;">🎯 Evidence Automation Ready</h4>
                     <p style="margin-bottom: 0; font-size: 14px;">
-                        Evidence checklists are now available for this organization's assessments. 
+                        Evidence checklists are now available for this organization's assessments.
                         Use the API endpoints to track audit evidence collection and generate compliance reports.
                     </p>
                     <a
@@ -907,19 +973,19 @@
                     <div id="evidenceChecklistPanel" class="evidence-panel hidden" aria-live="polite"></div>
                 </div>
             `;
-            
+
             if (findings.length === 0) {
                 html += '<p style="color: #28a745; font-weight: 600;">✅ No known vulnerabilities found!</p>';
             } else {
                 html += '<h4>🔍 Vulnerabilities Found:</h4>';
                 html += '<ul class="findings-list">';
-                
+
                 findings.slice(0, 10).forEach(finding => {
-                    const severity = finding.cvss_score >= 9 ? 'critical' 
+                    const severity = finding.cvss_score >= 9 ? 'critical'
                                   : finding.cvss_score >= 7 ? 'high'
                                   : finding.cvss_score >= 4 ? 'medium'
                                   : 'low';
-                    
+
                     html += `
                         <li class="finding-item ${severity}">
                             <div style="display: flex; justify-content: space-between; align-items: start;">
@@ -937,8 +1003,58 @@
                             <p style="margin: 0; font-size: 13px; color: #555;">
                                 ${finding.description.substring(0, 150)}${finding.description.length > 150 ? '...' : ''}
                             </p>
+                    `;
+
+                    // THREAT INTELLIGENCE - visually prominent for demo impact
+                    if (finding.threat_context && finding.threat_context.techniques && finding.threat_context.techniques.length > 0) {
+                        html += `<div class="threat-context">`;
+
+                        // Executive summary
+                        if (finding.threat_context.summary) {
+                            html += `<div class="threat-summary">💡 ${finding.threat_context.summary}</div>`;
+                        }
+
+                        // MITRE techniques with badges
+                        finding.threat_context.techniques.forEach(technique => {
+                            html += `
+                                <a href="https://attack.mitre.org/techniques/${technique.id}/"
+                                   target="_blank"
+                                   class="mitre-technique"
+                                   rel="noopener noreferrer">
+                                    🎯 ${technique.id}: ${technique.name}
+                                </a>
+                            `;
+
+                            // Real-world breach example - high impact for demos
+                            if (technique.breach_example) {
+                                const breach = technique.breach_example;
+                                html += `
+                                    <div class="breach-example">
+                                        🚨 <strong>Real-World Impact:</strong> ${breach.breach}
+                                        <div class="breach-impact">
+                                            ${breach.impact} (${breach.date})
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            // Primary mitigation recommendation
+                            if (technique.primary_mitigation) {
+                                const mitigation = technique.primary_mitigation;
+                                html += `
+                                    <div class="mitigation-hint">
+                                        ✅ <strong>Recommended Action:</strong> ${mitigation.name}
+                                    </div>
+                                `;
+                            }
+                        });
+
+                        html += `</div>`;
+                    }
+
+                    html += `
                             <p style="margin: 8px 0 0 0; font-size: 12px; color: #007bff;">
-                                📚 <a href="https://nvd.nist.gov/vuln/detail/${finding.external_id}" 
+                                📚 <a href="https://nvd.nist.gov/vuln/detail/${finding.external_id}"
                                       target="_blank" rel="noopener noreferrer">
                                    View full details on NVD
                                 </a>
@@ -946,14 +1062,14 @@
                         </li>
                     `;
                 });
-                
+
                 html += '</ul>';
-                
+
                 if (findings.length > 10) {
                     html += `<p style="color: #666; font-size: 12px;">Showing first 10 of ${findings.length} findings</p>`;
                 }
             }
-            
+
             resultDiv.classList.remove('hidden', 'loading', 'error');
             resultDiv.classList.add('success');
             resultDiv.innerHTML = html;
