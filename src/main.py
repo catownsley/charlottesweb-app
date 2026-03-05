@@ -211,6 +211,17 @@ app.include_router(router, prefix=settings.api_v1_prefix, tags=["api"])
 
 
 # ============================================================================
+# FAVICON ROUTE
+# ============================================================================
+# Browsers automatically request /favicon.ico for the page icon.
+# This route prevents a 404 error in the logs. Returns 204 No Content (valid).
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Return favicon (204 No Content)."""
+    return JSONResponse(status_code=204, content={})
+
+
+# ============================================================================
 # STATIC FILES SERVING (HTML/CSS/JavaScript)
 # ============================================================================
 # Mount static files directory for serving the web UI.

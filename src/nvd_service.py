@@ -131,13 +131,16 @@ class NVDService:
         
         for component, version in software_stack.items():
             # Search for CVEs mentioning this component
-            # In production, you'd want more sophisticated version parsing
-            search_term = f"{component} {version}"
+            # NOTE: Search by component name only, not version string
+            # NVD API uses AND logic for multiple keywords, so "java 21" searches for CVEs
+            # mentioning BOTH java AND "21", which is too restrictive.
+            # Instead, search for component name alone to get all CVEs affecting that component.
+            search_term = component  # Just component name, no version
             cves = self.search_cves_by_keyword(search_term, max_results=5)
             
             if cves:
                 results[component] = cves
-                logger.info(f"Found {len(cves)} CVEs for {component} {version}")
+                logger.info(f"Found {len(cves)} CVEs for {component} (version {version})")
         
         return results
     

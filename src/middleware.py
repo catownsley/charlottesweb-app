@@ -82,20 +82,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Security Header 4: Content Security Policy
         # Strategy: Different policies for different endpoints
         # - Docs endpoints (/docs, /redoc): Allow inline styles/scripts for Swagger UI
+        # - Root/static files (/): Allow inline styles/scripts for vulnerability analyzer UI
         # - API endpoints: Strict policy (no resources needed)
-        # This balances usability (can view docs) with security (API locked down)
-        if is_docs_endpoint:
-            # Swagger UI needs: inline scripts, inline styles, CDN resources, and connection to /openapi.json
-            # 'self' allows same-origin resources (stylesheets, scripts)
-            # 'unsafe-inline' allows inline styles and scripts (needed for Swagger UI)
-            # https://cdn.jsdelivr.net allows loading Swagger UI bundle from CDN
-            # connect-src 'self' allows AJAX to /openapi.json
-            # img-src allows favicon from fastapi.tiangolo.com
+        if is_docs_endpoint or request.url.path == "/":
+            # Docs + HTML UI need: inline scripts, inline styles, and fonts
             csp = (
-                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "script-src 'self' 'unsafe-inline'; "
+                "style-src 'self' 'unsafe-inline'; "
                 "connect-src 'self'; "
-                "img-src 'self' https://fastapi.tiangolo.com; "
+                "img-src 'self' https://nvd.nist.gov https://fastapi.tiangolo.com; "
+                "font-src 'self'; "
                 "default-src 'none'"
             )
         else:

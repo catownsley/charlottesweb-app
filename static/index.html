@@ -303,6 +303,7 @@
             gap: 10px;
             margin-bottom: 15px;
             align-items: end;
+            position: relative;
         }
         
         .component-row input {
@@ -319,6 +320,47 @@
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .version-suggestions {
+            /* Dropdown menu for version suggestions */
+            position: absolute;
+            top: 100%;
+            left: calc(50% + 5px);
+            width: calc(50% - 10px);
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 100;
+            display: none;
+            margin-top: 2px;
+        }
+        
+        .version-suggestions.show {
+            display: block;
+        }
+        
+        .version-suggestions .suggestion {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            transition: background 0.15s;
+        }
+        
+        .version-suggestions .suggestion:last-child {
+            border-bottom: none;
+        }
+        
+        .version-suggestions .suggestion:hover {
+            background: #f0f0f0;
+        }
+        
+        .version-suggestions .suggestion.selected {
+            background: #e8eef7;
+            color: #667eea;
+            font-weight: 600;
         }
         
         .component-row button {
@@ -368,7 +410,6 @@
                     name="orgName"
                     required 
                     maxlength="100" 
-                    pattern="[a-zA-Z0-9\s\-]+"
                     placeholder="e.g., Acme Corporation"
                     title="Use letters, numbers, spaces, and dashes only"
                     aria-label="Organization name (required)"
@@ -408,37 +449,40 @@
     </div>
     
     <script>
-        /*
-        IMPROVED FORM HANDLER
-        ====================
-        
-        This version provides a much better user experience:
-        1. Users add components one at a time (simple form fields)
-        2. No JSON required - we build it automatically
-        3. Real-time validation as they type
-        4. Easy to add/remove components
-        
-        SECURITY NOTES:
-        - Validation patterns are identical to backend expectations
-        - JSON is built via JavaScript object (safe, automatic escaping)
-        - All fields still validated before sending to backend
-        - Backend provides final authoritative validation (never trust client)
-        */
-        
+        // Get form elements
         const form = document.getElementById('stackForm');
         const resultDiv = document.getElementById('result');
         const submitBtn = document.getElementById('submitBtn');
         const addComponentBtn = document.getElementById('addComponentBtn');
         const componentsContainer = document.getElementById('componentsContainer');
         
+        console.log('Form elements loaded:', {
+            form: !!form,
+            addComponentBtn: !!addComponentBtn,
+            submitBtn: !!submitBtn
+        });
+        
+        // Counter for unique component IDs
         let componentCounter = 0;
+        
+        // Prevent Enter key from submitting form on input fields (only submit button should trigger submission)
+        form.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+                e.preventDefault();
+                // Focus on submit button so user can see it's ready (optional UX improvement)
+                submitBtn.focus();
+            }
+        });
+
         
         /**
          * Add a new component input row
-         * Users can add as many as they need
          */
-        addComponentBtn.addEventListener('click', (e) => {
+        addComponentBtn.addEventListener('click', function(e) {
+            console.log('Add Component button clicked');
             e.preventDefault();
+            e.stopPropagation();
+            
             componentCounter++;
             
             const row = document.createElement('div');
@@ -446,16 +490,16 @@
             row.id = `component-${componentCounter}`;
             
             row.innerHTML = `
-                <div>
+                <div style="position: relative;">
                     <div class="component-label">Component Name</div>
                     <input 
                         type="text" 
                         class="component-name"
                         placeholder="e.g., postgres"
-                        pattern="[a-zA-Z0-9_\-]+"
                         maxlength="50"
                         title="Letters, numbers, underscores, dashes only (no dots)"
                     >
+                    <div class="version-suggestions"></div>
                 </div>
                 <div>
                     <div class="component-label">Version</div>
@@ -463,7 +507,6 @@
                         type="text" 
                         class="component-version"
                         placeholder="e.g., 13.2"
-                        pattern="[a-zA-Z0-9\.\-_]+"
                         maxlength="20"
                         title="Version string"
                     >
@@ -479,25 +522,108 @@
                 row.remove();
             });
             
+            // Version suggestions handler
+            const componentNameInput = row.querySelector('.component-name');
+            const versionInput = row.querySelector('.component-version');
+            const suggestionsBox = row.querySelector('.version-suggestions');
+            let suggestionTimeout;
+            
+            componentNameInput.addEventListener('input', async function(e) {
+                const componentName = e.target.value.trim();
+                
+                // Hide suggestions if input is empty
+                if (!componentName || componentName.length < 2) {
+                    suggestionsBox.classList.remove('show');
+                    return;
+                }
+                
+                // Show loading state
+                suggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default;">Loading versions...</div>';
+                suggestionsBox.classList.add('show');
+                
+                // Debounce: Only fetch after user stops typing for 300ms
+                clearTimeout(suggestionTimeout);
+                suggestionTimeout = setTimeout(async () => {
+                    try {
+                        const response = await fetch(
+                            `https://localhost:8443/api/v1/components/${encodeURIComponent(componentName)}/versions`
+                        );
+                        
+                        if (!response.ok) {
+                            suggestionsBox.classList.remove('show');
+                            return;
+                        }
+                        
+                        const data = await response.json();
+                        const versions = data.versions || [];
+                        
+                        // Show/hide suggestions based on whether versions were found
+                        if (versions.length === 0) {
+                            suggestionsBox.classList.remove('show');
+                            return;
+                        }
+                        
+                        // Build suggestion HTML
+                        suggestionsBox.innerHTML = '';
+                        versions.forEach((version, index) => {
+                            const suggestionEl = document.createElement('div');
+                            suggestionEl.className = 'suggestion';
+                            suggestionEl.textContent = version;
+                            suggestionEl.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                versionInput.value = version;
+                                versionInput.dispatchEvent(new Event('change', { bubbles: true }));
+                                suggestionsBox.classList.remove('show');
+                                versionInput.focus();
+                            });
+                            suggestionEl.addEventListener('mouseenter', () => {
+                                // Visual feedback on hover
+                                document.querySelectorAll('.version-suggestions .suggestion').forEach(el => {
+                                    el.classList.remove('selected');
+                                });
+                                suggestionEl.classList.add('selected');
+                            });
+                            suggestionsBox.appendChild(suggestionEl);
+                        });
+                        
+                        suggestionsBox.classList.add('show');
+                        
+                    } catch (err) {
+                        console.warn('Failed to fetch version suggestions:', err);
+                        suggestionsBox.classList.remove('show');
+                    }
+                }, 300);  // 300ms debounce delay
+            });
+            
+            // Close suggestions when clicking outside
+            document.addEventListener('click', (e) => {
+                if (e.target !== componentNameInput && !suggestionsBox.contains(e.target)) {
+                    suggestionsBox.classList.remove('show');
+                }
+            }, true);
+            
             componentsContainer.appendChild(row);
             
             // Focus on the new component name field
-            row.querySelector('.component-name').focus();
+            componentNameInput.focus();
         });
         
-        // Add at least one component field on page load
+        // Add initial component field
         addComponentBtn.click();
         
         /**
          * Form submission handler
-         * Builds JSON from form fields and sends to API
          */
-        form.addEventListener('submit', async (e) => {
+        form.addEventListener('submit', function(e) {
+            console.log('Form submit event triggered');
             e.preventDefault();
+            e.stopPropagation();
             
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Analyzing...';
             
+            (async function() {
             try {
                 const orgName = document.getElementById('orgName').value.trim();
                 
@@ -510,16 +636,27 @@
                 const componentRows = document.querySelectorAll('.component-row');
                 
                 // Validation patterns (match backend)
-                const componentPattern = /^[a-zA-Z0-9_\-]+$/;
-                const versionPattern = /^[a-zA-Z0-9\.\-_]+$/;
+                const componentPattern = /^[a-zA-Z0-9_-]+$/;
+                const versionPattern = /^[a-zA-Z0-9._-]+$/;
                 
                 // Collect all components
                 for (const row of componentRows) {
                     const name = row.querySelector('.component-name').value.trim();
                     const version = row.querySelector('.component-version').value.trim();
                     
-                    // Skip empty rows
-                    if (!name && !version) continue;
+                    console.log(`Component row: name="${name}", version="${version}"`);
+                    
+                    // Skip empty rows (both fields empty)
+                    if (!name && !version) {
+                        console.log('  → Skipping empty row');
+                        continue;
+                    }
+                    
+                    // Warn about incomplete entries but skip them gracefully
+                    if (!name || !version) {
+                        console.log(`  → Skipping incomplete entry (name=${!!name}, version=${!!version})`);
+                        continue;  // Skip partial entries without throwing error
+                    }
                     
                     // Validate name if provided
                     if (name && !componentPattern.test(name)) {
@@ -527,11 +664,6 @@
                             `Invalid component name: "${name}". ` +
                             `Use letters, numbers, underscores, and hyphens only (no dots).`
                         );
-                    }
-                    
-                    // Require both name and version
-                    if (!name || !version) {
-                        throw new Error('All components must have both a name and version');
                     }
                     
                     // Validate version if provided
@@ -542,8 +674,11 @@
                         );
                     }
                     
+                    console.log(`  → Adding component: ${name} ${version}`);
                     stack[name] = version;
                 }
+                
+                console.log('📦 Final stack:', stack);
                 
                 // Require at least one component
                 if (Object.keys(stack).length === 0) {
@@ -643,6 +778,7 @@
                 submitBtn.disabled = false;
                 submitBtn.textContent = '🔍 Analyze for Vulnerabilities';
             }
+            })(); // End of async IIFE
         });
         
         function showLoading(message) {
