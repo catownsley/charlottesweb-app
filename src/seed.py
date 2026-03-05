@@ -1,7 +1,7 @@
 """Seed database with initial HIPAA controls and healthcare-specific evidence requirements."""
 from datetime import datetime, timedelta
 from src.database import Base, SessionLocal, engine
-from src.models import Control, Assessment, Finding, Evidence
+from src.models import Control, Assessment, Finding, Evidence, Organization, MetadataProfile
 
 
 def seed_controls():
@@ -10,13 +10,6 @@ def seed_controls():
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
-
-    # Check if controls already exist
-    existing = db.query(Control).count()
-    if existing > 0:
-        print(f"Database already contains {existing} controls. Skipping seed.")
-        db.close()
-        return
 
     # HIPAA Security Rule controls (original 10)
     controls = [
@@ -338,12 +331,43 @@ def seed_controls():
     db.commit()
     print(f"✓ Successfully seeded {len(controls)} controls (10 HIPAA + 11 healthcare-specific).")
 
+    # First, create an organization and metadata profile for the sample assessment
+    org = Organization(
+        id="org-example-audit",
+        name="Example Healthcare Organization",
+    )
+    db.add(org)
+    db.flush()
+
+    # Create a metadata profile (required for assessment)
+    profile = MetadataProfile(
+        id="profile-example",
+        organization_id=org.id,
+        phi_types=["audio_recordings", "patient_context", "translations"],
+        cloud_provider="AWS",
+        infrastructure={
+            "platform": "Kubernetes on EKS",
+            "database": "RDS PostgreSQL",
+            "transcription": "AWS Transcribe or Whisper",
+            "llm": "Self-hosted or AWS Bedrock",
+        },
+        applications={"primary": "Avodah Medical Translation AI"},
+        access_controls={"auth": "mTLS + API Keys", "rbac": "Kubernetes role-based"},
+        software_stack={
+            "backend": "FastAPI 0.135.1",
+            "database": "SQLAlchemy 2.0.48",
+            "security": "python-jose 3.5.0",
+            "deployment": "Docker + K8s",
+        },
+    )
+    db.add(profile)
+    db.flush()
+
     # Create sample assessment for "Example Organization - Q1 2026"
     assessment = Assessment(
         id="org-sample-q1-2026",
-        organization_id="org-example-audit",
-        created_by="audit-bot",
-        assessment_date=datetime.now(),
+        organization_id=org.id,
+        metadata_profile_id=profile.id,
         status="in_progress",
     )
     db.add(assessment)
@@ -355,68 +379,68 @@ def seed_controls():
         Finding(
             assessment_id=assessment.id,
             control_id="AVODAH.SC-2.1",
-            finding_type="gap",
+            severity="high",
             cvss_score=7.5,
             title="API Key Rotation Not Enforced",
             description="API keys have no automatic rotation policy. Manual rotation occurs irregularly.",
-            remediation="Implement AWS Secrets Manager with 30-day rotation policy",
+            remediation_guidance="Implement AWS Secrets Manager with 30-day rotation policy",
             cwe_ids=["CWE-798"],
-            priority="immediate",
+            priority_window="immediate",
         ),
         Finding(
             assessment_id=assessment.id,
             control_id="AVODAH.SC-7.1",
-            finding_type="observation",
+            severity="medium",
             cvss_score=5.0,
             title="TLS Certificate Expiration Not Monitored",
             description="No automated monitoring for TLS certificate expiration dates.",
-            remediation="Enable AWS Certificate Manager automatic renewal; add CloudWatch alarm for cert expiration",
+            remediation_guidance="Enable AWS Certificate Manager automatic renewal; add CloudWatch alarm for cert expiration",
             cwe_ids=["CWE-295"],
-            priority="30_days",
+            priority_window="30_days",
         ),
         Finding(
             assessment_id=assessment.id,
             control_id="AVODAH.SC-4.1",
-            finding_type="gap",
+            severity="high",
             cvss_score=8.2,
             title="S3 Backups Not Encrypted",
             description="Database backups to S3 are unencrypted. KMS encryption not enabled.",
-            remediation="Enable S3 default encryption with AWS KMS customer-managed keys",
+            remediation_guidance="Enable S3 default encryption with AWS KMS customer-managed keys",
             cwe_ids=["CWE-311"],
-            priority="immediate",
+            priority_window="immediate",
         ),
         Finding(
             assessment_id=assessment.id,
             control_id="AVODAH.SC-12.1",
-            finding_type="gap",
+            severity="high",
             cvss_score=6.8,
             title="KMS Key Rotation Manual, Not Automatic",
             description="Key rotation handled manually. No audit trail of approvals.",
-            remediation="Configure automatic annual rotation in KMS console; document segregation of duties",
+            remediation_guidance="Configure automatic annual rotation in KMS console; document segregation of duties",
             cwe_ids=["CWE-347"],
-            priority="30_days",
+            priority_window="30_days",
         ),
         Finding(
             assessment_id=assessment.id,
             control_id="AVODAH.SC-7.2",
-            finding_type="observation",
+            severity="medium",
             cvss_score=4.5,
             title="Ephemeral Storage TTL Unclear",
             description="Pod configuration doesn't explicitly enforce TTL < 5 minutes. Review needed.",
-            remediation="Document ephemeral storage TTL in pod spec; add storage class enforcement",
+            remediation_guidance="Document ephemeral storage TTL in pod spec; add storage class enforcement",
             cwe_ids=["CWE-200"],
-            priority="quarterly",
+            priority_window="quarterly",
         ),
         Finding(
             assessment_id=assessment.id,
             control_id="AVODAH.AU-6.1",
-            finding_type="gap",
+            severity="high",
             cvss_score=7.0,
             title="Model API Call Logging Incomplete",
             description="Successful requests logged, but failed requests and denials not captured.",
-            remediation="Implement request/response interceptor logging; log all API calls regardless of status",
+            remediation_guidance="Implement request/response interceptor logging; log all API calls regardless of status",
             cwe_ids=["CWE-778"],
-            priority="30_days",
+            priority_window="30_days",
         ),
     ]
 
