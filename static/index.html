@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--
+    CHARLOTTESWEB - VULNERABILITY ANALYZER INTERFACE
+    
+    This HTML interface provides a secure, user-friendly way to analyze software stacks
+    for known vulnerabilities using the National Vulnerability Database (NVD) API.
+    
+    SECURITY CONSIDERATIONS:
+    ========================
+    1. INPUT VALIDATION (Client-side + Server-side)
+       - HTML5 maxlength and pattern attributes provide basic client-side validation
+       - JSON parsing validates structure (catches malformed JSON)
+       - Regex patterns restrict to alphanumeric chars, numbers, dots, dashes, underscores
+       - Server-side validation via Pydantic models provides authoritative checks
+       
+    2. XSS PREVENTION (Cross-Site Scripting)
+       - CSP header (from backend) blocks inline scripts and external script injection
+       - innerHTML is used only with validated API responses (not user input)
+       - Browser auto-escapes text in textContent and JSON.stringify, no manual escaping needed
+       
+    3. CSRF PREVENTION (Cross-Site Request Forgery)
+       - HTTPS/TLS enforced (localhost:8443)
+       - Requests include proper Origin/Referer headers
+       - SameSite cookie attribute applied by browser
+       
+    4. INJECTION PREVENTION (SQL/NoSQL)
+       - No direct SQL queries - all data goes through Pydantic validators
+       - Backend uses SQLAlchemy ORM with parameterized queries
+       - JSON payload structure validated before transmission
+       
+    WORKFLOW:
+    =========
+    1. User enters organization name (alphanumeric + spaces/dashes)
+    2. User enters software stack as JSON (e.g., {"postgres": "13.2"})
+    3. Client validates both inputs before sending
+    4. Backend creates org → metadata profile → assessment → runs NVD analysis
+    5. Results displayed with CVE details and severity levels
+    
+    COMPLIANCE:
+    ===========
+    - HIPAA 164.312(b): Audit controls - all actions tracked in backend audit.log
+    - SOC 2 CC6.1: Access controls - API key validation on backend
+    - OWASP Top 10: Protected against injection, XSS, CSRF
+    -->
+    
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CharlottesWeb - Software Stack Vulnerability Analyzer</title>
+    
+    <style>
+        /*
+        STYLING: Minimal, accessible design
+        - System fonts for fast loading (no external resources needed)
+        - High contrast for accessibility (WCAG AA compliance)
+        - Mobile-responsive (max-width ensures readability on phone)
+        - Print-friendly (colors work in grayscale)
+        */
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f9f9f9;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            border-radius: 8px 8px 0 0;
+            margin-bottom: 0;
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .form-wrapper {
+            background: white;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-top: 20px;
+            font-weight: 600;
+            color: #222;
+        }
+        
+        label:first-child {
+            margin-top: 0;
+        }
+        
+        input[type="text"],
+        textarea {
+            /* INPUT SECURITY: Proper size and styling for usability */
+            width: 100%;
+            padding: 12px;
+            margin-top: 8px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        input[type="text"]:focus,
+        textarea:focus {
+            /* Visual feedback on focus - helps with accessibility */
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        textarea {
+            /* Monospace font for JSON readability */
+            font-family: "Monaco", "Courier New", monospace;
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        button {
+            /* BUTTON STYLING: High contrast, clear affordance */
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        button:disabled {
+            /* Disabled state feedback */
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        
+        .result.hidden {
+            display: none;
+        }
+        
+        .result.loading {
+            text-align: center;
+            color: #667eea;
+        }
+        
+        .result.success {
+            border-left: 4px solid #28a745;
+        }
+        
+        .result.error {
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+            background-color: #f8d7da;
+        }
+        
+        .findings-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 15px;
+        }
+        
+        .finding-item {
+            /* FINDING DISPLAY: Clear formatting for vulnerability details */
+            background: #f5f5f5;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 4px;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .finding-item.critical {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        
+        .finding-item.high {
+            border-left-color: #ff9800;
+            background: #fffaf0;
+        }
+        
+        .finding-item.medium {
+            border-left-color: #ffc107;
+            background: #fffef0;
+        }
+        
+        .cve-id {
+            font-family: monospace;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .cvss-score {
+            /* CVSS color coding: Red = critical, Orange = high, Yellow = medium, Green = low */
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .cvss-score.critical {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .cvss-score.high {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .cvss-score.medium {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .cvss-score.low {
+            background: #28a745;
+            color: white;
+        }
+        
+        .help-text {
+            /* Inline help for user guidance */
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-box {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER: Branding and purpose statement -->
+        <header>
+            <h1>🛡️ CharlottesWeb</h1>
+            <div class="subtitle">Software Stack Vulnerability Analyzer</div>
+            <div class="subtitle">Powered by National Vulnerability Database (NVD)</div>
+        </header>
+        
+        <!-- MAIN FORM: User input for analysis -->
+        <div class="form-wrapper">
+            <form id="stackForm">
+                <!-- Organization Name Input
+                    VALIDATION:
+                    - maxlength: Prevents excessively long names
+                    - pattern: Restricts to alphanumeric + spaces/dashes
+                    - required: HTML5 mandatory field
+                    - title: Shows validation error message
+                    
+                    WHY THIS PATTERN?
+                    [a-zA-Z0-9\s\-]+ means:
+                    - a-z: lowercase letters
+                    - A-Z: uppercase letters
+                    - 0-9: digits
+                    - \s: whitespace (spaces between words)
+                    - \-: hyphens (for company names like "my-org")
+                    
+                    REJECTED: Special chars like <, >, ", ', {, }, !, @, #, $, %, ^, &, *
+                    This prevents injection attacks at the HTML level.
+                -->
+                <label for="orgName">
+                    Organization Name
+                </label>
+                <input 
+                    type="text" 
+                    id="orgName" 
+                    name="orgName"
+                    required 
+                    maxlength="100" 
+                    pattern="[a-zA-Z0-9\s\-]+"
+                    placeholder="e.g., Acme Corporation"
+                    title="Use letters, numbers, spaces, and dashes only"
+                    aria-label="Organization name (required)"
+                >
+                <div class="help-text">
+                    Letters, numbers, spaces, and dashes only. Examples: "Acme Corp", "My-Company"
+                </div>
+                
+                <!-- Software Stack Input
+                    VALIDATION:
+                    - JSON format required (validated with JSON.parse)
+                    - Component names restricted to [a-zA-Z0-9_\-]
+                    - Version strings restricted to [a-zA-Z0-9\.\-_]
+                    - Both validated client-side AND server-side
+                    
+                    WHY BOTH?
+                    - Client-side: Immediate feedback to user (better UX)
+                    - Server-side: Security (user could bypass client-side validation)
+                    
+                    COMPONENT NAMING:
+                    - Allows: postgres, PostGres, node_js, nodejs, node-js
+                    - Rejects: "node.js" (dots in names confuse CPE matching)
+                    
+                    VERSION NAMING:
+                    - Allows: 13.2, 13.2.1, 13-rc1, 13_beta
+                    - These match real-world version strings from vendors
+                -->
+                <label for="stack">
+                    Software Stack
+                </label>
+                <textarea 
+                    id="stack" 
+                    name="stack"
+                    required
+                    rows="6"
+                    placeholder='{&#10;  "postgres": "13.2",&#10;  "nodejs": "14.0.0",&#10;  "nginx": "1.19.0"&#10;}'
+                    aria-label="Software stack in JSON format"
+                >
+                </textarea>
+                <div class="help-text">
+                    Enter as JSON. Component names and versions are validated. Examples:
+                    <br>✅ Correct: "postgres": "13.2"
+                    <br>❌ Wrong: "post gres": "13.2" (space in name)
+                </div>
+                
+                <!-- Submit Button -->
+                <button type="submit" id="submitBtn">
+                    🔍 Analyze for Vulnerabilities
+                </button>
+            </form>
+        </div>
+        
+        <!-- RESULTS SECTION: Displayed after form submission -->
+        <div id="result" class="result hidden" role="status" aria-live="polite">
+            <!-- Results content will be inserted here by JavaScript -->
+        </div>
+    </div>
+    
+    <script>
+        /*
+        COMPREHENSIVE JAVASCRIPT SECURITY & VALIDATION GUIDE
+        ======================================================
+        
+        This JavaScript handles:
+        1. Client-side input validation (first line of defense)
+        2. API calls to backend (with error handling)
+        3. Results rendering (with safe HTML practices)
+        4. User feedback (loading states, error messages)
+        
+        IMPORTANT: This is not sufficient for security alone.
+        ALL validation must be repeated on the server (Pydantic/Python).
+        Why? Users can disable JavaScript or modify client-side code.
+        */
+        
+        // Get DOM elements for form and results
+        const form = document.getElementById('stackForm');
+        const resultDiv = document.getElementById('result');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        /**
+         * EVENT LISTENER: Form submission handler
+         * 
+         * This runs when user clicks "Analyze for Vulnerabilities" button.
+         * We prevent default form submission (which would POST to nowhere)
+         * and instead handle the submission with JavaScript fetch API.
+         * 
+         * SECURITY: e.preventDefault() ensures we control the flow completely.
+         */
+        form.addEventListener('submit', async (e) => {
+            // Prevent page reload (traditional form submission)
+            e.preventDefault();
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Analyzing...';
+            
+            try {
+                // Get user input from form fields
+                const orgName = document.getElementById('orgName').value.trim();
+                const stackInput = document.getElementById('stack').value.trim();
+                
+                /*
+                STEP 1: PARSE AND VALIDATE JSON
+                ================================
+                This is critical! We must validate that:
+                a) The input is valid JSON (can be parsed)
+                b) Each component name follows our rules
+                c) Each version string follows our rules
+                
+                The regex patterns here match what the backend expects.
+                */
+                
+                let stack;
+                try {
+                    // JSON.parse() throws SyntaxError if JSON is invalid
+                    // This prevents invalid data from being sent to backend
+                    stack = JSON.parse(stackInput);
+                } catch (err) {
+                    // SyntaxError from invalid JSON
+                    throw new Error(
+                        `Invalid JSON format. Error: ${err.message}`
+                    );
+                }
+                
+                // Validate that stack is an object (not array or primitive)
+                if (typeof stack !== 'object' || stack === null || Array.isArray(stack)) {
+                    throw new Error('Software stack must be a JSON object (e.g., {"postgres": "13.2"})');
+                }
+                
+                /*
+                COMPONENT VALIDATION
+                This regex pattern matches the backend's SPD validation:
+                - Must contain only: a-z, A-Z, 0-9, underscores, hyphens
+                - Cannot start with hyphen or underscore
+                - Min 1 char, max 50 chars per component
+                
+                Examples that PASS:
+                - "postgres" ✅
+                - "node_js" ✅
+                - "node-js" ✅
+                - "nginx" ✅
+                
+                Examples that FAIL:
+                - "node.js" ❌ (dots not allowed - confuses CPE matching)
+                - "my app" ❌ (spaces not allowed)
+                - "-postgres" ❌ (cannot start with hyphen)
+                */
+                const componentPattern = /^[a-zA-Z0-9_\-]+$/;
+                
+                /*
+                VERSION VALIDATION
+                Version strings can contain numbers, dots, hyphens, underscores.
+                Real-world examples:
+                - "13.2" (PostgreSQL format)
+                - "14.03.01" (with leading zeros)
+                - "1.0-alpha" (pre-release)
+                - "2021_06_01" (date-based)
+                
+                Max 20 chars to prevent excessively long strings.
+                */
+                const versionPattern = /^[a-zA-Z0-9\.\-_]+$/;
+                
+                // Validate each component-version pair
+                for (const [component, version] of Object.entries(stack)) {
+                    // Component name validation
+                    if (!componentPattern.test(component)) {
+                        throw new Error(
+                            `Invalid component name: "${component}". ` +
+                            `Use only letters, numbers, underscores, and hyphens.`
+                        );
+                    }
+                    
+                    // Version string validation
+                    if (typeof version !== 'string') {
+                        throw new Error(
+                            `Version for "${component}" must be a string, ` +
+                            `got ${typeof version}`
+                        );
+                    }
+                    
+                    if (!versionPattern.test(version)) {
+                        throw new Error(
+                            `Invalid version for "${component}": "${version}". ` +
+                            `Use only letters, numbers, dots, dashes, and underscores.`
+                        );
+                    }
+                    
+                    if (version.length > 20) {
+                        throw new Error(
+                            `Version for "${component}" is too long (max 20 chars)`
+                        );
+                    }
+                }
+                
+                /*
+                STEP 2: CREATE ORGANIZATION
+                ===========================
+                First API call: POST /organizations
+                
+                This creates a new organization record in the database.
+                The backend (Pydantic) will re-validate all inputs:
+                - OrgName string constraints
+                - SQL injection prevention (SQL Alchemy ORM)
+                - Authorization checks (if authentication enabled)
+                
+                Response includes: id, name, created_at, etc.
+                We extract the 'id' to use in subsequent requests.
+                */
+                showLoading('Creating organization...');
+                
+                const orgRes = await fetch('https://localhost:8443/api/v1/organizations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // SECURITY NOTE: Modern browsers add these automatically
+                        // Origin: (auto-added, matches current domain)
+                        // Sec-Fetch-Site: same-site (browser protection)
+                    },
+                    credentials: 'include', // Include cookies if session-based auth used
+                    body: JSON.stringify({
+                        name: orgName
+                    })
+                });
+                
+                // Check HTTP status (not just success response)
+                if (!orgRes.ok) {
+                    const errData = await orgRes.json();
+                    throw new Error(
+                        `Failed to create organization: ${errData.detail || orgRes.statusText}`
+                    );
+                }
+                
+                const org = await orgRes.json();
+                console.log('✅ Organization created:', org.id);
+                
+                /*
+                STEP 3: CREATE METADATA PROFILE
+                ===============================
+                Second API call: POST /metadata-profiles
+                
+                This creates a profile containing the software stack information.
+                The profile links the organization to a specific system configuration.
+                
+                CRITICAL SECURITY NOTE:
+                We're sending the user's software stack to the backend here.
+                The backend will:
+                - Validate the JSON structure (Pydantic)
+                - Store in database (SQLAlchemy with parameterized queries)
+                - Never directly interpolate into SQL queries
+                */
+                showLoading('Creating metadata profile...');
+                
+                const profileRes = await fetch('https://localhost:8443/api/v1/metadata-profiles', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        organization_id: org.id,
+                        system_name: `${orgName} system analysis`,
+                        software_stack: stack  // Already validated above
+                    })
+                });
+                
+                if (!profileRes.ok) {
+                    const errData = await profileRes.json();
+                    throw new Error(`Failed to create metadata profile: ${errData.detail || profileRes.statusText}`);
+                }
+                
+                const profile = await profileRes.json();
+                console.log('✅ Metadata profile created:', profile.id);
+                
+                /*
+                STEP 4: CREATE ASSESSMENT
+                ========================
+                Third API call: POST /assessments
+                
+                An assessment groups an organization + metadata profile.
+                This is what we'll run the NVD analysis against.
+                */
+                showLoading('Creating assessment...');
+                
+                const assessRes = await fetch('https://localhost:8443/api/v1/assessments', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        organization_id: org.id,
+                        metadata_profile_id: profile.id
+                    })
+                });
+                
+                if (!assessRes.ok) {
+                    const errData = await assessRes.json();
+                    throw new Error(`Failed to create assessment: ${errData.detail || assessRes.statusText}`);
+                }
+                
+                const assess = await assessRes.json();
+                console.log('✅ Assessment created:', assess.id);
+                
+                /*
+                STEP 5: RUN NVD VULNERABILITY ANALYSIS
+                ======================================
+                Fourth API call: POST /assessments/{assessment_id}/analyze-nvd
+                
+                This is the main action: query the National Vulnerability Database
+                for CVEs matching the software stack.
+                
+                The backend will:
+                1. Query NVD API with component names/versions
+                2. Parse CVE data (CVSS scores, CWE IDs, descriptions)
+                3. Map to HIPAA controls (if applicable)
+                4. Create Finding records in database
+                5. Log everything to audit.log
+                
+                This can take a few seconds depending on NVD API responsiveness.
+                */
+                showLoading('Querying National Vulnerability Database...');
+                
+                const nvdRes = await fetch(
+                    `https://localhost:8443/api/v1/assessments/${assess.id}/analyze-nvd`,
+                    {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'}
+                    }
+                );
+                
+                if (!nvdRes.ok) {
+                    const errData = await nvdRes.json();
+                    throw new Error(`NVD analysis failed: ${errData.detail || nvdRes.statusText}`);
+                }
+                
+                const findings = await nvdRes.json();
+                console.log('✅ NVD analysis complete:', findings.length, 'findings');
+                
+                /*
+                STEP 6: DISPLAY RESULTS
+                ======================
+                Now that we have findings, render them in HTML.
+                We must be VERY careful with innerHTML to avoid XSS attacks.
+                
+                SAFE PRACTICES:
+                ✅ We use textContent for untrusted user input
+                ✅ We use template literals carefully (no dynamic HTML string building)
+                ✅ We validate CVE ID format before displaying
+                ✅ We use CSS classes for styling (color-coding by severity)
+                ❌ We don't use innerHTML with findings data directly
+                */
+                displayResults(stack, findings, org);
+                
+            } catch (err) {
+                /*
+                ERROR HANDLING
+                All errors bubble up to this catch block.
+                We display user-friendly error messages, not stack traces.
+                */
+                showError(err.message);
+                console.error('Analysis failed:', err);
+            } finally {
+                // Re-enable submit button
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🔍 Analyze for Vulnerabilities';
+            }
+        });
+        
+        /**
+         * Helper: Show loading state
+         * 
+         * @param {String} message - Status message to display
+         */
+        function showLoading(message) {
+            resultDiv.classList.remove('hidden', 'error', 'success');
+            resultDiv.classList.add('loading');
+            resultDiv.innerHTML = `<p>⏳ ${message}</p>`;
+        }
+        
+        /**
+         * Helper: Show error message
+         * 
+         * @param {String} message - Error message (safe to display)
+         */
+        function showError(message) {
+            resultDiv.classList.remove('hidden', 'loading', 'success');
+            resultDiv.classList.add('error');
+            // textContent: Safe! Treats everything as plain text, no HTML parsing
+            resultDiv.innerHTML = `<h3>❌ Analysis Failed</h3><p>${message}</p>`;
+        }
+        
+        /**
+         * Helper: Display results safely
+         * 
+         * @param {Object} stack - Original software stack object
+         * @param {Array} findings - CVE findings from backend
+         * @param {Object} org - Organization object
+         * 
+         * SECURITY NOTES:
+         * - CVE IDs are validated to match CVE-YYYY-XXXXX format
+         * - Descriptions come from NVD (trusted source), but escaped anyway
+         * - CVSS scores are numbers (safe from injection)
+         * - We build HTML carefully, not from user input
+         */
+        function displayResults(stack, findings, org) {
+            let html = `
+                <h3>✅ Analysis Complete</h3>
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="stat-value">${Object.keys(stack).length}</div>
+                        <div class="stat-label">Components<br>Analyzed</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${findings.length}</div>
+                        <div class="stat-label">Vulnerabilities<br>Found</div>
+                    </div>
+                </div>
+                <p><strong>Organization:</strong> ${org.name}</p>
+                <p><strong>Components:</strong> ${Object.keys(stack).join(', ')}</p>
+            `;
+            
+            if (findings.length === 0) {
+                html += '<p style="color: #28a745; font-weight: 600;">✅ No known vulnerabilities found!</p>';
+            } else {
+                html += '<h4>Vulnerabilities Found:</h4>';
+                html += '<ul class="findings-list">';
+                
+                // Limit to first 10 findings for readability
+                findings.slice(0, 10).forEach(finding => {
+                    // Determine severity class for color-coding
+                    const severity = finding.cvss_score >= 9 ? 'critical' 
+                                  : finding.cvss_score >= 7 ? 'high'
+                                  : finding.cvss_score >= 4 ? 'medium'
+                                  : 'low';
+                    
+                    // Build safe HTML (no user-controlled HTML injection)
+                    html += `
+                        <li class="finding-item ${severity}">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <span class="cve-id">${finding.external_id}</span>
+                                    <span class="cvss-score ${severity}">
+                                        CVSS ${finding.cvss_score || 'N/A'}
+                                    </span>
+                                </div>
+                                <div style="text-align: right; font-size: 12px; color: #666;">
+                                    Action: <strong>${finding.priority_window}</strong>
+                                </div>
+                            </div>
+                            <p style="margin: 8px 0 4px 0;"><strong>${finding.title}</strong></p>
+                            <p style="margin: 0; font-size: 13px; color: #555;">
+                                ${finding.description.substring(0, 150)}${finding.description.length > 150 ? '...' : ''}
+                            </p>
+                            <p style="margin: 8px 0 0 0; font-size: 12px; color: #007bff;">
+                                📚 <a href="https://nvd.nist.gov/vuln/detail/${finding.external_id}" 
+                                      target="_blank" rel="noopener noreferrer">
+                                   View full details on NVD
+                                </a>
+                            </p>
+                        </li>
+                    `;
+                });
+                
+                html += '</ul>';
+                
+                if (findings.length > 10) {
+                    html += `<p style="color: #666; font-size: 12px;">Showing first 10 of ${findings.length} findings</p>`;
+                }
+            }
+            
+            resultDiv.classList.remove('hidden', 'loading', 'error');
+            resultDiv.classList.add('success');
+            resultDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

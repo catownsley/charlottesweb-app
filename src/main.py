@@ -19,6 +19,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -207,8 +208,69 @@ app.include_router(router, prefix=settings.api_v1_prefix, tags=["api"])
 
 
 # ============================================================================
-# ROOT ENDPOINT
+# STATIC FILES SERVING (HTML/CSS/JavaScript)
 # ============================================================================
+# Mount static files directory for serving the web UI.
+#
+# WHAT THIS DOES:
+# - Serves all files in the ./static directory
+# - Accessible at: https://localhost:8443/{filename}
+# - Example: index.html is served at https://localhost:8443/index.html
+#
+# WHY MOUNT HERE:
+# - API routes (prefix=/api/v1) are processed BEFORE static files
+# - This ensures /api/v1/... never gets caught by static file handler
+# - Path: /static -> static/index.html, /static/style.css -> static/style.css, etc.
+#
+# SECURITY CONSIDERATIONS FOR STATIC FILES:
+# =========================================
+# ✅ Static files inherit all middleware security:
+#    - SecurityHeadersMiddleware: CSP, HSTS, X-Frame-Options headers applied
+#    - RequestIDMiddleware: Requests tracked for audit logging
+#    - RateLimiting: Rate limits apply (60 req/min default)
+#    - CORS: Properly restricted to configured origins
+#
+# ✅ HTML Validation:
+#    - CSP header prevents inline script injection
+#    - Content-Type: text/html (browser won't execute as script)
+#    - Path traversal protection (FastAPI's StaticFiles prevents ../ attacks)
+#
+# ⚠️ IMPORTANT: Files must be served over HTTPS in production:
+#    - Ensure TLS/SSL certificates are valid
+#    - Use strict HSTS header (default: 1 year)
+#    - Prevent MITM attacks and eavesdropping
+#
+# FILE PERMISSIONS:
+# - HTML, CSS, JS files should be readable but not writable by app
+# - Use file system permissions to restrict access
+# - Unix: chmod 644 static/* (read-only)
+#
+# STATIC FILE CACHING:
+# - Browser cache: StaticFiles sets appropriate Cache-Control headers
+# - CDN: In production, use CloudFront/Cloudflare for caching
+# - Versioning: Use hashes in filenames for cache-busting (style.css?v=abc123)
+#
+# PERFORMANCE:
+# - Static files served with gzip compression (if client supports)
+# - If many users, consider separate static server (nginx, CDN)
+# - Monitor /metrics for static file request volume
+#
+try:
+    import os
+    static_path = os.path.join(os.path.dirname(__file__), '..', 'static')
+    
+    # Only mount if directory exists (graceful handling if static/ removed)
+    if os.path.isdir(static_path):
+        app.mount(
+            "/",  # Mount at root (lower priority than API routes)
+            StaticFiles(directory=static_path, html=True),  # html=True: Serve index.html for dirs
+            name="static"
+        )
+except Exception as e:
+    # Log static file mounting error but continue (API still works)
+    import logging
+    logging.warning(f"Failed to mount static files: {e}. Web UI will not be available.")
+
 
 @app.get("/")
 @limiter.limit(f"{settings.rate_limit_per_minute * 2}/minute")  # 2x rate limit for discovery
