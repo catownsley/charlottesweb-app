@@ -396,6 +396,35 @@ def analyze_nvd_vulnerabilities(
     if new_findings:
         try:
             db.commit()
+            # After committing findings, generate evidence items for controls
+            db.refresh(assessment)
+            unique_control_ids = set(f.control_id for f in new_findings if f.control_id)
+
+            for control_id in unique_control_ids:
+                control = db.query(Control).filter(Control.id == control_id).first()
+                if control and control.evidence_types:
+                    for evidence_type in control.evidence_types:
+                        # Check if evidence item already exists
+                        existing = db.query(Evidence).filter(
+                            Evidence.assessment_id == assessment_id,
+                            Evidence.control_id == control_id,
+                            Evidence.evidence_type == evidence_type,
+                        ).first()
+
+                        if not existing:
+                            # Create new evidence item
+                            evidence_item = Evidence(
+                                assessment_id=assessment_id,
+                                control_id=control_id,
+                                evidence_type=evidence_type,
+                                title=f"{control_id}: {evidence_type}",
+                                description=f"Evidence for {control.title}",
+                                status="not_started",
+                                owner="system",
+                            )
+                            db.add(evidence_item)
+
+            db.commit()
         except Exception as e:
             db.rollback()
             # Log the actual error server-side but don't expose to user
