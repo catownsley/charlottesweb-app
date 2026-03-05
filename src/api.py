@@ -1,4 +1,7 @@
 """API routes for CharlottesWeb."""
+from datetime import datetime, timezone
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -34,7 +37,7 @@ router = APIRouter()
 
 @router.get("/health", response_model=HealthResponse)
 @limiter.limit(f"{settings.rate_limit_per_minute * 2}/minute")
-def health_check(request: Request):
+def health_check(request: Request) -> HealthResponse:
     """Health check endpoint."""
     return HealthResponse(
         status="healthy",
@@ -51,7 +54,7 @@ def create_organization(
     org_data: OrganizationCreate,
     db: Session = Depends(get_db),
     api_key: str = Depends(get_api_key_optional),
-):
+) -> Organization:
     """Create a new organization."""
     org = Organization(
         name=org_data.name,
@@ -68,7 +71,7 @@ def create_organization(
         request=request,
         api_key=api_key,
         resource_type="organization",
-        resource_id=org.id,
+        resource_id=org.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
         details={"name": org.name, "industry": org.industry},
     )
     
@@ -82,9 +85,9 @@ def get_organization(
     org_id: str,
     db: Session = Depends(get_db),
     api_key: str = Depends(get_api_key_optional),
-):
+) -> Organization:
     """Get organization by ID."""
-    org = db.query(Organization).filter(Organization.id == org_id).first()
+    org: Organization | None = db.query(Organization).filter(Organization.id == org_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
     
@@ -94,7 +97,7 @@ def get_organization(
         request=request,
         api_key=api_key,
         resource_type="organization",
-        resource_id=org.id,
+        resource_id=org.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
     )
     
     return org
@@ -108,10 +111,10 @@ def create_metadata_profile(
     profile_data: MetadataProfileCreate,
     db: Session = Depends(get_db),
     api_key: str = Depends(get_api_key_optional),
-):
+) -> MetadataProfile:
     """Create a new metadata profile."""
     # Verify organization exists
-    org = db.query(Organization).filter(Organization.id == profile_data.organization_id).first()
+    org: Organization | None = db.query(Organization).filter(Organization.id == profile_data.organization_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
 
@@ -134,7 +137,7 @@ def create_metadata_profile(
         request=request,
         api_key=api_key,
         resource_type="metadata_profile",
-        resource_id=profile.id,
+        resource_id=profile.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
         details={"organization_id": profile.organization_id},
     )
     
@@ -142,9 +145,9 @@ def create_metadata_profile(
 
 
 @router.get("/metadata-profiles/{profile_id}", response_model=MetadataProfileResponse)
-def get_metadata_profile(profile_id: str, db: Session = Depends(get_db)):
+def get_metadata_profile(profile_id: str, db: Session = Depends(get_db)) -> MetadataProfile:
     """Get metadata profile by ID."""
-    profile = db.query(MetadataProfile).filter(MetadataProfile.id == profile_id).first()
+    profile: MetadataProfile | None = db.query(MetadataProfile).filter(MetadataProfile.id == profile_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Metadata profile not found")
     return profile
@@ -152,16 +155,16 @@ def get_metadata_profile(profile_id: str, db: Session = Depends(get_db)):
 
 # Control endpoints
 @router.get("/controls", response_model=list[ControlResponse])
-def list_controls(db: Session = Depends(get_db)):
+def list_controls(db: Session = Depends(get_db)) -> List[Control]:
     """List all controls."""
-    controls = db.query(Control).all()
+    controls: List[Control] = db.query(Control).all()
     return controls
 
 
 @router.get("/controls/{control_id}", response_model=ControlResponse)
-def get_control(control_id: str, db: Session = Depends(get_db)):
+def get_control(control_id: str, db: Session = Depends(get_db)) -> Control:
     """Get control by ID."""
-    control = db.query(Control).filter(Control.id == control_id).first()
+    control: Control | None = db.query(Control).filter(Control.id == control_id).first()
     if not control:
         raise HTTPException(status_code=404, detail="Control not found")
     return control
@@ -175,14 +178,16 @@ def create_assessment(
     assessment_data: AssessmentCreate,
     db: Session = Depends(get_db),
     api_key: str = Depends(get_api_key_optional),
-):
+) -> Assessment:
     """Create and run a new assessment."""
+    from datetime import datetime, timezone
+    
     # Verify organization and metadata profile exist
-    org = db.query(Organization).filter(Organization.id == assessment_data.organization_id).first()
+    org: Organization | None = db.query(Organization).filter(Organization.id == assessment_data.organization_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
 
-    profile = (
+    profile: MetadataProfile | None = (
         db.query(MetadataProfile)
         .filter(MetadataProfile.id == assessment_data.metadata_profile_id)
         .first()
@@ -206,23 +211,22 @@ def create_assessment(
         request=request,
         api_key=api_key,
         resource_type="assessment",
-        resource_id=assessment.id,
+        resource_id=assessment.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
         details={"organization_id": assessment.organization_id},
     )
 
     # Run rules engine
     try:
         engine = RulesEngine(db)
-        findings = engine.run_assessment(assessment.id)
+        findings = engine.run_assessment(assessment.id)  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
 
         # Save findings
         for finding in findings:
             db.add(finding)
 
         # Mark assessment complete
-        assessment.status = "completed"
-        from datetime import datetime
-        assessment.completed_at = datetime.utcnow()
+        assessment.status = "completed"  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
+        assessment.completed_at = datetime.now(timezone.utc)  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         db.commit()
         
         # Audit log - assessment completed
@@ -231,12 +235,12 @@ def create_assessment(
             request=request,
             api_key=api_key,
             resource_type="assessment",
-            resource_id=assessment.id,
+            resource_id=assessment.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
             details={"findings_count": len(findings), "status": "completed"},
         )
 
     except Exception as e:
-        assessment.status = "failed"
+        assessment.status = "failed"  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         db.commit()
         
         # Audit log - assessment failed
@@ -245,7 +249,7 @@ def create_assessment(
             request=request,
             api_key=api_key,
             resource_type="assessment",
-            resource_id=assessment.id,
+            resource_id=assessment.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
             success=False,
             details={"error": str(e), "status": "failed"},
         )
@@ -257,22 +261,22 @@ def create_assessment(
 
 
 @router.get("/assessments/{assessment_id}", response_model=AssessmentResponse)
-def get_assessment(assessment_id: str, db: Session = Depends(get_db)):
+def get_assessment(assessment_id: str, db: Session = Depends(get_db)) -> Assessment:
     """Get assessment by ID."""
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    assessment: Assessment | None = db.query(Assessment).filter(Assessment.id == assessment_id).first()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     return assessment
 
 
 @router.get("/assessments/{assessment_id}/findings", response_model=list[FindingResponse])
-def get_assessment_findings(assessment_id: str, db: Session = Depends(get_db)):
+def get_assessment_findings(assessment_id: str, db: Session = Depends(get_db)) -> List[Finding]:
     """Get findings for an assessment."""
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    assessment: Assessment | None = db.query(Assessment).filter(Assessment.id == assessment_id).first()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    findings = db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
+    findings: List[Finding] = db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
     return findings
 
 
@@ -283,17 +287,17 @@ def get_remediation_roadmap(
     assessment_id: str,
     db: Session = Depends(get_db),
     api_key: str = Depends(get_api_key_optional),
-):
+) -> RemediationRoadmapResponse:
     """Generate prioritized remediation roadmap for an assessment."""
     from datetime import datetime
     
     # Verify assessment exists
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    assessment: Assessment | None = db.query(Assessment).filter(Assessment.id == assessment_id).first()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
     # Get all findings for this assessment
-    findings = db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
+    findings: List[Finding] = db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
 
     # Group findings by priority window
     immediate = []
@@ -310,20 +314,20 @@ def get_remediation_roadmap(
     for finding in findings:
         # Create roadmap item
         item = RoadmapItem(
-            finding_id=finding.id,
-            control_id=finding.control_id,
-            title=finding.title,
-            severity=finding.severity,
-            cvss_score=finding.cvss_score,
-            priority_window=finding.priority_window or "quarterly",
-            owner=finding.owner,
-            remediation_guidance=finding.remediation_guidance or "Contact security team for guidance",
-            cve_ids=finding.cve_ids or [],
-            cwe_ids=finding.cwe_ids or [],
+            finding_id=finding.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+            control_id=finding.control_id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+            title=finding.title,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+            severity=finding.severity,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+            cvss_score=finding.cvss_score,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+            priority_window=finding.priority_window or "quarterly",  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+            owner=finding.owner,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+            remediation_guidance=finding.remediation_guidance or "Contact security team for guidance",  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+            cve_ids=finding.cve_ids or [],  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+            cwe_ids=finding.cwe_ids or [],  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
         )
 
         # Group by priority window
-        priority = finding.priority_window or "quarterly"
+        priority = str(finding.priority_window or "quarterly")  # Extract value from Column for conditional
         if priority == "immediate":
             immediate.append(item)
         elif priority == "30_days":
@@ -362,8 +366,8 @@ def get_remediation_roadmap(
     # Build roadmap response
     roadmap = RemediationRoadmapResponse(
         assessment_id=assessment_id,
-        organization_id=assessment.organization_id,
-        generated_at=datetime.utcnow(),
+        organization_id=assessment.organization_id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+        generated_at=datetime.now(timezone.utc),
         summary=summary,
         immediate=immediate,
         thirty_days=thirty_days,

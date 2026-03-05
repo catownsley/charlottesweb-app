@@ -148,16 +148,16 @@ class Settings(BaseSettings):
     
     @property
     def is_production(self) -> bool:
-        \"\"\"Check if running in production environment.
+        """Check if running in production environment.
         
         Returns True if APP_ENV is 'production' or 'prod'.
         Used to enable stricter security controls.
-        \"\"\"
+        """
         return self.app_env.lower() in ("production", "prod")
 
     @property
     def cors_allowed_origins(self) -> List[str]:
-        \"\"\"Get CORS allowed origins based on environment.
+        """Get CORS allowed origins based on environment.
         
         Logic:
         - Development + no explicit origins → Allow all ("*")
@@ -166,7 +166,7 @@ class Settings(BaseSettings):
         Security:
         - Never return ["*"] in production
         - Requires explicit origin configuration in production
-        \"\"\"
+        """
         if self.debug and not self.cors_origins:
             return ["*"]  # Allow all in development for convenience
         return self.cors_origins  # Use explicit whitelist

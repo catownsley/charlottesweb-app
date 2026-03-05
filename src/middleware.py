@@ -65,7 +65,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Prevents the page from being embedded in <iframe>, <frame>, or <object>
         # DENY = never allow framing (most secure)
         # Alternative: SAMEORIGIN = allow same-origin framing
-        response.headers["X-Frame-Options"] = "DENY"
+        # Exception: Allow for /docs and /redoc endpoints (self-hosted documentation)
+        is_docs_endpoint = request.url.path in ["/docs", "/redoc", "/openapi.json"]
+        response.headers["X-Frame-Options"] = "SAMEORIGIN" if is_docs_endpoint else "DENY"
 
         # Security Header 2: MIME Sniffing Protection
         # Forces browser to respect declared Content-Type
@@ -77,12 +79,30 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # mode=block stops page rendering if attack detected
         response.headers["X-XSS-Protection"] = "1; mode=block"
 
-        # Security Header 4: Content Security Policy (Strict)
-        # default-src 'none' = Block all content by default
-        # frame-ancestors 'none' = Prevent framing (redundant with X-Frame-Options)
-        # For API: strict policy since we only return JSON
-        # For web app: would need to allow scripts, styles, etc.
-        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+        # Security Header 4: Content Security Policy
+        # Strategy: Different policies for different endpoints
+        # - Docs endpoints (/docs, /redoc): Allow inline styles/scripts for Swagger UI
+        # - API endpoints: Strict policy (no resources needed)
+        # This balances usability (can view docs) with security (API locked down)
+        if is_docs_endpoint:
+            # Swagger UI needs: inline scripts, inline styles, CDN resources, and connection to /openapi.json
+            # 'self' allows same-origin resources (stylesheets, scripts)
+            # 'unsafe-inline' allows inline styles and scripts (needed for Swagger UI)
+            # https://cdn.jsdelivr.net allows loading Swagger UI bundle from CDN
+            # connect-src 'self' allows AJAX to /openapi.json
+            # img-src allows favicon from fastapi.tiangolo.com
+            csp = (
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "connect-src 'self'; "
+                "img-src 'self' https://fastapi.tiangolo.com; "
+                "default-src 'none'"
+            )
+        else:
+            # API responses should be JSON only, no scripts/styles needed
+            # default-src 'none' blocks all content by default (most secure)
+            csp = "default-src 'none'; frame-ancestors 'none'"
+        response.headers["Content-Security-Policy"] = csp
 
         # Security Header 5: Referrer Policy
         # no-referrer = Never send referrer information
