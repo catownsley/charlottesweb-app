@@ -21,7 +21,7 @@
        - Browser auto-escapes text in textContent and JSON.stringify, no manual escaping needed
 
     3. CSRF PREVENTION (Cross-Site Request Forgery)
-       - HTTPS/TLS enforced (localhost:8443)
+       - HTTPS/TLS enforced in production
        - Requests include proper Origin/Referer headers
        - SameSite cookie attribute applied by browser
 
@@ -741,7 +741,7 @@
                 suggestionTimeout = setTimeout(async () => {
                     try {
                         const response = await fetch(
-                            `https://localhost:8443/api/v1/components/${encodeURIComponent(componentName)}/versions`
+                            `/api/v1/components/${encodeURIComponent(componentName)}/versions`
                         );
 
                         if (!response.ok) {
@@ -888,7 +888,7 @@
                 showLoading('Creating organization...');
 
                 // Step 1: Create organization
-                const orgRes = await fetch('https://localhost:8443/api/v1/organizations', {
+                const orgRes = await fetch('/api/v1/organizations', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     credentials: 'include',
@@ -906,7 +906,7 @@
                 // Step 2: Create metadata profile
                 showLoading('Creating metadata profile...');
 
-                const profileRes = await fetch('https://localhost:8443/api/v1/metadata-profiles', {
+                const profileRes = await fetch('/api/v1/metadata-profiles', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -927,7 +927,7 @@
                 // Step 3: Create assessment
                 showLoading('Creating assessment...');
 
-                const assessRes = await fetch('https://localhost:8443/api/v1/assessments', {
+                const assessRes = await fetch('/api/v1/assessments', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -948,7 +948,7 @@
                 showLoading('Querying National Vulnerability Database...');
 
                 const nvdRes = await fetch(
-                    `https://localhost:8443/api/v1/assessments/${assess.id}/analyze-nvd`,
+                    `/api/v1/assessments/${assess.id}/analyze-nvd`,
                     {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'}
