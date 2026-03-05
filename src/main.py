@@ -18,6 +18,7 @@ Architecture:
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -120,6 +121,14 @@ app.add_middleware(
     allow_methods=settings.cors_allow_methods,  # HTTP methods allowed
     allow_headers=settings.cors_allow_headers,  # Headers allowed in requests
 )
+
+# Compression Middleware: Gzip Response Compression
+# Compresses HTTP response bodies to reduce bandwidth
+# Performance impact:
+#   - Reduces payload size by 60-80% for JSON/text responses
+#   - Client must support gzip (Accept-Encoding: gzip)
+#   - minimum_size=1000: Only compress responses >1KB (overhead prevention)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 # ============================================================================
