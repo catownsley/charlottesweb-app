@@ -29,13 +29,23 @@ import uuid
 from typing import Callable
 
 from fastapi import Request, Response
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
+
+from src.security import get_api_key_optional  # Re-export for convenience
+
+# Rate limiter instance for use in route decorators
+limiter = Limiter(key_func=get_remote_address)
+
+__all__ = ["SecurityHeadersMiddleware", "RequestIDMiddleware", "ResponseTimeMiddleware", "limiter", "get_api_key_optional"]
+
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all HTTP responses.
-    
+
     Headers added:
     - X-Frame-Options: Prevents clickjacking attacks
     - X-Content-Type-Options: Prevents MIME sniffing
@@ -44,13 +54,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     - Referrer-Policy: Controls referrer information
     - Permissions-Policy: Controls browser features
     - Strict-Transport-Security: Enforces HTTPS (HTTPS only)
-    
+
     Security benefits:
     - OWASP Top 10 mitigation
     - Defense in depth
     - Browser-level security controls
     - Compliance requirements (SOC 2, PCI-DSS)
-    
+
     Note: These headers are applied to ALL responses automatically.
     """
 
@@ -129,24 +139,24 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Add unique request ID to all requests and responses for tracing.
-    
+
     Flow:
     1. Check if client provided X-Request-ID header
     2. If not, generate a new UUID
     3. Store in request.state for access in route handlers
     4. Add to response headers for client reference
-    
+
     Benefits:
     - Correlate logs across services
     - Debug specific requests
     - Track request through audit logs
     - Support distributed tracing
-    
+
     Usage in route handlers:
         def my_route(request: Request):
             request_id = request.state.request_id
             logger.info(f"Processing {request_id}")
-    
+
     Client usage:
         curl -H "X-Request-ID: my-custom-id" https://api.example.com/
         # Response will include: X-Request-ID: my-custom-id
@@ -177,21 +187,21 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 
 class ResponseTimeMiddleware(BaseHTTPMiddleware):
     """Add response time header to track endpoint performance.
-    
+
     Measures wall-clock time from request receipt to response ready.
     Useful for:
     - Identifying slow endpoints
     - SLA monitoring
     - Performance regression detection
     - Capacity planning
-    
+
     Header added:
         X-Process-Time: <milliseconds>
-    
+
     Example:
         X-Process-Time: 42.15
         (Request took 42.15 milliseconds to process)
-    
+
     Note:
         This is server-side processing time only.
         Does not include network latency or client rendering time.
@@ -203,15 +213,15 @@ class ResponseTimeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Record start time (high precision)
         start_time = time.time()
-        
+
         # Process request
         response = await call_next(request)
-        
+
         # Calculate elapsed time in seconds
         process_time = time.time() - start_time
-        
+
         # Add header in milliseconds (rounded to 2 decimal places)
         # Example: 0.04215 seconds → "42.15" milliseconds
         response.headers["X-Process-Time"] = str(round(process_time * 1000, 2))
-        
+
         return response
