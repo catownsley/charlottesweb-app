@@ -1,10 +1,28 @@
-# Security Hardening Guide
+# Security Guide
 
-## Overview
+CharlottesWeb implements comprehensive security controls appropriate for a HIPAA compliance platform. This guide covers all security features, configuration, testing, and incident response procedures.
 
-CharlottesWeb implements comprehensive security controls appropriate for a HIPAA compliance platform. This document outlines all security features and best practices.
+---
 
-## Security Features Implemented
+## Quick Reference
+
+| Feature | Purpose | Status |
+|---------|---------|--------|
+| **API Key Authentication** | Verify request origin with cryptographic keys | ✅ Active |
+| **JWT Token Auth** | Secure session handling with HS256 signing (PyJWT) | ✅ Active |
+| **Rate Limiting** | Prevent abuse with per-IP throttling (60 req/min) | ✅ Active |
+| **Security Headers** | 7 HTTP headers protecting against common attacks | ✅ Active |
+| **Audit Logging** | JSON structured logs with comprehensive event tracking | ✅ Active |
+| **Request Tracing** | UUID per request for incident investigation | ✅ Active |
+| **Password Hashing** | Automatic bcrypt with dynamic salt | ✅ Active |
+| **Secrets Management** | Environment-based configuration, zero secrets in code | ✅ Active |
+| **CodeQL + Bandit SAST** | Automated code scanning in CI/CD pipeline | ✅ Active |
+| **pip-audit Scanning** | Dependency vulnerability detection (blocks CVEs) | ✅ Active |
+| **Startup Validation** | Configuration security checks at boot | ✅ Active |
+
+---
+
+## Detailed Feature Documentation
 
 ### 1. Authentication & Authorization
 
@@ -310,6 +328,85 @@ Security Warnings: 0 ✅
 
 ---
 
+## Compliance Mapping
+
+### HIPAA 164.312(b) - Audit Controls
+✅ **Met by**: Audit logging with comprehensive event tracking, JSON structured logs, request tracing
+
+**Evidence:**
+- All authentication events logged
+- All data access (CRUD) operations recorded
+- Request metadata captured (IP, user agent, timestamp)
+- API key usage tracked (last 4 characters only)
+
+### SOC 2 CC6.1 - Logical Access Controls
+✅ **Met by**: API key authentication, JWT tokens, password hashing, rate limiting
+
+**Evidence:**
+- Multi-layer authentication (API keys + JWT)
+- Cryptographically secure key generation
+- bcrypt password hashing with dynamic salt
+- Per-IP rate limiting to prevent brute force
+
+### SOC 2 CC7.1 - System Monitoring
+✅ **Met by**: Audit logs, security alerts, request tracing, startup validation
+
+**Evidence:**
+- Real-time security event logging
+- Request ID propagation for incident investigation
+- Configuration validation at application startup
+- Automated dependency vulnerability scanning
+
+### OWASP Top 10 2021 Coverage
+
+| Vulnerability | Mitigation |
+|---|---|
+| **A01 - Broken Access Control** | API keys, JWT, rate limiting |
+| **A02 - Cryptographic Failures** | bcrypt hashing, HS256 tokens, TLS/HTTPS |
+| **A03 - Injection** | Pydantic validation, parameterized queries |
+| **A05 - Security Misconfiguration** | Startup validation, secure defaults |
+| **A06 - Vulnerable Components** | pip-audit (automated), pinned versions |
+| **A09 - Logging & Monitoring** | Audit logs with request tracing |
+
+---
+
+## Emergency Procedures
+
+### Disable API Key Requirement (Emergency Access)
+```bash
+# In .env
+API_KEY_REQUIRED=false
+
+# Restart application - all requests now allowed
+# ⚠️ IMMEDIATELY re-enable authentication after restoring service
+```
+
+### Block Suspicious IP Address
+```bash
+# Implement at reverse proxy / firewall level (recommended)
+# Or temporarily throttle: RATE_LIMIT_PER_MINUTE=1
+```
+
+### Rotate All Secrets (Security Incident)
+1. Generate new `SECRET_KEY`:
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+2. Update `.env` file
+3. Restart application
+4. **Impact:** All existing JWT tokens become invalid
+5. Users must re-authenticate
+
+### Audit Log Breach Response
+1. Export `audit.log` for forensics
+2. Cross-reference `request_id` values across entries
+3. Identify compromised resources via `resource_id`
+4. Reset access tokens/API keys for affected users
+5. Check `details` field for suspicious patterns
+6. Engage incident response team if PHI potentially exposed
+
+---
+
 ## Security Testing
 
 ### Automated Testing
@@ -320,24 +417,69 @@ pip install bandit pip-audit
 # Scan for common security issues
 bandit -r src/
 
-# Check for vulnerable dependencies (NEW)
+# Check for vulnerable dependencies
 pip-audit -r requirements.txt
 
-# Run tests
-pytest tests/
+# Run unit tests
+pytest tests/ -v
 ```
 
 ### Manual Testing
+
+#### Test API Key Enforcement
 ```bash
-# Test rate limiting
-for i in {1..70}; do curl http://localhost:8000/api/v1/health; done
+# Should fail (missing key) when API_KEY_REQUIRED=true
+curl https://localhost:8443/api/v1/organizations
 
-# Test API key enforcement
-curl http://localhost:8000/api/v1/organizations  # Should fail if required
-curl -H "X-API-Key: invalid" http://localhost:8000/api/v1/organizations  # Should fail
+# Should succeed with valid key
+curl -H "X-API-Key: YOUR_KEY" https://localhost:8443/api/v1/organizations
+```
 
-# Verify security headers
+#### Test Rate Limiting
+```bash
+# Run 65 requests in rapid succession
+for i in {1..65}; do
+  curl -H "X-API-Key: YOUR_KEY" https://localhost:8443/api/v1/health
+done
+# First 60 return 200 OK, requests 61-65 return 429 Too Many Requests
+```
+
+#### Test Security Headers
+```bash
+# Verify all security headers are present
 curl -I https://localhost:8443/api/v1/health
+
+# Expected headers include:
+# Strict-Transport-Security: max-age=31536000; includeSubDomains
+# Content-Security-Policy: default-src 'none'; ...
+# X-Frame-Options: DENY
+# X-Content-Type-Options: nosniff
+# X-XSS-Protection: 1; mode=block
+# Referrer-Policy: no-referrer
+```
+
+#### Test Audit Logging
+```bash
+# Trigger an action
+curl -X POST -H "X-API-Key: YOUR_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"name": "Test Org"}' \
+     https://localhost:8443/api/v1/organizations
+
+# Check audit log for the event
+tail -10 audit.log | python3 -m json.tool
+```
+
+#### Test Request Tracing
+```bash
+# Verify request ID in response headers
+curl -v https://localhost:8443/api/v1/health 2>&1 | grep "X-Request-ID"
+
+# Or provide your own request ID
+curl -H "X-Request-ID: my-trace-123" https://localhost:8443/api/v1/health
+
+# Cross-reference with audit log
+grep "my-trace-123" audit.log
 ```
 
 ---
@@ -404,23 +546,40 @@ For security issues or questions:
 
 ## Version History
 
-- **v0.3.0** (2026-03-05): Security automation and dependency hardening
-  - pip-audit automated dependency scanning (PR + nightly)
-  - Startup security validation (6 configuration checks)
-  - PyJWT migration (replaced python-jose, eliminated CVE-2024-23342)
-  - 80% reduction in dependency attack surface
-  - Zero known vulnerabilities
+**v0.3.0 (2026-03-05)** - Security automation and dependency hardening
+- pip-audit automated dependency scanning (PR non-blocking + nightly strict)
+- Startup security validation with 6 configuration checks
+- PyJWT migration (eliminated CVE-2024-23342 in python-jose dependency)
+- 80% reduction in dependency attack surface for HS256 algorithm
+- Zero known vulnerabilities
 
-- **v0.2.0** (2026-03-04): Security hardening implementation
-  - API key authentication
-  - Rate limiting
-  - Security headers
-  - Audit logging
-  - Request tracing
-  - Error handling
-  - Secrets management
+**v0.2.0 (2026-03-04)** - Comprehensive security hardening
+- API key authentication with configurable enforcement
+- Per-IP rate limiting with slowapi
+- 7 security headers (including CSP, HSTS, X-Frame-Options)
+- Comprehensive audit logging with 22+ event types
+- Request ID tracing for incident investigation
+- Secure error handling (environment-aware)
+- Environment-based secrets management
 
-- **v0.1.0** (2026-03-03): Initial MVP implementation
-  - Basic API endpoints
-  - HTTPS support (dev certificates)
-  - CORS configuration
+**v0.1.0 (2026-03-03)** - Initial MVP
+- FastAPI foundation with CRUD endpoints
+- HTTPS support with self-signed dev certificates
+- Basic CORS configuration
+
+---
+
+## Additional Resources
+
+- **[DEV_GUIDE.md](DEV_GUIDE.md)** - Development setup and local testing
+- **[src/security.py](src/security.py)** - Authentication utilities
+- **[src/audit.py](src/audit.py)** - Logging implementation
+- **[src/middleware.py](src/middleware.py)** - Security headers & rate limiting
+- **[OWASP Top 10](https://owasp.org/www-project-top-ten/)** - Web security fundamentals
+- **[HIPAA Security Rule](https://www.hhs.gov/hipaa/for-professionals/security/index.html)** - Compliance framework
+
+---
+
+**Last Updated:** March 5, 2026
+**Status:** Production Ready ✅
+**Security Posture:** Zero known vulnerabilities
