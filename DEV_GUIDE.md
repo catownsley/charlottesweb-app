@@ -50,6 +50,18 @@ The API will be available at:
 pytest tests/ -v
 ```
 
+### 6. Enable Pre-Commit Security Checks
+
+```bash
+# Install git hooks
+pre-commit install
+
+# Run checks on all files (recommended before first push)
+pre-commit run --all-files
+```
+
+These checks block common mistakes before commit, including accidental private key commits and merge-conflict artifacts.
+
 ---
 
 ## 🔒 Security Configuration
