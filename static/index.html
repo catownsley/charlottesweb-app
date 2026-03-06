@@ -829,6 +829,7 @@
                 // Build software stack from component inputs
                 const stack = {};
                 const componentRows = document.querySelectorAll('.component-row');
+                const defaultedVersions = [];  // Track versions we auto-selected
 
                 // Validation patterns (match backend)
                 const componentPattern = /^[a-zA-Z0-9_-]+$/;
@@ -836,8 +837,10 @@
 
                 // Collect all components
                 for (const row of componentRows) {
-                    const name = row.querySelector('.component-name').value.trim();
-                    const version = row.querySelector('.component-version').value.trim();
+                    const nameInput = row.querySelector('.component-name');
+                    const versionInput = row.querySelector('.component-version');
+                    let name = nameInput.value.trim();
+                    let version = versionInput.value.trim();
 
                     console.log(`Component row: name="${name}", version="${version}"`);
 
@@ -847,10 +850,38 @@
                         continue;
                     }
 
-                    // Warn about incomplete entries but skip them gracefully
-                    if (!name || !version) {
-                        console.log(`  → Skipping incomplete entry (name=${!!name}, version=${!!version})`);
-                        continue;  // Skip partial entries without throwing error
+                    // If name provided but version missing, auto-select latest version
+                    if (name && !version) {
+                        console.log(`  → Component "${name}" missing version, fetching latest...`);
+
+                        try {
+                            // Synchronous fetch is deprecated, but we'll use it for form submission
+                            // In a real app, use async/await and refactor the form handler
+                            const response = await fetch(
+                                `/api/v1/components/${encodeURIComponent(name)}/versions`
+                            );
+
+                            if (response.ok) {
+                                const data = await response.json();
+                                const versions = data.versions || [];
+
+                                if (versions.length > 0) {
+                                    version = versions[0];  // Latest version
+                                    defaultedVersions.push({name, version});
+                                    versionInput.value = version;
+                                    console.log(`  → Auto-selected version ${version} for ${name}`);
+                                } else {
+                                    throw new Error(`No known versions found for "${name}"`);
+                                }
+                            } else {
+                                throw new Error(`Could not fetch versions for "${name}"`);
+                            }
+                        } catch (err) {
+                            throw new Error(
+                                `Component "${name}" requires a version. ` +
+                                `Could not auto-detect: ${err.message}`
+                            );
+                        }
                     }
 
                     // Validate name if provided
@@ -963,8 +994,8 @@
                 const findings = await nvdRes.json();
                 console.log('✅ NVD analysis complete:', findings.length, 'findings');
 
-                // Display results
-                displayResults(stack, findings, org, assess.id);
+                // Display results with notification about auto-selected versions
+                displayResults(stack, findings, org, assess.id, defaultedVersions);
 
             } catch (err) {
                 showError(err.message);
@@ -1037,12 +1068,26 @@
             });
         }
 
-        function displayResults(stack, findings, org, assessmentId) {
+        function displayResults(stack, findings, org, assessmentId, defaultedVersions = []) {
             // Store data for export
             window.currentAssessment = { stack, findings, org, assessmentId };
 
             let html = `
-                <h3>✅ Analysis Complete</h3>
+                <h3>✅ Analysis Complete</h3>`;
+
+            // Show notification if versions were auto-selected
+            if (defaultedVersions && defaultedVersions.length > 0) {
+                const versionsList = defaultedVersions
+                    .map(dv => `<strong>${dv.name}</strong> → ${dv.version}`)
+                    .join(', ');
+                html += `
+                <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #856404;">
+                    <strong>ℹ️ Auto-detected versions:</strong> ${versionsList}
+                    <div style="font-size: 12px; margin-top: 6px;">You can re-run the analysis with different versions if needed.</div>
+                </div>`;
+            }
+
+            html += `
                 <div class="export-buttons">
                     <button onclick="exportJSON()" title="Download findings as JSON">📥 Export JSON</button>
                     <button onclick="exportReport()" title="Download human-readable report">📄 Export Report</button>
