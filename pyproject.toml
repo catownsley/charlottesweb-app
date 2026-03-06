@@ -1,0 +1,144 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "charlottesweb"
+version = "0.3.0"
+description = "HIPAA Compliance-as-Code Platform with Evidence Automation"
+requires-python = ">=3.10"
+
+[tool.black]
+# Code formatter configuration
+# - Line length: 88 chars (Black standard, conventional in Python community)
+# - Target Python version: 3.10+
+line-length = 88
+target-version = ['py310', 'py311', 'py312']
+
+# Files/directories to exclude
+exclude = '''
+/(
+    \.git
+    | \.venv
+    | venv
+    | __pycache__
+    | \.pytest_cache
+    | \.mypy_cache
+    | build
+    | dist
+)/
+'''
+
+[tool.ruff]
+# Ruff linter configuration
+# - Fast, modern Python linter (Rust-based)
+# - Replaces flake8 + isort + many plugins
+line-length = 88
+target-version = "py310"
+
+# Linting rules to enforce
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes (undefined names, unused imports)
+    "I",      # isort (import ordering)
+    "C90",    # McCabe complexity
+    "N",      # pep8-naming
+    "UP",     # pyupgrade (use modern Python syntax)
+    "B",      # flake8-bugbear (likely bugs)
+    "A",      # flake8-builtins (don't shadow builtins)
+]
+
+# Rules to ignore (these are opinionated)
+ignore = [
+    "E501",   # Line too long (handled by Black)
+    "W503",   # Line break before binary operator (handled by Black)
+    "B008",   # Do not perform function calls in argument defaults (false positives with FastAPI)
+]
+
+# Exclude test files from import sorting (they can have different order)
+extend-exclude = [
+    "tests",
+    ".venv",
+    "venv",
+]
+
+[tool.ruff.isort]
+# Import ordering configuration (isort within ruff)
+# Groups: future, stdlib, third-party, first-party, local
+profile = "black"
+known-first-party = ["src"]
+
+[tool.mypy]
+# Type checker configuration
+# - Strict mode enabled for comprehensive type coverage
+# - Helps catch bugs before runtime
+
+# Python version to target
+python_version = "3.10"
+
+# Strict type checking mode (most restrictive)
+strict = true
+
+# Ignore missing imports for packages without type stubs
+ignore_missing_imports = true
+
+# Warn about unused type: ignore comments
+warn_unused_ignores = true
+
+# Exit with error code if any issues found
+exit_status = true
+
+# Pretty-print output
+pretty = true
+
+# Plugins
+plugins = []
+
+# Paths to exclude from type checking
+exclude = [
+    "venv/",
+    ".venv/",
+    "build/",
+    "dist/",
+]
+
+# Per-module options (override strict for specific files if needed)
+[[tool.mypy.overrides]]
+# Optional: Allow less strict checking for generated code or tests
+module = "tests.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "src.seed"
+ignore_errors = false
+
+[tool.pytest.ini_options]
+# Pytest configuration
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Show extra test information
+addopts = "-v --tb=short"
+
+# Markers for test categorization
+markers = [
+    "integration: integration tests",
+    "unit: unit tests",
+]
+
+[tool.coverage.run]
+# Coverage configuration
+source = ["src"]
+omit = [
+    "*/__init__.py",
+    "*/seed.py",
+]
+
+[tool.coverage.report]
+# Require 80% coverage (aspirational)
+fail_under = 70
+precision = 2
+show_missing = true

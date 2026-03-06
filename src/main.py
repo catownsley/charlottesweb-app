@@ -16,6 +16,7 @@ Architecture:
 - Configuration via environment variables
 """
 import logging
+from typing import Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -143,7 +144,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 # ============================================================================
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+async def validation_exception_handler(request: Request[Any], exc: RequestValidationError) -> JSONResponse:
     """Handle Pydantic validation errors with security in mind.
 
     Triggered when:
@@ -184,7 +185,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 @app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
+async def general_exception_handler(request: Request[Any], exc: Exception) -> JSONResponse:
     """Handle unexpected exceptions (catch-all handler).
 
     Catches any unhandled exception that propagates to the top level.
@@ -245,13 +246,13 @@ FAVICON_HEADERS = {
 # Browsers automatically request /favicon.ico for the page icon.
 # This route prevents a 404 error in the logs and returns a valid icon.
 @app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
+async def favicon() -> Response:
     """Return branded shield-web favicon (200 OK)."""
     return Response(content=FAVICON_SVG, media_type="image/svg+xml", headers=FAVICON_HEADERS)
 
 
 @app.head("/favicon.ico", include_in_schema=False)
-async def favicon_head():
+async def favicon_head() -> Response:
     """Return favicon HEAD response (200 OK)."""
     return Response(status_code=200, media_type="image/svg+xml", headers=FAVICON_HEADERS)
 
@@ -329,7 +330,7 @@ except Exception as e:
 # ============================================================================
 
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     """Log application startup for audit trail.
 
     Runs once when the application starts.
@@ -358,10 +359,11 @@ async def startup_event():
     security_warnings = validate_security_config()
     if security_warnings:
         for warning in security_warnings:
-            log_security_alert(
-                threat_type="MISCONFIGURATION",
-                severity="high" if "🚨" in warning else "medium",
-                details={"warning": warning},
+            log_audit_event(
+                action=AuditAction.SECURITY_ALERT,
+                level=AuditLevel.CRITICAL if "🚨" in warning else AuditLevel.WARNING,
+                success=False,
+                details={"alert_type": "MISCONFIGURATION", "warning": warning},
             )
             # Also print to console for visibility during startup
             print(f"\n{warning}\n")
@@ -381,7 +383,7 @@ async def startup_event():
 
 
 @app.on_event("shutdown")
-async def shutdown_event():
+async def shutdown_event() -> None:
     """Log application shutdown for audit trail.
 
     Runs once when the application stops (graceful shutdown).

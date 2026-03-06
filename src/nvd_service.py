@@ -24,10 +24,10 @@ class NVDService:
             self.headers["apiKey"] = api_key
 
         # Simple in-memory cache (in production, use Redis)
-        self._cache: dict[str, Any] = {}
+        self._cache: dict[str, tuple[list[dict[str, Any]], datetime]] = {}
         self._cache_ttl = timedelta(hours=24)
 
-    def search_cves_by_keyword(self, keyword: str, max_results: int = 10) -> list[dict]:
+    def search_cves_by_keyword(self, keyword: str, max_results: int = 10) -> list[dict[str, Any]]:
         """Search for CVEs by keyword (e.g., product name).
 
         Args:
@@ -117,7 +117,7 @@ class NVDService:
             logger.error(f"Error processing NVD response: {e}")
             return []
 
-    def analyze_software_stack(self, software_stack: dict[str, str]) -> dict[str, list[dict]]:
+    def analyze_software_stack(self, software_stack: dict[str, str]) -> dict[str, list[dict[str, Any]]]:
         """Analyze a software stack for known vulnerabilities.
 
         Args:
@@ -274,7 +274,7 @@ class NVDService:
             return []
 
     @staticmethod
-    def _parse_version(version_str: str) -> tuple:
+    def _parse_version(version_str: str) -> tuple[int, ...]:
         """Parse version string for sorting.
 
         Converts "1.2.3" to (1, 2, 3) for proper numerical sorting.

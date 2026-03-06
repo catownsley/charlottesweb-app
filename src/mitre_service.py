@@ -81,14 +81,14 @@ class MITREService:
         },
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize MITRE ATT&CK service."""
         # In-memory cache (24-hour TTL, framework updates infrequently)
         self._cache: dict[str, Any] = {}
         self._cache_ttl = timedelta(hours=24)
-        self._attack_data: Optional[dict] = None
+        self._attack_data: Optional[dict[str, Any]] = None
 
-    def _fetch_attack_data(self) -> dict:
+    def _fetch_attack_data(self) -> dict[str, Any]:
         """Fetch MITRE ATT&CK STIX data from GitHub.
 
         Returns:
@@ -124,7 +124,7 @@ class MITREService:
             # Return empty structure if fetch fails
             return {"objects": []}
 
-    def get_technique_by_id(self, technique_id: str) -> Optional[dict]:
+    def get_technique_by_id(self, technique_id: str) -> Optional[dict[str, Any]]:
         """Get MITRE ATT&CK technique by ID.
 
         Args:
@@ -161,7 +161,7 @@ class MITREService:
 
         return None
 
-    def get_mitigations_for_technique(self, technique_id: str) -> list[dict]:
+    def get_mitigations_for_technique(self, technique_id: str) -> list[dict[str, Any]]:
         """Get mitigations (countermeasures) for a technique.
 
         Args:
@@ -207,7 +207,7 @@ class MITREService:
         """
         return self.CWE_TO_TECHNIQUE_MAP.get(cwe_id, [])
 
-    def get_healthcare_breach_context(self, technique_id: str) -> Optional[dict]:
+    def get_healthcare_breach_context(self, technique_id: str) -> Optional[dict[str, Any]]:
         """Get healthcare breach context for a technique.
 
         Args:
@@ -263,7 +263,7 @@ class MITREService:
             "summary": self._generate_threat_summary(list(unique_techniques)),
         }
 
-    def _generate_threat_summary(self, techniques: list[dict]) -> str:
+    def _generate_threat_summary(self, techniques: list[dict[str, Any]]) -> str:
         """Generate executive summary of threat context.
 
         Args:

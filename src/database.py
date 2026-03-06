@@ -1,5 +1,5 @@
 """Database session and engine configuration."""
-from typing import Type, TypeVar
+from typing import Generator, Optional, Type, TypeVar
 
 from fastapi import HTTPException
 from sqlalchemy import create_engine
@@ -33,7 +33,7 @@ Base = declarative_base()
 T = TypeVar("T")
 
 
-def get_db():
+def get_db() -> Generator[Session, None, None]:
     """Dependency for getting database sessions."""
     db = SessionLocal()
     try:
@@ -42,7 +42,7 @@ def get_db():
         db.close()
 
 
-def get_or_404(db: Session, model: Type[T], entity_id: str, entity_name: str = None) -> T:
+def get_or_404(db: Session, model: Type[T], entity_id: str, entity_name: Optional[str] = None) -> T:
     """Get entity by ID or raise 404 HTTPException.
 
     Args:

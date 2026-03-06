@@ -104,7 +104,7 @@ class TTLCache:
         self.invalidate()
 
 
-def cached(cache: TTLCache, key: str, ttl: Optional[int] = None) -> Callable:
+def cached(cache: TTLCache, key: str, ttl: Optional[int] = None) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator for caching function results.
 
     Args:
@@ -119,7 +119,7 @@ def cached(cache: TTLCache, key: str, ttl: Optional[int] = None) -> Callable:
     """
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        def wrapper(*args, **kwargs) -> T:
+        def wrapper(*args: Any, **kwargs: Any) -> T:
             cached_value = cache.get(key)
             if cached_value is not None:
                 logger.debug(f"Cache hit for key: {key}")
