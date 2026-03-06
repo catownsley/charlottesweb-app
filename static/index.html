@@ -1312,7 +1312,7 @@
                     const collectedAtText = item.collected_at ? new Date(item.collected_at).toLocaleDateString() : 'Not collected';
                     const hasEvidence = item.evidence_id !== null && item.evidence_id !== undefined;
                     const buttonHtml = hasEvidence
-                        ? `<button onclick="showEditModal('${item.evidence_id}', '${item.status}', '${item.required_evidence}', '${item.control_title}', '${(item.collected_at || '').replace(/'/g, "\\'")}');" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>`
+                        ? `<button class="edit-evidence-btn" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>`
                         : `<button disabled style="padding: 6px 12px; background: #ccc; color: #666; border: none; border-radius: 4px; cursor: not-allowed; font-size: 12px;" title="Create evidence record first">No Record</button>`;
                     
                     return `
@@ -1321,7 +1321,7 @@
                                 <div style="flex: 1;">
                                     <strong>${item.control_title}</strong>
                                     ${hasEvidence 
-                                        ? `<span class="status-pill ${item.status}" style="cursor: pointer;" onclick="showEditModal('${item.evidence_id}', '${item.status}', '${item.required_evidence}', '${item.control_title}', '${(item.collected_at || '').replace(/'/g, "\\'")}');">${item.status.replace('_', ' ')}</span>`
+                                        ? `<span class="status-pill ${item.status} edit-status-pill" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" style="cursor: pointer;">${item.status.replace('_', ' ')}</span>`
                                         : `<span class="status-pill ${item.status}" style="color: #999;">${item.status.replace('_', ' ')}</span>`
                                     }
                                     <div>${item.required_evidence}${ownerLabel}</div>
@@ -1373,6 +1373,30 @@
 
                 checklistLink.setAttribute('aria-expanded', 'true');
                 checklistLink.textContent = 'Evidence Checklist Loaded';
+
+                // Attach event listeners to Edit buttons
+                document.querySelectorAll('.edit-evidence-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const evidenceId = btn.dataset.evidenceId;
+                        const status = btn.dataset.status;
+                        const requiredEvidence = btn.dataset.requiredEvidence;
+                        const controlTitle = btn.dataset.controlTitle;
+                        const collectedAt = btn.dataset.collectedAt;
+                        showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt);
+                    });
+                });
+
+                // Attach event listeners to Status pills
+                document.querySelectorAll('.edit-status-pill').forEach(pill => {
+                    pill.addEventListener('click', () => {
+                        const evidenceId = pill.dataset.evidenceId;
+                        const status = pill.dataset.status;
+                        const requiredEvidence = pill.dataset.requiredEvidence;
+                        const controlTitle = pill.dataset.controlTitle;
+                        const collectedAt = pill.dataset.collectedAt;
+                        showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt);
+                    });
+                });
             } catch (error) {
                 checklistPanel.innerHTML = `<p style="color: #b00020; margin: 0;">❌ Could not load evidence checklist. Please try again.</p>`;
                 checklistLink.setAttribute('aria-expanded', 'false');
