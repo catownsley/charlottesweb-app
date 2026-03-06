@@ -19,9 +19,15 @@ Security guidelines:
 - Set DEBUG=false in production
 """
 import secrets
+from pathlib import Path
 from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_SQLITE_DB_PATH = BASE_DIR / "charlottesweb.db"
+DEFAULT_SQLITE_DATABASE_URL = f"sqlite:///{DEFAULT_SQLITE_DB_PATH.as_posix()}"
 
 
 class Settings(BaseSettings):
@@ -55,8 +61,12 @@ class Settings(BaseSettings):
     # DATABASE SETTINGS
     # ========================================================================
 
-    database_url: str = "sqlite:///./charlottesweb.db"  # SQLite for dev, PostgreSQL for prod
+    database_url: str = DEFAULT_SQLITE_DATABASE_URL  # SQLite for dev, PostgreSQL for prod
     # Production example: "postgresql://user:pass@localhost/charlottesweb"
+
+    # Development convenience flag. When true, startup drops and recreates all tables.
+    # Keep false by default to avoid accidental data loss on restart.
+    reset_db_on_startup: bool = False
 
     # ========================================================================
     # API SETTINGS

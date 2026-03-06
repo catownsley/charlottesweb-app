@@ -15,6 +15,8 @@ Architecture:
 - Lifecycle event hooks (startup/shutdown)
 - Configuration via environment variables
 """
+import logging
+
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,6 +38,8 @@ from src.middleware import (
     SecurityHeadersMiddleware,
 )
 from src.models import Assessment, Control, Evidence, Finding, MetadataProfile, Organization
+
+logger = logging.getLogger(__name__)
 
 # Import model classes so SQLAlchemy registers all tables before create_all()
 REGISTERED_MODEL_CLASSES = (
@@ -340,9 +344,12 @@ async def startup_event():
     - External service health checks
     - Feature flag loading
     """
-    # Ensure all database tables are created with the latest schema
-    # Drop existing tables for development (fresh schema on restart)
-    Base.metadata.drop_all(bind=engine)
+    # Ensure all database tables are created with the latest schema.
+    # Destructive reset is opt-in only.
+    if settings.reset_db_on_startup:
+        logger.warning("RESET_DB_ON_STARTUP enabled: dropping and recreating all tables")
+        Base.metadata.drop_all(bind=engine)
+
     Base.metadata.create_all(bind=engine)
 
     # Validate security configuration

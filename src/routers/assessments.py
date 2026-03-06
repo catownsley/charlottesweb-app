@@ -29,6 +29,26 @@ router = APIRouter(prefix="/assessments", tags=["assessments"])
 logger = logging.getLogger(__name__)
 
 
+CWE_CONTROL_MAP = {
+    "CWE-295": "HC.SC-7.1",   # Improper Certificate Validation → TLS/Encryption
+    "CWE-311": "HC.SC-4.1",   # Missing Encryption → Data Protection
+    "CWE-798": "HC.SC-2.1",   # Hard-coded Credentials → Access Control
+    "CWE-347": "HC.SC-12.1",  # Improper Verification of Cryptographic Signature → Key Management
+    "CWE-200": "HC.SC-7.2",   # Information Exposure → Network Security
+    "CWE-778": "HC.AU-6.1",   # Insufficient Logging → Audit Logging
+    "CWE-89": "HC.SC-3.1",    # SQL Injection → Input Validation
+    "CWE-79": "HC.SC-3.1",    # Cross-site Scripting → Input Validation
+}
+
+# Fallback controls used when CWE mapping is unavailable or unknown.
+# Ordered by preference; first existing control in DB is selected.
+FALLBACK_CONTROL_CANDIDATES = [
+    "HC.SC-7.1",              # Healthcare transmission security
+    "HIPAA.164.312(e)(1)",    # HIPAA transmission security
+    "HIPAA.164.312(a)(2)(iv)",  # HIPAA encryption/decryption
+]
+
+
 @router.post("", response_model=AssessmentResponse, status_code=201)
 @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 def create_assessment(
@@ -322,11 +342,22 @@ def analyze_nvd_vulnerabilities(
     # Analyze software stack for vulnerabilities
     nvd_results = nvd_service.analyze_software_stack(software_stack)
 
+    # Cache available controls for deterministic and efficient mapping
+    available_control_ids = {control_id for (control_id,) in db.query(Control.id).all()}
+    if not available_control_ids:
+        logger.warning("No controls found in database; NVD findings will be created without control mapping")
+
     # Create findings from NVD results
     new_findings: list[Finding] = []
 
+    total_cves_processed = 0
+    mapped_via_cwe = 0
+    mapped_via_fallback = 0
+    unmapped_cves = 0
+
     for component, cves in nvd_results.items():
         for cve in cves:
+            total_cves_processed += 1
             # Check if this CVE finding already exists
             existing = db.query(Finding).filter(
                 Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
@@ -344,35 +375,35 @@ def analyze_nvd_vulnerabilities(
             # Map CWE IDs to applicable controls
             control_id = None
             cwe_ids = cve.get("cwe_ids", [])
+            mapping_source = "none"
 
             if cwe_ids:
-                # CWE → Control mapping (maps known CWE patterns to security controls)
-                cwe_control_map = {
-                    "CWE-295": "HC.SC-7.1",  # Improper Certificate Validation → TLS/Encryption
-                    "CWE-311": "HC.SC-4.1",  # Missing Encryption → Data Protection
-                    "CWE-798": "HC.SC-2.1",  # Hard-coded Credentials → Access Control
-                    "CWE-347": "HC.SC-12.1", # Improper Verification of Cryptographic Signature → Key Management
-                    "CWE-200": "HC.SC-7.2",  # Information Exposure → Network Security
-                    "CWE-778": "HC.AU-6.1",  # Insufficient Logging → Audit Logging
-                    "CWE-89": "HC.SC-3.1",   # SQL Injection → Input Validation
-                    "CWE-79": "HC.SC-3.1",   # Cross-site Scripting → Input Validation
-                }
-
                 # Check if any CWE maps to a control
                 for cwe in cwe_ids:
-                    if cwe in cwe_control_map:
-                        control_id = cwe_control_map[cwe]
+                    if cwe in CWE_CONTROL_MAP:
+                        control_id = CWE_CONTROL_MAP[cwe]
+                        mapping_source = "cwe"
                         break
 
-                # If no specific mapping, default to encryption/security control
-                if not control_id:
-                    control_id = "HC.SC-7.1"  # Default: Network Security / TLS
+            # Ensure mapped control exists in database
+            if control_id and control_id not in available_control_ids:
+                control_id = None
+                mapping_source = "none"
 
-            # Verify control exists in database
-            if control_id:
-                control_exists = db.query(Control).filter(Control.id == control_id).first()
-                if not control_exists:
-                    control_id = None
+            # Fallback mapping when no direct CWE mapping is available
+            if not control_id:
+                for fallback_control in FALLBACK_CONTROL_CANDIDATES:
+                    if fallback_control in available_control_ids:
+                        control_id = fallback_control
+                        mapping_source = "fallback"
+                        break
+
+            if mapping_source == "cwe":
+                mapped_via_cwe += 1
+            elif mapping_source == "fallback":
+                mapped_via_fallback += 1
+            else:
+                unmapped_cves += 1
 
             # Create finding record
             # NOTE: Do NOT set id manually - let the database generate UUIDs to avoid uniqueness violations
@@ -392,17 +423,28 @@ def analyze_nvd_vulnerabilities(
             db.add(finding)
             new_findings.append(finding)
 
+    evidence_created_count = 0
+
     # Commit findings to database
     if new_findings:
         try:
             db.commit()
+            logger.info(f"✓ Committed {len(new_findings)} findings")
+
             # After committing findings, generate evidence items for controls
             db.refresh(assessment)
             unique_control_ids = set(f.control_id for f in new_findings if f.control_id)
+            logger.info(f"✓ Unique control IDs from findings: {unique_control_ids}")
 
             for control_id in unique_control_ids:
+                logger.info(f"  Processing control: {control_id}")
                 control = db.query(Control).filter(Control.id == control_id).first()
+                logger.info(f"  Control found: {control is not None}")
+                if control:
+                    logger.info(f"  Control.evidence_types: {control.evidence_types}")
+
                 if control and control.evidence_types:
+                    logger.info(f"  Creating evidence items for {len(control.evidence_types)} types")
                     for evidence_type in control.evidence_types:
                         # Check if evidence item already exists
                         existing = db.query(Evidence).filter(
@@ -422,13 +464,24 @@ def analyze_nvd_vulnerabilities(
                                 status="not_started",
                                 owner="system",
                             )
+                            logger.info(f"    Adding evidence item: {evidence_type}")
                             db.add(evidence_item)
+                            evidence_created_count += 1
 
             db.commit()
+            logger.info("✓ Committed all evidence items")
+            logger.warning(
+                "NVD analysis summary: findings=%s mapped_via_cwe=%s mapped_via_fallback=%s unmapped=%s evidence_created=%s",
+                len(new_findings),
+                mapped_via_cwe,
+                mapped_via_fallback,
+                unmapped_cves,
+                evidence_created_count,
+            )
         except Exception as e:
             db.rollback()
             # Log the actual error server-side but don't expose to user
-            logger.error(f"Failed to commit findings: {str(e)}")
+            logger.error(f"Failed to commit findings: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
                 detail="Failed to save vulnerability findings. Please try again with a different software stack or contact support."
@@ -444,7 +497,12 @@ def analyze_nvd_vulnerabilities(
         details={
             "software_stack_components": len(software_stack),
             "cves_found": sum(len(cves) for cves in nvd_results.values()),
+            "cves_processed": total_cves_processed,
             "findings_created": len(new_findings),
+            "mapped_via_cwe": mapped_via_cwe,
+            "mapped_via_fallback": mapped_via_fallback,
+            "unmapped_cves": unmapped_cves,
+            "evidence_created": evidence_created_count,
             "components_analyzed": list(nvd_results.keys()),
         },
         level=AuditLevel.INFO,
