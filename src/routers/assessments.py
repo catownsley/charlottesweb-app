@@ -155,9 +155,16 @@ def get_assessment(assessment_id: str, db: Session = Depends(get_db)) -> Assessm
 def evaluate_compliance_as_code(
     assessment_id: str,
     persist_findings: bool = Query(False, description="Persist failed policy rules as findings"),
+    auto_resolve: bool = Query(True, description="Automatically resolve/remove findings when rules pass"),
     db: Session = Depends(get_db),
 ) -> ComplianceAsCodeResponse:
-    """Evaluate metadata profile against JSON-defined compliance rules."""
+    """Evaluate metadata profile against JSON-defined compliance rules.
+    
+    Args:
+        assessment_id: Assessment to evaluate
+        persist_findings: If True, create/update findings for failed rules
+        auto_resolve: If True, remove findings for rules that now pass (only applies when persist_findings=True)
+    """
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
     metadata = get_or_404(
         db,
@@ -171,10 +178,13 @@ def evaluate_compliance_as_code(
 
     persisted_rule_ids: list[str] = []
     persisted_findings = 0
+    resolved_findings = 0
 
     if persist_findings:
         failed_results = [result for result in output["results"] if result["status"] == "fail"]
+        passed_results = [result for result in output["results"] if result["status"] == "pass"]
 
+        # Handle failed rules: create or update findings
         for result in failed_results:
             rule_id = result["rule_id"]
             severity = result["severity_on_fail"]
@@ -232,7 +242,24 @@ def evaluate_compliance_as_code(
 
             persisted_rule_ids.append(rule_id)
 
-        if failed_results:
+        # Handle passed rules: remove findings if auto_resolve is enabled
+        if auto_resolve:
+            for result in passed_results:
+                rule_id = result["rule_id"]
+                
+                existing_finding = (
+                    db.query(Finding)
+                    .filter(Finding.assessment_id == str(assessment.id))
+                    .filter(Finding.external_id == rule_id)
+                    .first()
+                )
+                
+                if existing_finding:
+                    logger.info(f"Auto-resolving finding for passing rule: {rule_id}")
+                    db.delete(existing_finding)
+                    resolved_findings += 1
+
+        if failed_results or resolved_findings > 0:
             db.commit()
             persisted_findings = len(failed_results)
 
@@ -248,6 +275,7 @@ def evaluate_compliance_as_code(
         persistence_enabled=persist_findings,
         persisted_findings=persisted_findings,
         persisted_rule_ids=persisted_rule_ids,
+        resolved_findings=resolved_findings,
         results=output["results"],
     )
 
@@ -644,18 +672,36 @@ def generate_evidence_checklist(
         .all()
     )
 
-    # Get existing evidence for these controls
+    # Get existing evidence for these controls, scoped to the organization
+    # This allows evidence to persist across assessments for the same org
     existing_evidence: List[Evidence] = (
         db.query(Evidence)
-        .filter(Evidence.assessment_id == assessment_id)
+        .join(Assessment, Evidence.assessment_id == Assessment.id)
+        .filter(
+            Assessment.organization_id == assessment.organization_id,
+            Evidence.control_id.in_(control_ids),
+        )
         .all()
     )
 
+    # Also get evidence not linked to any assessment but matching controls
+    orphan_evidence: List[Evidence] = (
+        db.query(Evidence)
+        .filter(
+            Evidence.assessment_id.is_(None),
+            Evidence.control_id.in_(control_ids),
+        )
+        .all()
+    )
+
+    # Merge both lists
+    all_evidence = existing_evidence + orphan_evidence
+
     # Create a map of (control_id, evidence_type) -> evidence
-    evidence_map = {
-        (ev.control_id, ev.evidence_type): ev
-        for ev in existing_evidence
-    }
+    # Prefer most recently updated evidence for each (control, type) combo
+    evidence_map = {}
+    for ev in sorted(all_evidence, key=lambda e: e.updated_at):
+        evidence_map[(ev.control_id, ev.evidence_type)] = ev
 
     # Generate checklist items
     checklist_items: List[EvidenceChecklistItem] = []

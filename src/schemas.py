@@ -260,6 +260,7 @@ class ComplianceAsCodeResponse(BaseModel):
     persistence_enabled: bool = False
     persisted_findings: int = 0
     persisted_rule_ids: list[str] = Field(default_factory=list)
+    resolved_findings: int = 0  # Number of findings auto-resolved when rules now pass
     results: list[ComplianceRuleResult]
 
 

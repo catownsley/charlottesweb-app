@@ -112,11 +112,13 @@ charlottesweb-app/
 - Remediation guidance and priority windows (immediate/30_days/quarterly)
 - Metadata-driven compliance evaluation endpoint (JSON policy rules → deterministic pass/fail)
 - Optional finding persistence via `GET /api/v1/assessments/{assessment_id}/compliance-as-code?persist_findings=true`
+- Auto-resolve: findings automatically removed when policy rules pass (`auto_resolve=true` by default)
 
 ### 🚧 Phase 2 - Audit Evidence (In Progress)
 - ✅ Evidence model with artifact tracking and status workflow
 - ✅ Evidence CRUD API endpoints with audit logging
 - ✅ Evidence checklist generation endpoint (24 evidence requirements across controls)
+- ✅ Evidence persistence across assessments for the same organization (status updates carry over)
 - ✅ UI integration: clickable evidence checklist link with inline panel rendering
 - ⏳ Policy templates (CW-203 - not started)
 - ⏳ Audit binder export to PDF/ZIP (CW-204 - not started)
