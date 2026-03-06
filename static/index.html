@@ -1309,11 +1309,20 @@
                 const visibleItems = checklist.items.slice(0, 15);
                 const itemsHtml = visibleItems.map((item) => {
                     const ownerLabel = item.owner ? ` • Owner: ${item.owner}` : '';
+                    const collectedAtText = item.collected_at ? new Date(item.collected_at).toLocaleDateString() : 'Not collected';
                     return `
-                        <li class="evidence-item">
-                            <strong>${item.control_title}</strong>
-                            <span class="status-pill ${item.status}">${item.status.replace('_', ' ')}</span>
-                            <div>${item.required_evidence}${ownerLabel}</div>
+                        <li class="evidence-item" data-evidence-id="${item.evidence_id}">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div style="flex: 1;">
+                                    <strong>${item.control_title}</strong>
+                                    <span class="status-pill ${item.status}" style="cursor: pointer;" onclick="showEditModal('${item.evidence_id}', '${item.status}', '${item.required_evidence}', '${item.control_title}', '${item.collected_at || ''}')">
+                                        ${item.status.replace('_', ' ')}
+                                    </span>
+                                    <div>${item.required_evidence}${ownerLabel}</div>
+                                    <div style="font-size: 12px; color: #666; margin-top: 4px;">📅 ${collectedAtText}</div>
+                                </div>
+                                <button onclick="showEditModal('${item.evidence_id}', '${item.status}', '${item.required_evidence}', '${item.control_title}', '${item.collected_at || ''}')" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>
+                            </div>
                         </li>
                     `;
                 }).join('');
@@ -1328,6 +1337,32 @@
                     </p>
                     <ul class="evidence-list">${itemsHtml || '<li class="evidence-item">No checklist items yet for this assessment.</li>'}</ul>
                     ${checklist.items.length > 15 ? `<p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">Showing first 15 of ${checklist.items.length} items.</p>` : ''}
+                    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; flex-direction: column; justify-content: center; align-items: center;">
+                        <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <h4 style="margin: 0 0 16px 0;">Update Evidence Item</h4>
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold;">Status</label>
+                                <select id="editStatus" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <option value="not_started">Not Started</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="not_applicable">Not Applicable</option>
+                                </select>
+                            </div>
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold;">Collected Date</label>
+                                <input type="date" id="editCollectedAt" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold;">Notes</label>
+                                <textarea id="editNotes" placeholder="Add any notes..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 80px; font-family: inherit;"></textarea>
+                            </div>
+                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                <button onclick="closeEditModal()" style="padding: 8px 16px; background: #eee; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                                <button onclick="saveEvidenceUpdate()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>
+                            </div>
+                        </div>
+                    </div>
                 `;
 
                 checklistLink.setAttribute('aria-expanded', 'true');
@@ -1338,6 +1373,79 @@
                 checklistLink.textContent = 'View Evidence Collection Checklist';
             }
         }
+
+        let currentEditingEvidenceId = null;
+
+        function showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt) {
+            currentEditingEvidenceId = evidenceId;
+            const modal = document.getElementById('editModal');
+            if (!modal) return;
+
+            document.getElementById('editStatus').value = status || 'not_started';
+            document.getElementById('editNotes').value = '';
+
+            if (collectedAt) {
+                const date = new Date(collectedAt);
+                document.getElementById('editCollectedAt').value = date.toISOString().split('T')[0];
+            } else {
+                document.getElementById('editCollectedAt').value = '';
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('editModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            currentEditingEvidenceId = null;
+        }
+
+        async function saveEvidenceUpdate() {
+            if (!currentEditingEvidenceId) return;
+
+            const status = document.getElementById('editStatus').value;
+            const collectedAtValue = document.getElementById('editCollectedAt').value;
+            const notes = document.getElementById('editNotes').value;
+
+            const payload = {
+                status: status,
+                notes: notes || undefined
+            };
+
+            if (collectedAtValue) {
+                payload.collected_at = `${collectedAtValue}T00:00:00`;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/evidence/${encodeURIComponent(currentEditingEvidenceId)}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update evidence');
+                }
+
+                closeEditModal();
+                const checklistLink = document.getElementById('viewEvidenceChecklistLink');
+                if (checklistLink && checklistLink.dataset.assessmentId) {
+                    await loadEvidenceChecklist(checklistLink.dataset.assessmentId);
+                }
+            } catch (error) {
+                alert('❌ Failed to save update: ' + error.message);
+            }
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('editModal');
+            if (modal && e.target === modal) {
+                closeEditModal();
+            }
+        });
 
         // Export functions for report generation
         function exportJSON() {
