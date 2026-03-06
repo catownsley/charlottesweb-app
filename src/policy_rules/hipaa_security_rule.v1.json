@@ -1,0 +1,56 @@
+{
+  "framework": "HIPAA_Security_Rule",
+  "policy_version": "1.0.0",
+  "rules": [
+    {
+      "rule_id": "hipaa.mfa.enabled",
+      "control_id": "HIPAA.164.312(a)(1)",
+      "title": "MFA must be enabled",
+      "path": "access_controls.mfa_enabled",
+      "operator": "equals",
+      "expected": true,
+      "severity_on_fail": "high",
+      "description": "MFA must be enabled for user authentication that can access ePHI."
+    },
+    {
+      "rule_id": "hipaa.encryption.at_rest",
+      "control_id": "HIPAA.164.312(a)(2)(iv)",
+      "title": "Encryption at rest must be enabled",
+      "path": "infrastructure.encryption_at_rest",
+      "operator": "equals",
+      "expected": true,
+      "severity_on_fail": "high",
+      "description": "Data at rest encryption should be enabled for systems storing ePHI."
+    },
+    {
+      "rule_id": "hipaa.encryption.in_transit",
+      "control_id": "HIPAA.164.312(e)(1)",
+      "title": "TLS must be enabled for data in transit",
+      "path": "infrastructure.tls_enabled",
+      "operator": "equals",
+      "expected": true,
+      "severity_on_fail": "high",
+      "description": "TLS must protect ePHI in transit across networks."
+    },
+    {
+      "rule_id": "hipaa.audit.logging.enabled",
+      "control_id": "HIPAA.164.312(b)",
+      "title": "Audit logging must be enabled",
+      "path": "infrastructure.logging_enabled",
+      "operator": "equals",
+      "expected": true,
+      "severity_on_fail": "medium",
+      "description": "Systems handling ePHI must produce auditable logs."
+    },
+    {
+      "rule_id": "hipaa.audit.logging.retention",
+      "control_id": "HIPAA.164.312(b)",
+      "title": "Audit logs must retain at least 180 days",
+      "path": "infrastructure.log_retention_days",
+      "operator": "gte",
+      "expected": 180,
+      "severity_on_fail": "medium",
+      "description": "Minimum retention baseline for auditability is 180 days."
+    }
+  ]
+}

@@ -231,6 +231,35 @@ class EvidenceChecklistResponse(BaseModel):
     items: list[EvidenceChecklistItem]
 
 
+class ComplianceRuleResult(BaseModel):
+    """Schema for a single compliance-as-code rule evaluation result."""
+
+    rule_id: str
+    control_id: str
+    title: str
+    description: Optional[str] = None
+    path: str
+    operator: str
+    expected: Any
+    actual: Any = None
+    status: str
+    severity_on_fail: str
+
+
+class ComplianceAsCodeResponse(BaseModel):
+    """Schema for metadata-driven compliance-as-code evaluation response."""
+
+    assessment_id: str
+    metadata_profile_id: str
+    framework: str
+    policy_version: str
+    evaluated_at: datetime
+    total_rules: int
+    passed: int
+    failed: int
+    results: list[ComplianceRuleResult]
+
+
 # Health check
 class HealthResponse(BaseModel):
     """Schema for health check response."""

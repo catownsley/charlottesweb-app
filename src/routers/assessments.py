@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from src.audit import AuditAction, AuditLevel, log_audit_event
+from src.compliance_as_code import ComplianceAsCodeEvaluator
 from src.config import settings
 from src.database import get_db, get_or_404
 from src.middleware import get_api_key_optional, limiter
@@ -16,6 +17,7 @@ from src.nvd_service import NVDService
 from src.rules_engine import RulesEngine
 from src.schemas import (
     AssessmentCreate,
+    ComplianceAsCodeResponse,
     AssessmentResponse,
     EvidenceChecklistItem,
     EvidenceChecklistResponse,
@@ -147,6 +149,36 @@ def get_assessment(assessment_id: str, db: Session = Depends(get_db)) -> Assessm
     """Get assessment by ID."""
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
     return assessment
+
+
+@router.get("/{assessment_id}/compliance-as-code", response_model=ComplianceAsCodeResponse)
+def evaluate_compliance_as_code(
+    assessment_id: str,
+    db: Session = Depends(get_db),
+) -> ComplianceAsCodeResponse:
+    """Evaluate metadata profile against JSON-defined compliance rules."""
+    assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
+    metadata = get_or_404(
+        db,
+        MetadataProfile,
+        str(assessment.metadata_profile_id),
+        "Metadata profile not found",
+    )
+
+    evaluator = ComplianceAsCodeEvaluator()
+    output = evaluator.evaluate(metadata)
+
+    return ComplianceAsCodeResponse(
+        assessment_id=str(assessment.id),
+        metadata_profile_id=str(assessment.metadata_profile_id),
+        framework=output["framework"],
+        policy_version=output["policy_version"],
+        evaluated_at=output["evaluated_at"],
+        total_rules=output["total_rules"],
+        passed=output["passed"],
+        failed=output["failed"],
+        results=output["results"],
+    )
 
 
 @router.get("/{assessment_id}/findings", response_model=list[FindingResponse])

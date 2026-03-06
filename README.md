@@ -110,6 +110,7 @@ charlottesweb-app/
 - Finding generation with CVSS scores, CWE IDs, and prioritization
 - Metadata intake workflow (no PHI ingestion)
 - Remediation guidance and priority windows (immediate/30_days/quarterly)
+- Metadata-driven compliance evaluation endpoint (JSON policy rules → deterministic pass/fail)
 
 ### 🚧 Phase 2 - Audit Evidence (In Progress)
 - ✅ Evidence model with artifact tracking and status workflow
