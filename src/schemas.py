@@ -214,6 +214,7 @@ class EvidenceChecklistItem(BaseModel):
     owner: Optional[str] = None
     due_date: Optional[datetime] = None
     collected_at: Optional[datetime] = None
+    notes: Optional[str] = None
     evidence_id: Optional[str] = None
 
 

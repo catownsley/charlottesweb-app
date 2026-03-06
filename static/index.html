@@ -1310,9 +1310,10 @@
                 const itemsHtml = visibleItems.map((item) => {
                     const ownerLabel = item.owner ? ` • Owner: ${item.owner}` : '';
                     const collectedAtText = item.collected_at ? new Date(item.collected_at).toLocaleDateString() : 'Not collected';
+                    const notesDisplay = item.notes ? `<div style="font-size: 12px; color: #555; margin-top: 4px; padding: 6px; background: #f5f5f5; border-left: 3px solid #667eea; border-radius: 2px;"><strong>Notes:</strong> ${item.notes}</div>` : '';
                     const hasEvidence = item.evidence_id !== null && item.evidence_id !== undefined;
                     const buttonHtml = hasEvidence
-                        ? `<button class="edit-evidence-btn" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>`
+                        ? `<button class="edit-evidence-btn" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" data-notes="${(item.notes || '').replace(/"/g, '&quot;')}" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>`
                         : `<button disabled style="padding: 6px 12px; background: #ccc; color: #666; border: none; border-radius: 4px; cursor: not-allowed; font-size: 12px;" title="Create evidence record first">No Record</button>`;
                     
                     return `
@@ -1321,11 +1322,12 @@
                                 <div style="flex: 1;">
                                     <strong>${item.control_title}</strong>
                                     ${hasEvidence 
-                                        ? `<span class="status-pill ${item.status} edit-status-pill" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" style="cursor: pointer;">${item.status.replace('_', ' ')}</span>`
+                                        ? `<span class="status-pill ${item.status} edit-status-pill" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" data-notes="${(item.notes || '').replace(/"/g, '&quot;')}" style="cursor: pointer;">${item.status.replace('_', ' ')}</span>`
                                         : `<span class="status-pill ${item.status}" style="color: #999;">${item.status.replace('_', ' ')}</span>`
                                     }
                                     <div>${item.required_evidence}${ownerLabel}</div>
                                     <div style="font-size: 12px; color: #666; margin-top: 4px;">📅 ${collectedAtText}</div>
+                                    ${notesDisplay}
                                 </div>
                                 ${buttonHtml}
                             </div>
@@ -1382,7 +1384,8 @@
                         const requiredEvidence = btn.dataset.requiredEvidence;
                         const controlTitle = btn.dataset.controlTitle;
                         const collectedAt = btn.dataset.collectedAt;
-                        showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt);
+                        const notes = btn.dataset.notes;
+                        showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt, notes);
                     });
                 });
 
@@ -1394,7 +1397,8 @@
                         const requiredEvidence = pill.dataset.requiredEvidence;
                         const controlTitle = pill.dataset.controlTitle;
                         const collectedAt = pill.dataset.collectedAt;
-                        showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt);
+                        const notes = pill.dataset.notes;
+                        showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt, notes);
                     });
                 });
             } catch (error) {
@@ -1406,13 +1410,13 @@
 
         let currentEditingEvidenceId = null;
 
-        function showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt) {
+        function showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt, notes) {
             currentEditingEvidenceId = evidenceId;
             const modal = document.getElementById('editModal');
             if (!modal) return;
 
             document.getElementById('editStatus').value = status || 'not_started';
-            document.getElementById('editNotes').value = '';
+            document.getElementById('editNotes').value = notes || '';
 
             if (collectedAt) {
                 const date = new Date(collectedAt);
