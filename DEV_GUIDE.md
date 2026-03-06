@@ -66,33 +66,130 @@ These checks block common mistakes before commit, including accidental private k
 
 ## 🔒 Security Configuration
 
-### Environment Variables
+### Managing Secrets Securely
 
-Copy the example environment file and configure for your environment:
+**NEVER** store secrets in code or committed files. CharlottesWeb uses environment variables
+for all configuration, following the 12-Factor App methodology.
+
+#### Production (Recommended)
+For production deployments, set environment variables via your platform:
+
+```bash
+# Heroku
+heroku config:set SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+heroku config:set VALID_API_KEYS="your-key-1,your-key-2"
+
+# AWS Lambda / ECS
+aws secretsmanager create-secret --name charlottesweb/prod
+# Then reference in Lambda environment
+
+# GCP Cloud Run
+gcloud run deploy charlottesweb --set-secrets SECRET_KEY=secret-manager-secret
+
+# Docker
+docker run -e SECRET_KEY="your-secret" charlottesweb
+```
+
+#### Development: Option 1 - Environment Variables
+
+Set environment variables directly in your shell:
+
+```bash
+export SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+export VALID_API_KEYS="dev-key-1,dev-key-2"
+export API_KEY_REQUIRED=false
+python -m src.main
+```
+
+#### Development: Option 2 - .env File (Automatic Loading)
+
+Create `.env` file with your secrets (it's automatically ignored by git):
 
 ```bash
 cp .env.example .env
-# Edit .env with your settings
+# Edit .env and fill in YOUR OWN values
+python -m src.main
 ```
 
-### API Key Authentication (Optional)
+⚠️ **Important**: `.env` is automatically ignored by git - check `.gitignore` if concerned.
 
-For development, API key authentication is **disabled** by default. To enable:
+#### Development: Option 3 - Encrypted .env File (Extra Protection)
+
+For additional local security, encrypt your `.env` file:
+
+```bash
+# Install cryptography library (one-time)
+pip install cryptography
+
+# Encrypt your .env file
+python src/encryption.py encrypt .env master-password-here
+
+# This creates .env.encrypted
+# Safely delete the plaintext .env
+rm .env
+
+# To decrypt and view:
+python src/encryption.py decrypt .env.encrypted master-password-here
+
+# To use encrypted .env in code:
+# from src.encryption import load_encrypted_env
+# env_vars = load_encrypted_env('.env.encrypted', password='master-password')
+```
+
+### Generate Strong Secrets
+
+**JWT Secret Key** (for signing tokens):
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+# Example: JR0S_rNg4vZ2bK8mP9qX5wY1L3c6D7eF8gH9iJ0kL1mN2oP3qR4sT5uV6
+```
+
+**API Keys** (for external integrations):
+```bash
+python -c "from src.security import generate_api_key; print(generate_api_key())"
+# Example: ck_live_51H2Y3Z4x5w6v7u8t9s0r1q2p3o4
+```
+
+**Database Password**:
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(24))"
+```
+
+### Environment Variables Reference
+
+| Variable | Development | Production | Notes |
+|----------|-------------|-----------|-------|
+| `SECRET_KEY` | Generated or from .env | **Required** | HS256 JWT key (32+ chars) |
+| `VALID_API_KEYS` | Optional | **Required** | Comma-separated list |
+| `API_KEY_REQUIRED` | false | **true** | Enforce authentication |
+| `DEBUG` | true | **false** | Disable debug info |
+| `DATABASE_URL` | SQLite | PostgreSQL | Use strong password in prod |
+| `CORS_ORIGINS` | localhost | **Whitelist only** | Never use `*` in production |
+
+See [SECURITY_KEYS.md](SECURITY_KEYS.md) for complete key management guide.
+
+### API Key Authentication
+
+For development, API key authentication is optional:
+
+```bash
+# In .env file
+API_KEY_REQUIRED=false  # Development default
+VALID_API_KEYS=dev-key-1,dev-key-2
+```
+
+To enable (recommended for staging):
 
 ```bash
 # In .env file
 API_KEY_REQUIRED=true
-VALID_API_KEYS=your-dev-key-here
-```
-
-Generate a secure API key:
-```bash
-python -c "from src.security import generate_api_key; print(generate_api_key())"
+VALID_API_KEYS=$(python -c "from src.security import generate_api_key; print(generate_api_key())")
 ```
 
 Use the API key in requests:
+
 ```bash
-curl -H "X-API-Key: your-dev-key-here" http://localhost:8000/api/v1/organizations
+curl -H "X-API-Key: your-api-key" http://localhost:8000/api/v1/organizations
 ```
 
 ### Rate Limiting
@@ -119,12 +216,24 @@ grep "assessment_created" audit.log | python -m json.tool
 
 ### Security Best Practices
 
-For development environments:
-- ✅ Use default settings (API keys optional, detailed errors)
+**Development**:
+- ✅ Store secrets in `.env` file (git-ignored)
+- ✅ Regenerate secrets frequently
 - ✅ Use self-signed certificates for HTTPS testing
 - ✅ Review audit logs periodically
 
-**Before production deployment**, see [SECURITY.md](SECURITY.md) for complete hardening checklist.
+**Before Production Deployment**:
+- □ Use platform environment variables (no .env files)
+- □ Generate strong `SECRET_KEY` (32+ random characters)
+- □ Set `API_KEY_REQUIRED=true`
+- □ Set `DEBUG=false`
+- □ Set `APP_ENV=production`
+- □ Whitelist `CORS_ORIGINS` (no wildcard)
+- □ Use PostgreSQL (not SQLite)
+- □ Enable HTTPS/TLS
+- □ Rotate secrets quarterly
+
+See [SECURITY_KEYS.md](SECURITY_KEYS.md) and [SECURITY.md](SECURITY.md) for complete hardening checklists.
 
 ---
 

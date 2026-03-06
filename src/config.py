@@ -1,22 +1,118 @@
 """Application configuration with security-first settings.
 
-All configuration is loaded from environment variables for:
-- Security (no secrets in code)
-- Flexibility (different configs per environment)
-- 12-Factor App compliance
+SECURITY MODEL
+==============
 
-Configuration sources (in order):
-1. Environment variables
+This application uses environment variables for ALL configuration, including
+secrets. This follows the 12-Factor App methodology and ensures secrets are
+never stored in version control.
+
+Secrets are managed as follows:
+
+  PRODUCTION (Recommended)
+  ├─ Use platform environment variables (no files)
+  │  - Heroku: `heroku config:set SECRET_KEY=...`
+  │  - AWS Lambda/ECS: Use Secrets Manager
+  │  - GCP Cloud Run: Use Secret Manager
+  │  - Kubernetes: Use Secrets
+  │  - Docker: Pass via --env or -e flags
+  │
+  STAGING / DEVELOPMENT
+  ├─ Option 1: Environment variables in shell
+  │  - `export SECRET_KEY="..."`
+  │  - `export VALID_API_KEYS="key1,key2"`
+  │
+  ├─ Option 2: .env file (excluded from git)
+  │  - Create `.env` file with your secrets
+  │  - LoadedAutomatically by Pydantic
+  │  - .gitignore prevents accidental commits
+  │
+  └─ Option 3: Encrypted .env file (extra protection)
+     - Encrypt sensitive file: `python src/encryption.py encrypt .env my-password`
+     - Load at startup with: `load_encrypted_env('.env.encrypted', 'my-password')`
+
+KEY PRINCIPLES
+==============
+
+✓ DO:
+  - Use environment variables
+  - Generate strong secrets (32+ characters)
+  - Rotate secrets quarterly or after compromise
+  - Whitelist CORS origins in production
+  - Require API keys in production
+  - Use PostgreSQL in production
+  - Enable HTTPS/TLS always
+  - Log authentication failures
+  - Use strong database passwords
+
+✗ DON'T:
+  - Commit .env files to git
+  - Hardcode secrets in Python
+  - Use weak/default secrets
+  - Use DEBUG=true in production
+  - Allow all origins with CORS "*"
+  - Use SQLite in production
+  - Share secrets via chat/email
+  - Skip TLS
+  - Log secret values
+
+CONFIGURATION SOURCES (in order)
+================================
+
+1. Environment variables (highest priority)
 2. .env file (if present)
-3. Default values (for development convenience)
+3. Default values (lowest priority)
 
-Security guidelines:
-- NEVER commit .env file to version control
-- Use strong SECRET_KEY in production (32+ characters)
-- Enable API_KEY_REQUIRED in production
-- Whitelist CORS_ORIGINS in production (no *)
-- Use PostgreSQL in production (not SQLite)
-- Set DEBUG=false in production
+Example:
+  export SECRET_KEY="my-secret"  # This overrides .env and defaults
+  python -m src.main
+
+For encrypted .env:
+  from src.encryption import load_encrypted_env
+  load_encrypted_env('.env.encrypted', password='master-password')
+  # Then all vars are available to Pydantic
+
+SECURITY CHECKLIST
+==================
+
+Before deploying to production:
+  □ SECRET_KEY set to strong random value (32+ chars)
+  □ VALID_API_KEYS set and non-empty
+  □ API_KEY_REQUIRED=true
+  □ DEBUG=false
+  □ APP_ENV=production
+  □ CORS_ORIGINS explicitly whitelisted (not "*")
+  □ DATABASE_URL points to production database
+  □ Database has strong password
+  □ HTTPS/TLS enabled
+  □ .env file not committed to git
+  □ No hardcoded secrets in code
+
+SEED DOCUMENTATION
+====================
+
+See SECURITY_KEYS.md for:
+  - How to generate secrets
+  - Platform-specific setup (Heroku, AWS, GCP, etc.)
+  - Secret rotation procedures
+  - Encryption setup
+  - Compliance checklist
+
+GENERATE SECRETS
+================
+
+JWT Secret Key (32+ characters):
+  python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+API Keys:
+  python -c "from src.security import generate_api_key; print(generate_api_key())"
+
+Database Password:
+  python -c "import secrets; print(secrets.token_urlsafe(24))"
+
+Example values (for testing - replace with your own!):
+  SECRET_KEY=mXpF_nJk9Q2wL5v7r3t8Y6u1s4d2gH0K
+  VALID_API_KEYS=ck_liveA1b2c3d4e5f6g7h8i9j0,ck_testX9y8z7w6v5u4t3s2r1q0p
 """
 import secrets
 from pathlib import Path
@@ -41,6 +137,11 @@ class Settings(BaseSettings):
 
     All settings can be overridden via environment variables.
     Example: APP_ENV=production python -m src.main
+
+    For encrypted .env file support:
+      from src.encryption import load_encrypted_env
+      env_dict = load_encrypted_env('.env.encrypted', password='master-password')
+      # Variables will be available to this settings class
     """
 
     model_config = SettingsConfigDict(
