@@ -855,31 +855,68 @@
                         console.log(`  → Component "${name}" missing version, fetching latest...`);
 
                         try {
-                            // Synchronous fetch is deprecated, but we'll use it for form submission
-                            // In a real app, use async/await and refactor the form handler
-                            const response = await fetch(
+                            // Try to fetch versions for the component name
+                            let versions = [];
+                            let successfulName = null;
+
+                            // List of name variations to try
+                            const namesToTry = [
+                                name,  // Original name first
+                                name.replace(/^apache-/, ''),  // Remove "apache-" prefix
+                                name.replace(/^lib-/, ''),     // Remove "lib-" prefix
+                                name.split('-').pop(),  // Last part after hyphens
+                            ].filter(n => n && n !== name);  // Get unique alternatives
+
+                            // Try original name
+                            let response = await fetch(
                                 `/api/v1/components/${encodeURIComponent(name)}/versions`
                             );
 
                             if (response.ok) {
                                 const data = await response.json();
-                                const versions = data.versions || [];
-
+                                versions = data.versions || [];
                                 if (versions.length > 0) {
-                                    version = versions[0];  // Latest version
-                                    defaultedVersions.push({name, version});
-                                    versionInput.value = version;
-                                    console.log(`  → Auto-selected version ${version} for ${name}`);
-                                } else {
-                                    throw new Error(`No known versions found for "${name}"`);
+                                    successfulName = name;
                                 }
+                            }
+
+                            // If original didn't work, try variations
+                            if (versions.length === 0) {
+                                for (const altName of namesToTry) {
+                                    console.log(`  → Trying variation: "${altName}"`);
+                                    response = await fetch(
+                                        `/api/v1/components/${encodeURIComponent(altName)}/versions`
+                                    );
+
+                                    if (response.ok) {
+                                        const data = await response.json();
+                                        if (data.versions && data.versions.length > 0) {
+                                            versions = data.versions;
+                                            successfulName = altName;
+                                            console.log(`  → Found versions using name: "${altName}"`);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (versions.length > 0) {
+                                version = versions[0];  // Latest version
+                                const displayName = successfulName !== name ? `${name} (as ${successfulName})` : name;
+                                defaultedVersions.push({name: displayName, version});
+                                versionInput.value = version;
+                                console.log(`  → Auto-selected version ${version} for ${name}`);
                             } else {
-                                throw new Error(`Could not fetch versions for "${name}"`);
+                                // No versions found even with variations
+                                throw new Error(
+                                    `No versions found. Please specify "${name}" version manually ` +
+                                    `or try the full component name (e.g., "tomcat" instead of "apache-tomcat").`
+                                );
                             }
                         } catch (err) {
                             throw new Error(
                                 `Component "${name}" requires a version. ` +
-                                `Could not auto-detect: ${err.message}`
+                                `${err.message}`
                             );
                         }
                     }
