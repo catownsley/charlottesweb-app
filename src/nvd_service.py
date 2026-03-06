@@ -240,10 +240,11 @@ class NVDService:
                             # Extract version from CPE URI
                             cpe23uri = match.get("criteria", "")
                             # CPE format: cpe:2.3:part:vendor:product:version:...
+                            # [0]=cpe, [1]=2.3, [2]=part, [3]=vendor, [4]=product, [5]=version
                             if cpe23uri:
                                 parts = cpe23uri.split(":")
-                                if len(parts) >= 5:
-                                    version = parts[4]
+                                if len(parts) >= 6:
+                                    version = parts[5]
                                     # Filter out wildcards and generic versions
                                     if version and version not in ["*", "-", ""]:
                                         versions_set.add(version)

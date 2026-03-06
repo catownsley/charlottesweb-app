@@ -1310,18 +1310,24 @@
                 const itemsHtml = visibleItems.map((item) => {
                     const ownerLabel = item.owner ? ` • Owner: ${item.owner}` : '';
                     const collectedAtText = item.collected_at ? new Date(item.collected_at).toLocaleDateString() : 'Not collected';
+                    const hasEvidence = item.evidence_id !== null && item.evidence_id !== undefined;
+                    const buttonHtml = hasEvidence
+                        ? `<button onclick="showEditModal('${item.evidence_id}', '${item.status}', '${item.required_evidence}', '${item.control_title}', '${(item.collected_at || '').replace(/'/g, "\\'")}');" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>`
+                        : `<button disabled style="padding: 6px 12px; background: #ccc; color: #666; border: none; border-radius: 4px; cursor: not-allowed; font-size: 12px;" title="Create evidence record first">No Record</button>`;
+                    
                     return `
-                        <li class="evidence-item" data-evidence-id="${item.evidence_id}">
+                        <li class="evidence-item" data-evidence-id="${item.evidence_id || 'none'}">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div style="flex: 1;">
                                     <strong>${item.control_title}</strong>
-                                    <span class="status-pill ${item.status}" style="cursor: pointer;" onclick="showEditModal('${item.evidence_id}', '${item.status}', '${item.required_evidence}', '${item.control_title}', '${item.collected_at || ''}')">
-                                        ${item.status.replace('_', ' ')}
-                                    </span>
+                                    ${hasEvidence 
+                                        ? `<span class="status-pill ${item.status}" style="cursor: pointer;" onclick="showEditModal('${item.evidence_id}', '${item.status}', '${item.required_evidence}', '${item.control_title}', '${(item.collected_at || '').replace(/'/g, "\\'")}');">${item.status.replace('_', ' ')}</span>`
+                                        : `<span class="status-pill ${item.status}" style="color: #999;">${item.status.replace('_', ' ')}</span>`
+                                    }
                                     <div>${item.required_evidence}${ownerLabel}</div>
                                     <div style="font-size: 12px; color: #666; margin-top: 4px;">📅 ${collectedAtText}</div>
                                 </div>
-                                <button onclick="showEditModal('${item.evidence_id}', '${item.status}', '${item.required_evidence}', '${item.control_title}', '${item.collected_at || ''}')" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>
+                                ${buttonHtml}
                             </div>
                         </li>
                     `;
