@@ -174,6 +174,7 @@ class EvidenceUpdate(BaseModel):
     artifact_path: Optional[str] = None
     artifact_url: Optional[str] = None
     artifact_hash: Optional[str] = None
+    collected_at: Optional[datetime] = None  # when evidence was actually collected
     notes: Optional[str] = None
 
 
@@ -193,6 +194,7 @@ class EvidenceResponse(BaseModel):
     artifact_url: Optional[str] = None
     artifact_hash: Optional[str] = None
     uploaded_at: Optional[datetime] = None
+    collected_at: Optional[datetime] = None
     version: str
     notes: Optional[str] = None
     created_at: datetime
@@ -211,6 +213,7 @@ class EvidenceChecklistItem(BaseModel):
     status: str
     owner: Optional[str] = None
     due_date: Optional[datetime] = None
+    collected_at: Optional[datetime] = None
     evidence_id: Optional[str] = None
 
 

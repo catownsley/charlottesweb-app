@@ -571,6 +571,7 @@ def generate_evidence_checklist(
                 status=evidence.status if evidence else "not_started",
                 owner=evidence.owner if evidence else None,
                 due_date=evidence.due_date if evidence else None,
+                collected_at=evidence.collected_at if evidence else None,
                 evidence_id=evidence.id if evidence else None,  # type: ignore[attr-defined]
             )
             checklist_items.append(item)

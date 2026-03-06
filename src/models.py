@@ -173,6 +173,7 @@ class Evidence(Base):
     artifact_url = Column(String, nullable=True)  # external URL if applicable
     artifact_hash = Column(String, nullable=True)  # SHA256 for integrity
     uploaded_at = Column(DateTime, nullable=True)
+    collected_at = Column(DateTime, nullable=True)  # when evidence was actually collected
 
     # Versioning
     version = Column(String, default="1", nullable=False)
