@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timezone
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from src.audit import AuditAction, AuditLevel, log_audit_event
@@ -154,6 +154,7 @@ def get_assessment(assessment_id: str, db: Session = Depends(get_db)) -> Assessm
 @router.get("/{assessment_id}/compliance-as-code", response_model=ComplianceAsCodeResponse)
 def evaluate_compliance_as_code(
     assessment_id: str,
+    persist_findings: bool = Query(False, description="Persist failed policy rules as findings"),
     db: Session = Depends(get_db),
 ) -> ComplianceAsCodeResponse:
     """Evaluate metadata profile against JSON-defined compliance rules."""
@@ -168,6 +169,73 @@ def evaluate_compliance_as_code(
     evaluator = ComplianceAsCodeEvaluator()
     output = evaluator.evaluate(metadata)
 
+    persisted_rule_ids: list[str] = []
+    persisted_findings = 0
+
+    if persist_findings:
+        failed_results = [result for result in output["results"] if result["status"] == "fail"]
+
+        for result in failed_results:
+            rule_id = result["rule_id"]
+            severity = result["severity_on_fail"]
+            operator = result["operator"]
+            expected = result["expected"]
+            actual = result["actual"]
+
+            if operator == "equals":
+                comparison = "equal"
+            elif operator == "gte":
+                comparison = "be greater than or equal to"
+            else:
+                comparison = operator
+
+            rule_description = result.get("description") or result["title"]
+            failure_description = (
+                f"{rule_description} Rule path '{result['path']}' expected value to {comparison} "
+                f"{expected!r}, but found {actual!r}."
+            )
+            remediation_guidance = (
+                f"Update metadata or underlying implementation so '{result['path']}' satisfies "
+                f"{operator} {expected!r}. Then re-run compliance-as-code evaluation."
+            )
+
+            existing_finding = (
+                db.query(Finding)
+                .filter(Finding.assessment_id == str(assessment.id))
+                .filter(Finding.external_id == rule_id)
+                .first()
+            )
+
+            if existing_finding:
+                existing_finding.control_id = result["control_id"]  # type: ignore[attr-defined]
+                existing_finding.title = f"[Policy] {result['title']}"  # type: ignore[attr-defined]
+                existing_finding.description = failure_description  # type: ignore[attr-defined]
+                existing_finding.severity = severity  # type: ignore[attr-defined]
+                existing_finding.remediation_guidance = remediation_guidance  # type: ignore[attr-defined]
+                existing_finding.priority_window = "immediate" if severity in ["critical", "high"] else "30_days"  # type: ignore[attr-defined]
+                existing_finding.owner = "Security"  # type: ignore[attr-defined]
+            else:
+                finding = Finding(
+                    assessment_id=str(assessment.id),
+                    control_id=result["control_id"],
+                    title=f"[Policy] {result['title']}",
+                    description=failure_description,
+                    severity=severity,
+                    external_id=rule_id,
+                    cve_ids=[],
+                    cwe_ids=[],
+                    remediation_guidance=remediation_guidance,
+                    priority_window="immediate" if severity in ["critical", "high"] else "30_days",
+                    owner="Security",
+                )
+                db.add(finding)
+
+            persisted_rule_ids.append(rule_id)
+
+        if failed_results:
+            db.commit()
+            persisted_findings = len(failed_results)
+
     return ComplianceAsCodeResponse(
         assessment_id=str(assessment.id),
         metadata_profile_id=str(assessment.metadata_profile_id),
@@ -177,6 +245,9 @@ def evaluate_compliance_as_code(
         total_rules=output["total_rules"],
         passed=output["passed"],
         failed=output["failed"],
+        persistence_enabled=persist_findings,
+        persisted_findings=persisted_findings,
+        persisted_rule_ids=persisted_rule_ids,
         results=output["results"],
     )
 

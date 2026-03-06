@@ -257,6 +257,9 @@ class ComplianceAsCodeResponse(BaseModel):
     total_rules: int
     passed: int
     failed: int
+    persistence_enabled: bool = False
+    persisted_findings: int = 0
+    persisted_rule_ids: list[str] = Field(default_factory=list)
     results: list[ComplianceRuleResult]
 
 

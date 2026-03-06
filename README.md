@@ -111,6 +111,7 @@ charlottesweb-app/
 - Metadata intake workflow (no PHI ingestion)
 - Remediation guidance and priority windows (immediate/30_days/quarterly)
 - Metadata-driven compliance evaluation endpoint (JSON policy rules → deterministic pass/fail)
+- Optional finding persistence via `GET /api/v1/assessments/{assessment_id}/compliance-as-code?persist_findings=true`
 
 ### 🚧 Phase 2 - Audit Evidence (In Progress)
 - ✅ Evidence model with artifact tracking and status workflow
