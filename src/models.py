@@ -1,5 +1,5 @@
 """Database models for CharlottesWeb."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Index, String, Text
@@ -19,7 +19,7 @@ def utcnow() -> datetime:
     Returns timezone-aware datetime to prevent ambiguity in conversions.
     SQLAlchemy stores as naive datetime but we can compare and convert safely.
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Organization(Base):

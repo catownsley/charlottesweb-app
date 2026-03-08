@@ -25,7 +25,7 @@ def create_metadata_profile(
 ) -> MetadataProfile:
     """Create a new metadata profile."""
     # Verify organization exists
-    org = get_or_404(db, Organization, profile_data.organization_id, "Organization not found")
+    get_or_404(db, Organization, profile_data.organization_id, "Organization not found")
 
     profile = MetadataProfile(
         organization_id=profile_data.organization_id,
@@ -47,11 +47,11 @@ def create_metadata_profile(
         raise HTTPException(
             status_code=500,
             detail="Failed to create metadata profile. Please try again."
-        )
+        ) from e
 
     # Audit log
     log_audit_event(
-        action=AuditAction.PROFILE_CREATED,
+        action=AuditAction.DATA_CREATED,
         request=request,
         api_key=api_key,
         resource_type="metadata_profile",

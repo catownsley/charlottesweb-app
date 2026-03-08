@@ -116,10 +116,8 @@ Example values (for testing - replace with your own!):
 """
 import secrets
 from pathlib import Path
-from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_SQLITE_DB_PATH = BASE_DIR / "charlottesweb.db"
@@ -208,7 +206,7 @@ class Settings(BaseSettings):
     # Format in .env: VALID_API_KEYS=key1,key2,key3
     # Generate keys with: python -c "from src.security import generate_api_key; print(generate_api_key())"
     # Production: Store in database with metadata (created_at, last_used, owner)
-    valid_api_keys: List[str] = []
+    valid_api_keys: list[str] = []
 
     # ========================================================================
     # SECURITY - CORS (Cross-Origin Resource Sharing)
@@ -218,19 +216,19 @@ class Settings(BaseSettings):
     # Development: Empty list → defaults to "*" (allow all)
     # Production: Explicit whitelist required
     # Format in .env: CORS_ORIGINS=https://app.example.com,https://dashboard.example.com
-    cors_origins: List[str] = []
+    cors_origins: list[str] = []
 
     # Allow credentials (cookies, authorization headers) in CORS requests
     # Required for cookie-based authentication
     cors_allow_credentials: bool = True
 
     # Allowed HTTP methods
-    cors_allow_methods: List[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    cors_allow_methods: list[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 
     # Allowed headers in CORS requests
     # "*" allows all headers (fine for API)
     # Can restrict to specific headers for tighter security
-    cors_allow_headers: List[str] = ["*"]
+    cors_allow_headers: list[str] = ["*"]
 
     # ========================================================================
     # SECURITY - RATE LIMITING
@@ -284,7 +282,7 @@ class Settings(BaseSettings):
         return self.app_env.lower() in ("production", "prod")
 
     @property
-    def cors_allowed_origins(self) -> List[str]:
+    def cors_allowed_origins(self) -> list[str]:
         """Get CORS allowed origins based on environment.
 
         Logic:
@@ -327,7 +325,7 @@ settings = _settings
 # ============================================================================
 # SECURITY VALIDATION
 # ============================================================================
-def validate_security_config() -> List[str]:
+def validate_security_config() -> list[str]:
     """Validate security configuration at startup.
 
     Checks for common misconfigurations that could lead to security issues:

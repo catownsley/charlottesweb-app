@@ -1,6 +1,6 @@
 """Pydantic schemas for API request/response validation."""
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -10,8 +10,8 @@ class OrganizationCreate(BaseModel):
     """Schema for creating an organization."""
 
     name: str = Field(..., min_length=1, max_length=255)
-    industry: Optional[str] = None
-    stage: Optional[str] = None
+    industry: str | None = None
+    stage: str | None = None
 
 
 class OrganizationResponse(BaseModel):
@@ -19,8 +19,8 @@ class OrganizationResponse(BaseModel):
 
     id: str
     name: str
-    industry: Optional[str] = None
-    stage: Optional[str] = None
+    industry: str | None = None
+    stage: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -31,12 +31,12 @@ class MetadataProfileCreate(BaseModel):
     """Schema for creating a metadata profile."""
 
     organization_id: str
-    phi_types: Optional[list[str]] = None
-    cloud_provider: Optional[str] = None
-    infrastructure: Optional[dict[str, Any]] = None
-    applications: Optional[dict[str, Any]] = None
-    access_controls: Optional[dict[str, Any]] = None
-    software_stack: Optional[dict[str, Any]] = None
+    phi_types: list[str] | None = None
+    cloud_provider: str | None = None
+    infrastructure: dict[str, Any] | None = None
+    applications: dict[str, Any] | None = None
+    access_controls: dict[str, Any] | None = None
+    software_stack: dict[str, Any] | None = None
 
 
 class MetadataProfileResponse(BaseModel):
@@ -44,12 +44,12 @@ class MetadataProfileResponse(BaseModel):
 
     id: str
     organization_id: str
-    phi_types: Optional[list[str]] = None
-    cloud_provider: Optional[str] = None
-    infrastructure: Optional[dict[str, Any]] = None
-    applications: Optional[dict[str, Any]] = None
-    access_controls: Optional[dict[str, Any]] = None
-    software_stack: Optional[dict[str, Any]] = None
+    phi_types: list[str] | None = None
+    cloud_provider: str | None = None
+    infrastructure: dict[str, Any] | None = None
+    applications: dict[str, Any] | None = None
+    access_controls: dict[str, Any] | None = None
+    software_stack: dict[str, Any] | None = None
     version: str
     created_at: datetime
 
@@ -64,8 +64,8 @@ class ControlResponse(BaseModel):
     framework: str
     title: str
     requirement: str
-    category: Optional[str] = None
-    evidence_types: Optional[list[str]] = None
+    category: str | None = None
+    evidence_types: list[str] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -86,7 +86,7 @@ class AssessmentResponse(BaseModel):
     metadata_profile_id: str
     status: str
     initiated_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -116,8 +116,8 @@ class ThreatTechnique(BaseModel):
     description: str = Field(description="What attackers do")
     tactics: list[str] = Field(description="Kill chain phases")
     url: str = Field(description="MITRE ATT&CK URL")
-    breach_example: Optional[ThreatTechniqueBreachExample] = None
-    primary_mitigation: Optional[ThreatTechniqueMitigation] = None
+    breach_example: ThreatTechniqueBreachExample | None = None
+    primary_mitigation: ThreatTechniqueMitigation | None = None
 
 
 class ThreatContext(BaseModel):
@@ -133,19 +133,19 @@ class FindingResponse(BaseModel):
 
     id: str
     assessment_id: str
-    control_id: Optional[str] = None
+    control_id: str | None = None
     title: str
     description: str
     severity: str
-    cvss_score: Optional[float] = None
-    external_id: Optional[str] = None
-    cve_ids: Optional[list[str]] = None
-    cwe_ids: Optional[list[str]] = None
-    remediation_guidance: Optional[str] = None
-    priority_window: Optional[str] = None
-    owner: Optional[str] = None
+    cvss_score: float | None = None
+    external_id: str | None = None
+    cve_ids: list[str] | None = None
+    cwe_ids: list[str] | None = None
+    remediation_guidance: str | None = None
+    priority_window: str | None = None
+    owner: str | None = None
     created_at: datetime
-    threat_context: Optional[ThreatContext] = Field(
+    threat_context: ThreatContext | None = Field(
         None, description="Real-world threat intelligence (MITRE ATT&CK)"
     )
 
@@ -157,25 +157,25 @@ class EvidenceCreate(BaseModel):
     """Schema for creating evidence."""
 
     control_id: str
-    assessment_id: Optional[str] = None
+    assessment_id: str | None = None
     evidence_type: str  # policy, config, screenshot, logs, report, etc.
     title: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
-    owner: Optional[str] = None
-    due_date: Optional[datetime] = None
+    description: str | None = None
+    owner: str | None = None
+    due_date: datetime | None = None
 
 
 class EvidenceUpdate(BaseModel):
     """Schema for updating evidence."""
 
-    status: Optional[str] = None  # not_started, in_progress, completed, not_applicable
-    owner: Optional[str] = None
-    due_date: Optional[datetime] = None
-    artifact_path: Optional[str] = None
-    artifact_url: Optional[str] = None
-    artifact_hash: Optional[str] = None
-    collected_at: Optional[datetime] = None  # when evidence was actually collected
-    notes: Optional[str] = None
+    status: str | None = None  # not_started, in_progress, completed, not_applicable
+    owner: str | None = None
+    due_date: datetime | None = None
+    artifact_path: str | None = None
+    artifact_url: str | None = None
+    artifact_hash: str | None = None
+    collected_at: datetime | None = None  # when evidence was actually collected
+    notes: str | None = None
 
 
 class EvidenceResponse(BaseModel):
@@ -183,20 +183,20 @@ class EvidenceResponse(BaseModel):
 
     id: str
     control_id: str
-    assessment_id: Optional[str] = None
+    assessment_id: str | None = None
     evidence_type: str
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     status: str
-    owner: Optional[str] = None
-    due_date: Optional[datetime] = None
-    artifact_path: Optional[str] = None
-    artifact_url: Optional[str] = None
-    artifact_hash: Optional[str] = None
-    uploaded_at: Optional[datetime] = None
-    collected_at: Optional[datetime] = None
+    owner: str | None = None
+    due_date: datetime | None = None
+    artifact_path: str | None = None
+    artifact_url: str | None = None
+    artifact_hash: str | None = None
+    uploaded_at: datetime | None = None
+    collected_at: datetime | None = None
     version: str
-    notes: Optional[str] = None
+    notes: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -211,11 +211,11 @@ class EvidenceChecklistItem(BaseModel):
     evidence_type: str
     required_evidence: str
     status: str
-    owner: Optional[str] = None
-    due_date: Optional[datetime] = None
-    collected_at: Optional[datetime] = None
-    notes: Optional[str] = None
-    evidence_id: Optional[str] = None
+    owner: str | None = None
+    due_date: datetime | None = None
+    collected_at: datetime | None = None
+    notes: str | None = None
+    evidence_id: str | None = None
 
 
 class EvidenceChecklistResponse(BaseModel):
@@ -237,7 +237,7 @@ class ComplianceRuleResult(BaseModel):
     rule_id: str
     control_id: str
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     path: str
     operator: str
     expected: Any
@@ -281,12 +281,12 @@ class RoadmapItem(BaseModel):
     control_id: str
     title: str
     severity: str
-    cvss_score: Optional[float] = None
+    cvss_score: float | None = None
     priority_window: str
-    owner: Optional[str] = None
+    owner: str | None = None
     remediation_guidance: str
-    cve_ids: Optional[list[str]] = None
-    cwe_ids: Optional[list[str]] = None
+    cve_ids: list[str] | None = None
+    cwe_ids: list[str] | None = None
 
 
 class RoadmapSummary(BaseModel):

@@ -13,8 +13,8 @@ Data Source: https://github.com/mitre-attack/attack-stix-data
 API: GitHub raw content (always latest)
 """
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import requests
 
@@ -86,7 +86,7 @@ class MITREService:
         # In-memory cache (24-hour TTL, framework updates infrequently)
         self._cache: dict[str, Any] = {}
         self._cache_ttl = timedelta(hours=24)
-        self._attack_data: Optional[dict[str, Any]] = None
+        self._attack_data: dict[str, Any] | None = None
 
     def _fetch_attack_data(self) -> dict[str, Any]:
         """Fetch MITRE ATT&CK STIX data from GitHub.
@@ -102,7 +102,7 @@ class MITREService:
         # Check cache
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
-            if datetime.now(timezone.utc) - cached_time < self._cache_ttl:
+            if datetime.now(UTC) - cached_time < self._cache_ttl:
                 logger.debug("MITRE ATT&CK cache hit")
                 return cached_data
 
@@ -114,7 +114,7 @@ class MITREService:
             data = response.json()
 
             # Cache the full STIX bundle
-            self._cache[cache_key] = (data, datetime.now(timezone.utc))
+            self._cache[cache_key] = (data, datetime.now(UTC))
             logger.info(f"Fetched MITRE ATT&CK data: {len(data.get('objects', []))} objects")
 
             return data
@@ -124,7 +124,7 @@ class MITREService:
             # Return empty structure if fetch fails
             return {"objects": []}
 
-    def get_technique_by_id(self, technique_id: str) -> Optional[dict[str, Any]]:
+    def get_technique_by_id(self, technique_id: str) -> dict[str, Any] | None:
         """Get MITRE ATT&CK technique by ID.
 
         Args:
@@ -207,7 +207,7 @@ class MITREService:
         """
         return self.CWE_TO_TECHNIQUE_MAP.get(cwe_id, [])
 
-    def get_healthcare_breach_context(self, technique_id: str) -> Optional[dict[str, Any]]:
+    def get_healthcare_breach_context(self, technique_id: str) -> dict[str, Any] | None:
         """Get healthcare breach context for a technique.
 
         Args:

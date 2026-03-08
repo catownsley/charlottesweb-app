@@ -1,5 +1,4 @@
 """Control management endpoints."""
-from typing import List
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
@@ -9,7 +8,7 @@ from src.config import settings
 from src.database import get_db, get_or_404
 from src.middleware import limiter
 from src.models import Control
-from src.pagination import PaginatedResponse, PaginationParams
+from src.pagination import PaginatedResponse
 from src.schemas import ControlResponse
 
 router = APIRouter(prefix="/controls", tags=["controls"])
@@ -22,7 +21,7 @@ def list_controls(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0, description="Items to skip"),
     limit: int = Query(50, ge=1, le=1000, description="Max items (1-1000)"),
-) -> PaginatedResponse[ControlResponse] | List[ControlResponse]:
+) -> PaginatedResponse[ControlResponse] | list[ControlResponse]:
     """List all controls with optional pagination.
 
     Query Parameters:
@@ -32,7 +31,7 @@ def list_controls(
     Returns paginated response if limit is provided, otherwise all controls.
     Uses caching for performance (1 hour TTL).
     """
-    cache_key = f"controls:all"
+    cache_key = "controls:all"
     cached_controls = controls_cache.get(cache_key)
 
     if cached_controls is not None:

@@ -26,11 +26,12 @@ Compliance:
 - SOC 2: CC6.1 - Logical and Physical Access Controls
 - SOC 2: CC7.1 - System Monitoring
 """
+
 import json
 import logging
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Optional
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any
 
 from fastapi import Request
 
@@ -62,7 +63,7 @@ audit_logger.addHandler(handler)
 audit_logger.propagate = False
 
 
-class AuditAction(str, Enum):
+class AuditAction(StrEnum):
     """Enumeration of auditable actions.
 
     Categorized by type for easy filtering and reporting.
@@ -76,32 +77,33 @@ class AuditAction(str, Enum):
 
     # Authentication & Authorization Events
     # Log all auth attempts for security monitoring
-    LOGIN = "login"                    # User logged in successfully
-    LOGOUT = "logout"                  # User logged out
+    LOGIN = "login"  # User logged in successfully
+    LOGOUT = "logout"  # User logged out
     API_KEY_CREATED = "api_key_created"  # New API key generated
     API_KEY_REVOKED = "api_key_revoked"  # API key revoked/deleted
-    AUTH_FAILED = "auth_failed"        # Failed authentication attempt
+    AUTH_FAILED = "auth_failed"  # Failed authentication attempt
 
     # Data Access Events (CRUD operations)
     # Critical for HIPAA audit control requirements
-    DATA_READ = "data_read"            # Data viewed/retrieved
-    DATA_CREATED = "data_created"      # New data created
-    DATA_UPDATED = "data_updated"      # Existing data modified
-    DATA_DELETED = "data_deleted"      # Data deleted
+    DATA_READ = "data_read"  # Data viewed/retrieved
+    DATA_CREATED = "data_created"  # New data created
+    DATA_UPDATED = "data_updated"  # Existing data modified
+    DATA_DELETED = "data_deleted"  # Data deleted
 
     # Assessment Events (Core business logic)
     # Track compliance assessment lifecycle
     ASSESSMENT_CREATED = "assessment_created"  # New assessment initiated
-    ASSESSMENT_RUN = "assessment_run"          # Assessment executed
-    ASSESSMENT_VIEWED = "assessment_viewed"    # Assessment results viewed
-    ROADMAP_GENERATED = "roadmap_generated"    # Remediation roadmap created
-    NVD_QUERY = "nvd_query"                     # NVD vulnerability database queried
+    ASSESSMENT_RUN = "assessment_run"  # Assessment executed
+    ASSESSMENT_VIEWED = "assessment_viewed"  # Assessment results viewed
+    ROADMAP_GENERATED = "roadmap_generated"  # Remediation roadmap created
+    NVD_QUERY = "nvd_query"  # NVD vulnerability database queried
+    THREAT_INTEL_QUERY = "threat_intel_query"  # Threat intel providers queried
 
     # Organization Management
     # Track customer onboarding and changes
-    ORG_CREATED = "org_created"        # New organization registered
-    ORG_UPDATED = "org_updated"        # Organization info modified
-    ORG_DELETED = "org_deleted"        # Organization removed
+    ORG_CREATED = "org_created"  # New organization registered
+    ORG_UPDATED = "org_updated"  # Organization info modified
+    ORG_DELETED = "org_deleted"  # Organization removed
 
     # Metadata Profile Management
     # Critical: Changes affect compliance assessments
@@ -111,12 +113,12 @@ class AuditAction(str, Enum):
 
     # System Events
     # Track system configuration and errors
-    CONFIG_CHANGED = "config_changed"      # Configuration modified
-    ERROR = "error"                        # System error occurred
-    SECURITY_ALERT = "security_alert"      # Security event detected
+    CONFIG_CHANGED = "config_changed"  # Configuration modified
+    ERROR = "error"  # System error occurred
+    SECURITY_ALERT = "security_alert"  # Security event detected
 
 
-class AuditLevel(str, Enum):
+class AuditLevel(StrEnum):
     """Audit log severity levels.
 
     Maps to standard logging levels but with security context:
@@ -126,20 +128,20 @@ class AuditLevel(str, Enum):
     - CRITICAL: Security incident or system compromise
     """
 
-    INFO = "info"          # Normal auditable event
-    WARNING = "warning"    # Suspicious activity
-    ERROR = "error"        # Operation failed
+    INFO = "info"  # Normal auditable event
+    WARNING = "warning"  # Suspicious activity
+    ERROR = "error"  # Operation failed
     CRITICAL = "critical"  # Security incident
 
 
 def log_audit_event(
     action: AuditAction,
-    request: Optional[Request] = None,
-    user_id: Optional[str] = None,
-    api_key: Optional[str] = None,
-    resource_type: Optional[str] = None,
-    resource_id: Optional[str] = None,
-    details: Optional[dict[str, Any]] = None,
+    request: Request | None = None,
+    user_id: str | None = None,
+    api_key: str | None = None,
+    resource_type: str | None = None,
+    resource_id: str | None = None,
+    details: dict[str, Any] | None = None,
     level: AuditLevel = AuditLevel.INFO,
     success: bool = True,
 ) -> None:
@@ -209,7 +211,7 @@ def log_audit_event(
     log_entry = {
         "action": action.value,
         "success": success,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "level": level.value,
     }
 
@@ -217,7 +219,9 @@ def log_audit_event(
     # Correlate with request ID for distributed tracing
     if request:
         log_entry["request"] = {
-            "id": getattr(request.state, "request_id", None),  # From RequestIDMiddleware
+            "id": getattr(
+                request.state, "request_id", None
+            ),  # From RequestIDMiddleware
             "ip": request.client.host if request.client else None,  # Source IP
             "method": request.method,  # HTTP method (GET, POST, etc.)
             "path": str(request.url.path),  # Request path (don't include query params)

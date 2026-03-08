@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from src.models import MetadataProfile
 
@@ -39,13 +39,13 @@ class ComplianceAsCodeEvaluator:
         policy = self._load_policy()
 
         # Build metadata payload - type documented by MetadataPayload TypedDict
-        metadata_payload = {
-            "phi_types": metadata.phi_types or [],
-            "cloud_provider": metadata.cloud_provider,
-            "infrastructure": metadata.infrastructure or {},
-            "applications": metadata.applications or {},
-            "access_controls": metadata.access_controls or {},
-            "software_stack": metadata.software_stack or {},
+        metadata_payload: dict[str, Any] = {
+            "phi_types": cast(list[str], metadata.phi_types or []),
+            "cloud_provider": cast(str | None, metadata.cloud_provider),
+            "infrastructure": cast(dict[str, Any], metadata.infrastructure or {}),
+            "applications": cast(dict[str, Any], metadata.applications or {}),
+            "access_controls": cast(dict[str, Any], metadata.access_controls or {}),
+            "software_stack": cast(dict[str, Any], metadata.software_stack or {}),
         }
 
         results: list[dict[str, Any]] = []
@@ -98,7 +98,8 @@ class ComplianceAsCodeEvaluator:
         for segment in path.split("."):
             if not isinstance(current, dict):
                 return None
-            current = current.get(segment)
+            typed_current = cast(dict[str, Any], current)
+            current = typed_current.get(segment)
         return current
 
     def _evaluate_operator(self, actual: Any, operator: str, expected: Any) -> bool:

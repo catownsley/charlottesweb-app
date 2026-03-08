@@ -15,16 +15,15 @@ if you must store them locally. The encryption password should be:
 Do NOT use this for production secrets.
 """
 
-import os
 from pathlib import Path
-from typing import Dict
 
 try:
+    import base64
+
     from cryptography.fernet import Fernet
+    from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
-    from cryptography.hazmat.backends import default_backend
-    import base64
 
     CRYPTO_AVAILABLE = True
 except ImportError:
@@ -130,13 +129,13 @@ def decrypt_env_file(
         plaintext = cipher.decrypt(encrypted).decode()
         return plaintext
     except Exception as e:
-        raise ValueError(f"Failed to decrypt file - wrong password? Error: {str(e)}")
+        raise ValueError(f"Failed to decrypt file - wrong password? Error: {str(e)}") from e
 
 
 def load_encrypted_env(
     file_path: str,
     password: str,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Load encrypted .env file into environment variables.
 
     Args:

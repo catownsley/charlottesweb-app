@@ -17,13 +17,13 @@ def test_db(tmp_path):
 
     # Create engine and session
     engine = create_engine(test_db_url, connect_args={"check_same_thread": False})
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     # Create all tables
     Base.metadata.create_all(bind=engine)
 
     # Seed controls
-    db = TestingSessionLocal()
+    db = testing_session_local()
     from src.models import Control
     controls = [
         Control(
@@ -49,7 +49,7 @@ def test_db(tmp_path):
     # Override get_db dependency
     def override_get_db():
         try:
-            db = TestingSessionLocal()
+            db = testing_session_local()
             yield db
         finally:
             db.close()

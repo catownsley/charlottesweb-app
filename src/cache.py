@@ -20,7 +20,8 @@ Tradeoffs:
 """
 import logging
 import time
-from typing import Any, Callable, Optional, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ class TTLCache:
         self.ttl = ttl
         self.cache: dict[str, tuple[Any, float]] = {}
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get value from cache if not expired.
 
         Args:
@@ -86,7 +87,7 @@ class TTLCache:
         """
         self.cache[key] = (value, time.time())
 
-    def invalidate(self, key: Optional[str] = None) -> None:
+    def invalidate(self, key: str | None = None) -> None:
         """Invalidate cache entries.
 
         Args:
@@ -104,7 +105,7 @@ class TTLCache:
         self.invalidate()
 
 
-def cached(cache: TTLCache, key: str, ttl: Optional[int] = None) -> Callable[[Callable[..., T]], Callable[..., T]]:
+def cached(cache: TTLCache, key: str, ttl: int | None = None) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator for caching function results.
 
     Args:
