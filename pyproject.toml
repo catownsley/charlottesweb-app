@@ -72,8 +72,8 @@ known-first-party = ["src"]
 # - Strict mode enabled for comprehensive type coverage
 # - Helps catch bugs before runtime
 
-# Python version to target
-python_version = "3.10"
+# Python version to target (must be 3.12+ for PEP 695 generic syntax)
+python_version = "3.14"
 
 # Strict type checking mode (most restrictive)
 strict = true

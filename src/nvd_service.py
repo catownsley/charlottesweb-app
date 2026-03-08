@@ -2,7 +2,7 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import requests
 
@@ -40,7 +40,7 @@ class NVDService:
 
     BASE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
-    def __init__(self, api_key: Optional[str] = None) -> None:
+    def __init__(self, api_key: str | None = None) -> None:
         """Initialize NVD service.
 
         Args:
@@ -180,7 +180,7 @@ class NVDService:
 
         return results
 
-    def get_severity_from_cvss(self, cvss_score: Optional[float]) -> str:
+    def get_severity_from_cvss(self, cvss_score: float | None) -> str:
         """Convert CVSS score to severity level.
 
         Args:
@@ -201,7 +201,7 @@ class NVDService:
         else:
             return "low"
 
-    def get_priority_window_from_cvss(self, cvss_score: Optional[float]) -> str:
+    def get_priority_window_from_cvss(self, cvss_score: float | None) -> str:
         """Determine remediation priority window based on CVSS score.
 
         Args:

@@ -26,7 +26,7 @@ Middleware order matters! Apply in this sequence:
 """
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from slowapi import Limiter

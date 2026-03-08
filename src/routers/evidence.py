@@ -1,6 +1,6 @@
 """Evidence collection and management endpoints."""
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -92,7 +92,7 @@ def update_evidence(
         setattr(evidence, field, value)
 
     if evidence_update.artifact_path or evidence_update.artifact_url:
-        evidence.uploaded_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        evidence.uploaded_at = datetime.now(UTC).replace(tzinfo=None)
 
     db.commit()
     db.refresh(evidence)
