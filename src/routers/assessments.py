@@ -1,7 +1,7 @@
 """Assessment workflow endpoints."""
+
 import logging
-from datetime import datetime, timezone
-from typing import List
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
@@ -9,17 +9,25 @@ from sqlalchemy.orm import Session
 from src.audit import AuditAction, AuditLevel, log_audit_event
 from src.compliance_as_code import ComplianceAsCodeEvaluator
 from src.config import settings
+from src.cwe_mappings import CWE_TO_HIPAA_CONTROL, FALLBACK_CONTROL_CANDIDATES
 from src.database import get_db, get_or_404
 from src.dependabot_service import DependabotService
 from src.middleware import get_api_key_optional, limiter
 from src.mitre_service import mitre_service
-from src.models import Assessment, Control, Evidence, Finding, MetadataProfile, Organization
+from src.models import (
+    Assessment,
+    Control,
+    Evidence,
+    Finding,
+    MetadataProfile,
+    Organization,
+)
 from src.nvd_service import NVDService
 from src.rules_engine import RulesEngine
 from src.schemas import (
     AssessmentCreate,
-    ComplianceAsCodeResponse,
     AssessmentResponse,
+    ComplianceAsCodeResponse,
     EvidenceChecklistItem,
     EvidenceChecklistResponse,
     FindingResponse,
@@ -32,26 +40,6 @@ router = APIRouter(prefix="/assessments", tags=["assessments"])
 logger = logging.getLogger(__name__)
 
 
-CWE_CONTROL_MAP = {
-    "CWE-295": "HC.SC-7.1",   # Improper Certificate Validation → TLS/Encryption
-    "CWE-311": "HC.SC-4.1",   # Missing Encryption → Data Protection
-    "CWE-798": "HC.SC-2.1",   # Hard-coded Credentials → Access Control
-    "CWE-347": "HC.SC-12.1",  # Improper Verification of Cryptographic Signature → Key Management
-    "CWE-200": "HC.SC-7.2",   # Information Exposure → Network Security
-    "CWE-778": "HC.AU-6.1",   # Insufficient Logging → Audit Logging
-    "CWE-89": "HC.SC-3.1",    # SQL Injection → Input Validation
-    "CWE-79": "HC.SC-3.1",    # Cross-site Scripting → Input Validation
-}
-
-# Fallback controls used when CWE mapping is unavailable or unknown.
-# Ordered by preference; first existing control in DB is selected.
-FALLBACK_CONTROL_CANDIDATES = [
-    "HC.SC-7.1",              # Healthcare transmission security
-    "HIPAA.164.312(e)(1)",    # HIPAA transmission security
-    "HIPAA.164.312(a)(2)(iv)",  # HIPAA encryption/decryption
-]
-
-
 @router.post("", response_model=AssessmentResponse, status_code=201)
 @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 def create_assessment(
@@ -62,8 +50,15 @@ def create_assessment(
 ) -> Assessment:
     """Create and run a new assessment."""
     # Verify organization and metadata profile exist
-    org = get_or_404(db, Organization, assessment_data.organization_id, "Organization not found")
-    profile = get_or_404(db, MetadataProfile, assessment_data.metadata_profile_id, "Metadata profile not found")
+    org = get_or_404(
+        db, Organization, assessment_data.organization_id, "Organization not found"
+    )
+    profile = get_or_404(
+        db,
+        MetadataProfile,
+        assessment_data.metadata_profile_id,
+        "Metadata profile not found",
+    )
 
     # Create assessment
     try:
@@ -79,8 +74,7 @@ def create_assessment(
         db.rollback()
         logger.error(f"Failed to create assessment: {str(e)}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail="Failed to create assessment. Please try again."
+            status_code=500, detail="Failed to create assessment. Please try again."
         )
 
     # Audit log - assessment created
@@ -104,7 +98,7 @@ def create_assessment(
 
         # Mark assessment complete
         assessment.status = "completed"  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
-        assessment.completed_at = datetime.now(timezone.utc)  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
+        assessment.completed_at = datetime.now(UTC)  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         db.commit()
 
         # Audit log - assessment completed
@@ -138,7 +132,7 @@ def create_assessment(
         # Return safe error message
         raise HTTPException(
             status_code=500,
-            detail="Assessment execution failed. Please try again or contact support."
+            detail="Assessment execution failed. Please try again or contact support.",
         )
 
     db.refresh(assessment)
@@ -152,15 +146,21 @@ def get_assessment(assessment_id: str, db: Session = Depends(get_db)) -> Assessm
     return assessment
 
 
-@router.get("/{assessment_id}/compliance-as-code", response_model=ComplianceAsCodeResponse)
+@router.get(
+    "/{assessment_id}/compliance-as-code", response_model=ComplianceAsCodeResponse
+)
 def evaluate_compliance_as_code(
     assessment_id: str,
-    persist_findings: bool = Query(False, description="Persist failed policy rules as findings"),
-    auto_resolve: bool = Query(True, description="Automatically resolve/remove findings when rules pass"),
+    persist_findings: bool = Query(
+        False, description="Persist failed policy rules as findings"
+    ),
+    auto_resolve: bool = Query(
+        True, description="Automatically resolve/remove findings when rules pass"
+    ),
     db: Session = Depends(get_db),
 ) -> ComplianceAsCodeResponse:
     """Evaluate metadata profile against JSON-defined compliance rules.
-    
+
     Args:
         assessment_id: Assessment to evaluate
         persist_findings: If True, create/update findings for failed rules
@@ -182,8 +182,12 @@ def evaluate_compliance_as_code(
     resolved_findings = 0
 
     if persist_findings:
-        failed_results = [result for result in output["results"] if result["status"] == "fail"]
-        passed_results = [result for result in output["results"] if result["status"] == "pass"]
+        failed_results = [
+            result for result in output["results"] if result["status"] == "fail"
+        ]
+        passed_results = [
+            result for result in output["results"] if result["status"] == "pass"
+        ]
 
         # Handle failed rules: create or update findings
         for result in failed_results:
@@ -236,7 +240,9 @@ def evaluate_compliance_as_code(
                     cve_ids=[],
                     cwe_ids=[],
                     remediation_guidance=remediation_guidance,
-                    priority_window="immediate" if severity in ["critical", "high"] else "30_days",
+                    priority_window=(
+                        "immediate" if severity in ["critical", "high"] else "30_days"
+                    ),
                     owner="Security",
                 )
                 db.add(finding)
@@ -247,14 +253,14 @@ def evaluate_compliance_as_code(
         if auto_resolve:
             for result in passed_results:
                 rule_id = result["rule_id"]
-                
+
                 existing_finding = (
                     db.query(Finding)
                     .filter(Finding.assessment_id == str(assessment.id))
                     .filter(Finding.external_id == rule_id)
                     .first()
                 )
-                
+
                 if existing_finding:
                     logger.info(f"Auto-resolving finding for passing rule: {rule_id}")
                     db.delete(existing_finding)
@@ -282,10 +288,14 @@ def evaluate_compliance_as_code(
 
 
 @router.get("/{assessment_id}/findings", response_model=list[FindingResponse])
-def get_assessment_findings(assessment_id: str, db: Session = Depends(get_db)) -> List[FindingResponse]:
+def get_assessment_findings(
+    assessment_id: str, db: Session = Depends(get_db)
+) -> list[FindingResponse]:
     """Get findings for an assessment with threat intelligence context."""
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
-    findings: List[Finding] = db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
+    findings: list[Finding] = (
+        db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
+    )
 
     # Enrich each finding with MITRE ATT&CK threat context
     enriched_findings = []
@@ -334,7 +344,9 @@ def get_remediation_roadmap(
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
 
     # Get all findings for this assessment
-    findings: List[Finding] = db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
+    findings: list[Finding] = (
+        db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
+    )
 
     # Group findings by priority window
     immediate = []
@@ -364,7 +376,9 @@ def get_remediation_roadmap(
         )
 
         # Group by priority window
-        priority = str(finding.priority_window or "quarterly")  # Extract value from Column for conditional
+        priority = str(
+            finding.priority_window or "quarterly"
+        )  # Extract value from Column for conditional
         if priority == "immediate":
             immediate.append(item)
         elif priority == "30_days":
@@ -404,7 +418,7 @@ def get_remediation_roadmap(
     roadmap = RemediationRoadmapResponse(
         assessment_id=assessment_id,
         organization_id=assessment.organization_id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
         summary=summary,
         immediate=immediate,
         thirty_days=thirty_days,
@@ -447,9 +461,13 @@ def analyze_nvd_vulnerabilities(
     # Get assessment and metadata
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
 
-    metadata_profile: MetadataProfile | None = db.query(MetadataProfile).filter(
-        MetadataProfile.id == assessment.metadata_profile_id  # type: ignore[attr-defined]
-    ).first()
+    metadata_profile: MetadataProfile | None = (
+        db.query(MetadataProfile)
+        .filter(
+            MetadataProfile.id == assessment.metadata_profile_id  # type: ignore[attr-defined]
+        )
+        .first()
+    )
     if not metadata_profile:
         raise HTTPException(status_code=404, detail="Metadata profile not found")
 
@@ -469,7 +487,9 @@ def analyze_nvd_vulnerabilities(
         return []
 
     # Initialize NVD service with optional API key from config
-    nvd_service = NVDService(api_key=settings.nvd_api_key if settings.nvd_api_key else None)
+    nvd_service = NVDService(
+        api_key=settings.nvd_api_key if settings.nvd_api_key else None
+    )
 
     # Analyze software stack for vulnerabilities
     nvd_results = nvd_service.analyze_software_stack(software_stack)
@@ -477,7 +497,9 @@ def analyze_nvd_vulnerabilities(
     # Cache available controls for deterministic and efficient mapping
     available_control_ids = {control_id for (control_id,) in db.query(Control.id).all()}
     if not available_control_ids:
-        logger.warning("No controls found in database; NVD findings will be created without control mapping")
+        logger.warning(
+            "No controls found in database; NVD findings will be created without control mapping"
+        )
 
     # Create findings from NVD results
     new_findings: list[Finding] = []
@@ -491,17 +513,23 @@ def analyze_nvd_vulnerabilities(
         for cve in cves:
             total_cves_processed += 1
             # Check if this CVE finding already exists
-            existing = db.query(Finding).filter(
-                Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
-                Finding.external_id == cve["cve_id"],  # type: ignore[attr-defined]
-            ).first()
+            existing = (
+                db.query(Finding)
+                .filter(
+                    Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
+                    Finding.external_id == cve["cve_id"],  # type: ignore[attr-defined]
+                )
+                .first()
+            )
 
             if existing:
                 # Skip if finding already exists
                 continue
 
             # Determine priority window based on CVSS score
-            priority_window = nvd_service.get_priority_window_from_cvss(cve["cvss_score"])
+            priority_window = nvd_service.get_priority_window_from_cvss(
+                cve["cvss_score"]
+            )
             severity = nvd_service.get_severity_from_cvss(cve["cvss_score"])
 
             # Map CWE IDs to applicable controls
@@ -512,8 +540,8 @@ def analyze_nvd_vulnerabilities(
             if cwe_ids:
                 # Check if any CWE maps to a control
                 for cwe in cwe_ids:
-                    if cwe in CWE_CONTROL_MAP:
-                        control_id = CWE_CONTROL_MAP[cwe]
+                    if cwe in CWE_TO_HIPAA_CONTROL:
+                        control_id = CWE_TO_HIPAA_CONTROL[cwe]
                         mapping_source = "cwe"
                         break
 
@@ -576,14 +604,20 @@ def analyze_nvd_vulnerabilities(
                     logger.info(f"  Control.evidence_types: {control.evidence_types}")
 
                 if control and control.evidence_types:
-                    logger.info(f"  Creating evidence items for {len(control.evidence_types)} types")
+                    logger.info(
+                        f"  Creating evidence items for {len(control.evidence_types)} types"
+                    )
                     for evidence_type in control.evidence_types:
                         # Check if evidence item already exists
-                        existing = db.query(Evidence).filter(
-                            Evidence.assessment_id == assessment_id,
-                            Evidence.control_id == control_id,
-                            Evidence.evidence_type == evidence_type,
-                        ).first()
+                        existing = (
+                            db.query(Evidence)
+                            .filter(
+                                Evidence.assessment_id == assessment_id,
+                                Evidence.control_id == control_id,
+                                Evidence.evidence_type == evidence_type,
+                            )
+                            .first()
+                        )
 
                         if not existing:
                             # Create new evidence item
@@ -616,7 +650,7 @@ def analyze_nvd_vulnerabilities(
             logger.error(f"Failed to commit findings: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
-                detail="Failed to save vulnerability findings. Please try again with a different software stack or contact support."
+                detail="Failed to save vulnerability findings. Please try again with a different software stack or contact support.",
             )
 
     # Audit log
@@ -643,7 +677,9 @@ def analyze_nvd_vulnerabilities(
     return new_findings
 
 
-@router.post("/{assessment_id}/analyze-dependabot", response_model=list[FindingResponse])
+@router.post(
+    "/{assessment_id}/analyze-dependabot", response_model=list[FindingResponse]
+)
 @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 def analyze_dependabot_alerts(
     assessment_id: str,
@@ -677,12 +713,20 @@ def analyze_dependabot_alerts(
         )
         raise HTTPException(
             status_code=400,
-            detail="GitHub token not configured. Set GITHUB_TOKEN environment variable."
+            detail="GitHub token not configured. Set GITHUB_TOKEN environment variable.",
         )
 
     # Initialize Dependabot service
-    repo_owner = settings.github_repo_owner if hasattr(settings, "github_repo_owner") else "catownsley"
-    repo_name = settings.github_repo_name if hasattr(settings, "github_repo_name") else "charlottesweb-app"
+    repo_owner = (
+        settings.github_repo_owner
+        if hasattr(settings, "github_repo_owner")
+        else "catownsley"
+    )
+    repo_name = (
+        settings.github_repo_name
+        if hasattr(settings, "github_repo_name")
+        else "charlottesweb-app"
+    )
     dependabot = DependabotService(repo_owner, repo_name, github_token)
 
     # Fetch open Dependabot alerts
@@ -703,7 +747,9 @@ def analyze_dependabot_alerts(
     # Cache available controls for deterministic mapping
     available_control_ids = {control_id for (control_id,) in db.query(Control.id).all()}
     if not available_control_ids:
-        logger.warning("No controls found in database; Dependabot findings will be created without control mapping")
+        logger.warning(
+            "No controls found in database; Dependabot findings will be created without control mapping"
+        )
 
     # Create findings from Dependabot alerts
     new_findings: list[Finding] = []
@@ -712,10 +758,14 @@ def analyze_dependabot_alerts(
 
     for alert in dependabot_alerts:
         # Check if this alert finding already exists
-        existing = db.query(Finding).filter(
-            Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
-            Finding.external_id == alert["cve_id"],  # type: ignore[attr-defined]
-        ).first()
+        existing = (
+            db.query(Finding)
+            .filter(
+                Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
+                Finding.external_id == alert["cve_id"],  # type: ignore[attr-defined]
+            )
+            .first()
+        )
 
         if existing:
             # Skip if finding already exists
@@ -733,8 +783,8 @@ def analyze_dependabot_alerts(
         if cwe_ids:
             # Check if any CWE maps to a control
             for cwe in cwe_ids:
-                if cwe in CWE_CONTROL_MAP:
-                    control_id = CWE_CONTROL_MAP[cwe]
+                if cwe in CWE_TO_HIPAA_CONTROL:
+                    control_id = CWE_TO_HIPAA_CONTROL[cwe]
                     mapped_via_cwe += 1
                     break
 
@@ -793,7 +843,9 @@ def analyze_dependabot_alerts(
     return new_findings
 
 
-@router.get("/{assessment_id}/evidence-checklist", response_model=EvidenceChecklistResponse)
+@router.get(
+    "/{assessment_id}/evidence-checklist", response_model=EvidenceChecklistResponse
+)
 def generate_evidence_checklist(
     assessment_id: str,
     db: Session = Depends(get_db),
@@ -805,7 +857,7 @@ def generate_evidence_checklist(
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
 
     # Get all findings for this assessment
-    findings: List[Finding] = (
+    findings: list[Finding] = (
         db.query(Finding)
         .filter(Finding.assessment_id == assessment_id)
         .filter(Finding.control_id.isnot(None))
@@ -816,7 +868,7 @@ def generate_evidence_checklist(
     control_ids = list(set(f.control_id for f in findings if f.control_id))
 
     # Get controls with evidence requirements
-    controls: List[Control] = (
+    controls: list[Control] = (
         db.query(Control)
         .filter(Control.id.in_(control_ids))
         .filter(Control.evidence_types.isnot(None))
@@ -825,7 +877,7 @@ def generate_evidence_checklist(
 
     # Get existing evidence for these controls, scoped to the organization
     # This allows evidence to persist across assessments for the same org
-    existing_evidence: List[Evidence] = (
+    existing_evidence: list[Evidence] = (
         db.query(Evidence)
         .join(Assessment, Evidence.assessment_id == Assessment.id)
         .filter(
@@ -836,7 +888,7 @@ def generate_evidence_checklist(
     )
 
     # Also get evidence not linked to any assessment but matching controls
-    orphan_evidence: List[Evidence] = (
+    orphan_evidence: list[Evidence] = (
         db.query(Evidence)
         .filter(
             Evidence.assessment_id.is_(None),
@@ -855,7 +907,7 @@ def generate_evidence_checklist(
         evidence_map[(ev.control_id, ev.evidence_type)] = ev
 
     # Generate checklist items
-    checklist_items: List[EvidenceChecklistItem] = []
+    checklist_items: list[EvidenceChecklistItem] = []
     for control in controls:
         if not control.evidence_types:
             continue
@@ -886,7 +938,7 @@ def generate_evidence_checklist(
     return EvidenceChecklistResponse(
         assessment_id=assessment_id,
         organization_id=assessment.organization_id,
-        generated_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        generated_at=datetime.now(UTC).replace(tzinfo=None),
         total_items=total_items,
         completed=completed,
         in_progress=in_progress,

@@ -1,10 +1,38 @@
 """NVD API integration for CVE vulnerability intelligence."""
+
 import logging
-from typing import Any, Optional
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Optional, TypedDict
+
 import requests
 
 logger = logging.getLogger(__name__)
+
+
+class CVEResult(TypedDict):
+    """Type definition for CVE search result."""
+
+    cve_id: str
+    description: str
+    cvss_score: float | None
+    cvss_severity: str | None
+    cwe_ids: list[str]
+    published_date: str
+
+
+# Configuration constants
+CACHE_TTL_HOURS = 24
+DEFAULT_MAX_RESULTS = 10
+VERSION_SEARCH_MAX_RESULTS = 100
+REQUEST_TIMEOUT_SECONDS = 10
+
+# Version filtering constants
+MAX_VALID_SINGLE_DIGIT_VERSION = 50  # Filter out build numbers like 382, 3802
+
+# CVSS severity thresholds
+CVSS_CRITICAL_THRESHOLD = 9.0
+CVSS_HIGH_THRESHOLD = 7.0
+CVSS_MEDIUM_THRESHOLD = 4.0
 
 
 class NVDService:
@@ -12,22 +40,24 @@ class NVDService:
 
     BASE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None) -> None:
         """Initialize NVD service.
 
         Args:
             api_key: NVD API key for higher rate limits (optional)
         """
         self.api_key = api_key
-        self.headers = {}
+        self.headers: dict[str, str] = {}
         if api_key:
             self.headers["apiKey"] = api_key
 
         # Simple in-memory cache (in production, use Redis)
-        self._cache: dict[str, tuple[list[dict[str, Any]], datetime]] = {}
-        self._cache_ttl = timedelta(hours=24)
+        self._cache: dict[str, tuple[list[CVEResult] | list[str], datetime]] = {}
+        self._cache_ttl = timedelta(hours=CACHE_TTL_HOURS)
 
-    def search_cves_by_keyword(self, keyword: str, max_results: int = 10) -> list[dict[str, Any]]:
+    def search_cves_by_keyword(
+        self, keyword: str, max_results: int = DEFAULT_MAX_RESULTS
+    ) -> list[CVEResult]:
         """Search for CVEs by keyword (e.g., product name).
 
         Args:
@@ -42,12 +72,12 @@ class NVDService:
         # Check cache
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
-            if datetime.now(timezone.utc) - cached_time < self._cache_ttl:
+            if datetime.now(UTC) - cached_time < self._cache_ttl:
                 logger.info(f"Cache hit for keyword: {keyword}")
-                return cached_data
+                return cached_data  # type: ignore[return-value]
 
         try:
-            params = {
+            params: dict[str, str | int] = {
                 "keywordSearch": keyword,
                 "resultsPerPage": max_results,
             }
@@ -56,14 +86,14 @@ class NVDService:
                 self.BASE_URL,
                 params=params,
                 headers=self.headers,
-                timeout=10,
+                timeout=REQUEST_TIMEOUT_SECONDS,
             )
             response.raise_for_status()
 
             data = response.json()
             vulnerabilities = data.get("vulnerabilities", [])
 
-            results = []
+            results: list[CVEResult] = []
             for vuln in vulnerabilities:
                 cve = vuln.get("cve", {})
                 cve_id = cve.get("id", "")
@@ -76,8 +106,8 @@ class NVDService:
 
                 # Extract CVSS score
                 metrics = cve.get("metrics", {})
-                cvss_score = None
-                cvss_severity = None
+                cvss_score: float | None = None
+                cvss_severity: str | None = None
 
                 # Try CVSS v3.1 first, then v3.0, then v2.0
                 for version in ["cvssMetricV31", "cvssMetricV30", "cvssMetricV2"]:
@@ -89,24 +119,26 @@ class NVDService:
 
                 # Extract CWE IDs
                 weaknesses = cve.get("weaknesses", [])
-                cwe_ids = []
+                cwe_ids: list[str] = []
                 for weakness in weaknesses:
                     for desc in weakness.get("description", []):
                         cwe_value = desc.get("value", "")
                         if cwe_value.startswith("CWE-"):
                             cwe_ids.append(cwe_value)
 
-                results.append({
-                    "cve_id": cve_id,
-                    "description": description,
-                    "cvss_score": cvss_score,
-                    "cvss_severity": cvss_severity,
-                    "cwe_ids": list(set(cwe_ids)),  # Deduplicate
-                    "published_date": cve.get("published", ""),
-                })
+                results.append(
+                    CVEResult(
+                        cve_id=cve_id,
+                        description=description,
+                        cvss_score=cvss_score,
+                        cvss_severity=cvss_severity,
+                        cwe_ids=list(set(cwe_ids)),  # Deduplicate
+                        published_date=cve.get("published", ""),
+                    )
+                )
 
             # Cache results
-            self._cache[cache_key] = (results, datetime.now(timezone.utc))
+            self._cache[cache_key] = (results, datetime.now(UTC))
             logger.info(f"Fetched {len(results)} CVEs for keyword: {keyword}")
             return results
 
@@ -117,7 +149,9 @@ class NVDService:
             logger.error(f"Error processing NVD response: {e}")
             return []
 
-    def analyze_software_stack(self, software_stack: dict[str, str]) -> dict[str, list[dict[str, Any]]]:
+    def analyze_software_stack(
+        self, software_stack: dict[str, str]
+    ) -> dict[str, list[CVEResult]]:
         """Analyze a software stack for known vulnerabilities.
 
         Args:
@@ -127,11 +161,11 @@ class NVDService:
         Returns:
             Dictionary mapping component names to lists of CVEs
         """
-        results = {}
+        results: dict[str, list[CVEResult]] = {}
 
         for component, version in software_stack.items():
             # Search for CVEs mentioning this component
-            # NOTE: Search by component name only, not version string
+            # Search by component name only, not version string
             # NVD API uses AND logic for multiple keywords, so "java 21" searches for CVEs
             # mentioning BOTH java AND "21", which is too restrictive.
             # Instead, search for component name alone to get all CVEs affecting that component.
@@ -140,7 +174,9 @@ class NVDService:
 
             if cves:
                 results[component] = cves
-                logger.info(f"Found {len(cves)} CVEs for {component} (version {version})")
+                logger.info(
+                    f"Found {len(cves)} CVEs for {component} (version {version})"
+                )
 
         return results
 
@@ -156,11 +192,11 @@ class NVDService:
         if cvss_score is None:
             return "medium"
 
-        if cvss_score >= 9.0:
+        if cvss_score >= CVSS_CRITICAL_THRESHOLD:
             return "critical"
-        elif cvss_score >= 7.0:
+        elif cvss_score >= CVSS_HIGH_THRESHOLD:
             return "high"
-        elif cvss_score >= 4.0:
+        elif cvss_score >= CVSS_MEDIUM_THRESHOLD:
             return "medium"
         else:
             return "low"
@@ -177,16 +213,16 @@ class NVDService:
         if cvss_score is None:
             return "quarterly"
 
-        if cvss_score >= 9.0:
+        if cvss_score >= CVSS_HIGH_THRESHOLD:
             return "immediate"
-        elif cvss_score >= 7.0:
-            return "immediate"
-        elif cvss_score >= 4.0:
+        elif cvss_score >= CVSS_MEDIUM_THRESHOLD:
             return "30_days"
         else:
             return "quarterly"
 
-    def get_known_versions(self, component_name: str, max_versions: int = 10) -> list[str]:
+    def get_known_versions(
+        self, component_name: str, max_versions: int = DEFAULT_MAX_RESULTS
+    ) -> list[str]:
         """Get known versions of a component from NVD CVE records.
 
         Queries NVD for CVEs affecting the component and extracts all unique versions
@@ -204,28 +240,28 @@ class NVDService:
         # Check cache
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
-            if datetime.now(timezone.utc) - cached_time < self._cache_ttl:
+            if datetime.now(UTC) - cached_time < self._cache_ttl:
                 logger.info(f"Cache hit for component versions: {component_name}")
-                return cached_data
+                return cached_data  # type: ignore[return-value]
 
         try:
-            params = {
+            params: dict[str, str | int] = {
                 "keywordSearch": component_name,
-                "resultsPerPage": 100,  # Get more results to extract more versions
+                "resultsPerPage": VERSION_SEARCH_MAX_RESULTS,
             }
 
             response = requests.get(
                 self.BASE_URL,
                 params=params,
                 headers=self.headers,
-                timeout=10,
+                timeout=REQUEST_TIMEOUT_SECONDS,
             )
             response.raise_for_status()
 
             data = response.json()
             vulnerabilities = data.get("vulnerabilities", [])
 
-            versions_set = set()
+            versions_set: set[str] = set()
 
             # Extract version information from CVE configurations
             for vuln in vulnerabilities:
@@ -246,11 +282,15 @@ class NVDService:
                                 if len(parts) >= 6:
                                     version = parts[5]
                                     # Filter out wildcards, generic versions, and invalid formats
-                                    # Valid versions should contain dots (e.g., "21.0.1") or be simple numbers ≤ 50
-                                    # This filters out update/build numbers like "382", "3802" that aren't valid versions
+                                    # Valid versions should contain dots (e.g., "21.0.1") or be simple numbers
+                                    # This filters out update/build numbers that aren't valid versions
                                     if version and version not in ["*", "-", ""]:
-                                        # Accept versions with dots (21.0.1) or reasonable single numbers (21, not 3802)
-                                        if "." in version or (version.isdigit() and int(version) <= 50):
+                                        # Accept versions with dots or reasonable single numbers
+                                        if "." in version or (
+                                            version.isdigit()
+                                            and int(version)
+                                            <= MAX_VALID_SINGLE_DIGIT_VERSION
+                                        ):
                                             versions_set.add(version)
 
                             # Also check version ranges
@@ -263,12 +303,16 @@ class NVDService:
                                 versions_set.add(version_end_including)
 
             # Sort versions (try numeric sort, fallback to string sort)
-            sorted_versions = sorted(list(versions_set), key=lambda v: self._parse_version(v), reverse=True)
+            sorted_versions = sorted(
+                list(versions_set), key=lambda v: self._parse_version(v), reverse=True
+            )
             top_versions = sorted_versions[:max_versions]
 
             # Cache results
-            self._cache[cache_key] = (top_versions, datetime.now(timezone.utc))
-            logger.info(f"Extracted {len(top_versions)} versions for {component_name} from NVD")
+            self._cache[cache_key] = (top_versions, datetime.now(UTC))
+            logger.info(
+                f"Extracted {len(top_versions)} versions for {component_name} from NVD"
+            )
             return top_versions
 
         except requests.exceptions.RequestException as e:
