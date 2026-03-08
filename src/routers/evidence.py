@@ -1,6 +1,6 @@
 """Evidence collection and management endpoints."""
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -26,11 +26,11 @@ def create_evidence(
 ) -> Evidence:
     """Create a new evidence item."""
     # Verify control exists
-    control = get_or_404(db, Control, evidence_data.control_id, "Control not found")
+    get_or_404(db, Control, evidence_data.control_id, "Control not found")
 
     # Verify assessment exists if provided
     if evidence_data.assessment_id:
-        assessment = get_or_404(db, Assessment, evidence_data.assessment_id, "Assessment not found")
+        get_or_404(db, Assessment, evidence_data.assessment_id, "Assessment not found")
 
     evidence = Evidence(
         control_id=evidence_data.control_id,
@@ -52,7 +52,7 @@ def create_evidence(
         raise HTTPException(
             status_code=500,
             detail="Failed to create evidence item. Please try again."
-        )
+        ) from e
 
     # Audit log
     log_audit_event(
@@ -92,7 +92,7 @@ def update_evidence(
         setattr(evidence, field, value)
 
     if evidence_update.artifact_path or evidence_update.artifact_url:
-        evidence.uploaded_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        evidence.uploaded_at = datetime.now(UTC).replace(tzinfo=None)
 
     db.commit()
     db.refresh(evidence)

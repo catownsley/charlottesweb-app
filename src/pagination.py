@@ -21,7 +21,7 @@ Usage:
 - GET /controls?skip=0&limit=50 → PaginatedResponse
 - GET /controls?limit=9999 → Plain array (backward compat)
 """
-from typing import Generic, List, Optional, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -44,7 +44,7 @@ class PaginationParams(BaseModel):
     limit: int = Field(50, ge=1, le=1000, description="Max items to return (max 1000)")
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     """Generic paginated response wrapper for list endpoints.
 
     Type-safe wrapper using Python Generics for Pydantic V2.
@@ -72,14 +72,14 @@ class PaginatedResponse(BaseModel, Generic[T]):
     - Network round-trips: Reduced by 50-80% vs fetching all items
     """
 
-    items: List[T]
+    items: list[T]
     total: int = Field(description="Total items available")
     skip: int = Field(description="Items skipped")
     limit: int = Field(description="Items returned")
     has_more: bool = Field(description="Whether more items exist")
 
     @staticmethod
-    def create(items: List[T], total: int, skip: int, limit: int) -> "PaginatedResponse[T]":
+    def create(items: list[T], total: int, skip: int, limit: int) -> "PaginatedResponse[T]":
         """Create paginated response.
 
         Args:

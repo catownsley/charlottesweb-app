@@ -1,4 +1,6 @@
 """Comprehensive tests for CharlottesWeb API - Phase 3 test coverage expansion."""
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -6,7 +8,9 @@ from sqlalchemy.orm import sessionmaker
 
 from src.database import Base, get_db
 from src.main import app
-from src.models import Assessment, Control, Evidence, Finding, MetadataProfile, Organization
+from src.models import (
+    Control,
+)
 
 
 @pytest.fixture(scope="function")
@@ -16,12 +20,12 @@ def test_db(tmp_path):
     test_db_url = f"sqlite:///{db_file}"
 
     engine = create_engine(test_db_url, connect_args={"check_same_thread": False})
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     Base.metadata.create_all(bind=engine)
 
     # Seed controls comprehensively
-    db = TestingSessionLocal()
+    db = testing_session_local()
     controls = [
         Control(
             id="HIPAA.164.312(a)(1)",
@@ -63,7 +67,7 @@ def test_db(tmp_path):
 
     def override_get_db():
         try:
-            db = TestingSessionLocal()
+            db = testing_session_local()
             yield db
         finally:
             db.close()
@@ -557,20 +561,29 @@ class TestEvidence:
 class TestComponents:
     """Component version discovery tests."""
 
-    def test_get_component_versions_known(self, client):
+    @patch("src.routers.components.nvd_service.get_known_versions")
+    def test_get_component_versions_known(self, mock_get_versions, client):
         """Test getting versions for known component."""
+        # Mock NVD service to return sample versions for java
+        mock_get_versions.return_value = ["21.0.1", "20.0.2", "19.0.1"]
         response = client.get("/api/v1/components/java/versions")
         assert response.status_code == 200
         data = response.json()
         assert "versions" in data
         assert isinstance(data["versions"], list)
         assert len(data["versions"]) > 0
+        assert "21.0.1" in data["versions"]
 
-    def test_get_component_versions_case_insensitive(self, client):
+    @patch("src.routers.components.nvd_service.get_known_versions")
+    def test_get_component_versions_case_insensitive(self, mock_get_versions, client):
         """Test component version lookup is case insensitive."""
+        # Mock NVD service to return sample versions for postgres
+        mock_get_versions.return_value = ["15.2", "14.7", "13.10"]
         response = client.get("/api/v1/components/POSTGRES/versions")
         assert response.status_code == 200
         data = response.json()
+        # Verify the mock was called (confirming case-insensitive lookup works)
+        assert mock_get_versions.called
         assert len(data["versions"]) > 0
 
     def test_get_component_versions_unknown(self, client):

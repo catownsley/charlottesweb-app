@@ -1,7 +1,7 @@
 """Organization management endpoints."""
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from src.audit import AuditAction, log_audit_event
@@ -41,7 +41,7 @@ def create_organization(
         raise HTTPException(
             status_code=500,
             detail="Failed to create organization. Please ensure the application has write access and try again."
-        )
+        ) from e
 
     # Audit log
     log_audit_event(

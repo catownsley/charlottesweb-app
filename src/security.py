@@ -13,12 +13,11 @@ Security Features:
 - Auto-error disabled to allow graceful handling in optional auth scenarios
 """
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
+import jwt
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import APIKeyHeader
-import jwt
 from jwt.exceptions import InvalidTokenError as JWTError
 from passlib.context import CryptContext
 
@@ -71,7 +70,7 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """Create a JWT access token for authenticated sessions.
 
     Security features:
@@ -92,15 +91,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.jwt_algorithm)
     return encoded_jwt
 
 
-def verify_access_token(token: str) -> Optional[dict]:
+def verify_access_token(token: str) -> dict | None:
     """Verify and decode a JWT access token.
 
     Validates:
@@ -192,7 +191,7 @@ async def verify_api_key(api_key: str = Security(api_key_header)) -> str:
 
 
 # Optional dependency: only require API key if configured
-async def get_api_key_optional(api_key: str = Security(api_key_header)) -> Optional[str]:
+async def get_api_key_optional(api_key: str = Security(api_key_header)) -> str | None:
     """Get API key if provided, but don't require it (for development mode).
 
     Behavior:

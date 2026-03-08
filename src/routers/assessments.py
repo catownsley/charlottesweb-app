@@ -1,7 +1,9 @@
 """Assessment workflow endpoints."""
 
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Any, TypeVar, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
@@ -9,6 +11,7 @@ from sqlalchemy.orm import Session
 from src.audit import AuditAction, AuditLevel, log_audit_event
 from src.compliance_as_code import ComplianceAsCodeEvaluator
 from src.config import settings
+from src.constants import AssessmentStatus, PriorityWindow, Severity
 from src.cwe_mappings import CWE_TO_HIPAA_CONTROL, FALLBACK_CONTROL_CANDIDATES
 from src.database import get_db, get_or_404
 from src.dependabot_service import DependabotService
@@ -34,14 +37,310 @@ from src.schemas import (
     RemediationRoadmapResponse,
     RoadmapItem,
     RoadmapSummary,
+    ThreatContext,
 )
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
 logger = logging.getLogger(__name__)
 
+F = TypeVar("F", bound=Callable[..., object])
+
+
+def _rate_limited(limit_value: str) -> Callable[[F], F]:
+    limiter_any = cast(Any, limiter)
+    return cast(Callable[[F], F], limiter_any.limit(limit_value))
+
+
+def _to_str(value: object | None, default: str = "") -> str:
+    if value is None:
+        return default
+    return str(value)
+
+
+def _to_optional_str(value: object | None) -> str | None:
+    if value is None:
+        return None
+    return str(value)
+
+
+def _to_float(value: object | None, default: float = 0.0) -> float:
+    if isinstance(value, int | float):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return default
+    return default
+
+
+def _to_str_list(value: object | None) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in cast(list[Any], value)]
+    if isinstance(value, tuple):
+        return [str(item) for item in cast(tuple[Any, ...], value)]
+    if isinstance(value, set):
+        return [str(item) for item in cast(set[Any], value)]
+    return []
+
+
+def _get_metadata_profile_or_404(
+    db: Session, assessment: Assessment
+) -> MetadataProfile:
+    metadata_profile: MetadataProfile | None = (
+        db.query(MetadataProfile)
+        .filter(
+            MetadataProfile.id == assessment.metadata_profile_id  # type: ignore[attr-defined]
+        )
+        .first()
+    )
+    if not metadata_profile:
+        raise HTTPException(status_code=404, detail="Metadata profile not found")
+    return metadata_profile
+
+
+def _get_available_control_ids(db: Session) -> set[str]:
+    available_control_ids = {control_id for (control_id,) in db.query(Control.id).all()}
+    if not available_control_ids:
+        logger.warning(
+            "No controls found in database; findings will be created without control mapping"
+        )
+    return available_control_ids
+
+
+def _map_control_id_for_cwes(
+    cwe_ids: list[str], available_control_ids: set[str]
+) -> tuple[str | None, str]:
+    for cwe_id in cwe_ids:
+        mapped_control_id = CWE_TO_HIPAA_CONTROL.get(cwe_id)
+        if mapped_control_id and mapped_control_id in available_control_ids:
+            return mapped_control_id, "cwe"
+
+    for fallback_control in FALLBACK_CONTROL_CANDIDATES:
+        if fallback_control in available_control_ids:
+            return fallback_control, "fallback"
+
+    return None, "none"
+
+
+def _finding_exists(db: Session, assessment_id: str, external_id: str) -> bool:
+    existing_finding = (
+        db.query(Finding)
+        .filter(
+            Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
+            Finding.external_id == external_id,  # type: ignore[attr-defined]
+        )
+        .first()
+    )
+    return existing_finding is not None
+
+
+def _build_nvd_findings(
+    db: Session,
+    assessment_id: str,
+    nvd_results: dict[str, list[dict[str, Any]]],
+    nvd_service: NVDService,
+    available_control_ids: set[str],
+) -> tuple[list[Finding], int, int, int, int]:
+    new_findings: list[Finding] = []
+    total_cves_processed = 0
+    mapped_via_cwe = 0
+    mapped_via_fallback = 0
+    unmapped_cves = 0
+
+    for component, cves in nvd_results.items():
+        for cve in cves:
+            cve_id = _to_str(cve.get("cve_id"), default="")
+            if not cve_id:
+                continue
+            if _finding_exists(db, assessment_id, cve_id):
+                continue
+
+            total_cves_processed += 1
+            cvss_score = _to_float(cve.get("cvss_score"))
+            cwe_ids = _to_str_list(cve.get("cwe_ids"))
+
+            control_id, mapping_source = _map_control_id_for_cwes(
+                cwe_ids=cwe_ids,
+                available_control_ids=available_control_ids,
+            )
+
+            if mapping_source == "cwe":
+                mapped_via_cwe += 1
+            elif mapping_source == "fallback":
+                mapped_via_fallback += 1
+            else:
+                unmapped_cves += 1
+
+            finding = Finding(
+                assessment_id=assessment_id,  # type: ignore[arg-type]
+                control_id=control_id,
+                external_id=cve_id,
+                title=f"{cve_id}: {component} vulnerability",
+                description=_to_str(cve.get("description"), default=""),
+                severity=nvd_service.get_severity_from_cvss(cvss_score),
+                cvss_score=cvss_score,
+                cwe_ids=cwe_ids,
+                priority_window=nvd_service.get_priority_window_from_cvss(cvss_score),
+                remediation_guidance=(
+                    f"Update {component} to a patched version. "
+                    f"Check CVE details at https://nvd.nist.gov/vuln/detail/{cve_id}"
+                ),
+            )
+            db.add(finding)
+            new_findings.append(finding)
+
+    return (
+        new_findings,
+        total_cves_processed,
+        mapped_via_cwe,
+        mapped_via_fallback,
+        unmapped_cves,
+    )
+
+
+def _create_evidence_for_findings(
+    db: Session,
+    assessment_id: str,
+    new_findings: list[Finding],
+) -> int:
+    evidence_created_count = 0
+    unique_control_ids = {
+        _to_str(getattr(finding, "control_id", None))
+        for finding in new_findings
+        if _to_str(getattr(finding, "control_id", None))
+    }
+
+    for control_id in unique_control_ids:
+        control = db.query(Control).filter(Control.id == control_id).first()
+        if not control:
+            continue
+
+        evidence_types = _to_str_list(getattr(control, "evidence_types", None))
+        if not evidence_types:
+            continue
+
+        for evidence_type in evidence_types:
+            existing_evidence = (
+                db.query(Evidence)
+                .filter(
+                    Evidence.assessment_id == assessment_id,
+                    Evidence.control_id == control_id,
+                    Evidence.evidence_type == evidence_type,
+                )
+                .first()
+            )
+
+            if existing_evidence:
+                continue
+
+            db.add(
+                Evidence(
+                    assessment_id=assessment_id,
+                    control_id=control_id,
+                    evidence_type=evidence_type,
+                    title=f"{control_id}: {evidence_type}",
+                    description=f"Evidence for {control.title}",
+                    status="not_started",
+                    owner="system",
+                )
+            )
+            evidence_created_count += 1
+
+    return evidence_created_count
+
+
+def _persist_nvd_findings_and_evidence(
+    db: Session,
+    assessment: Assessment,
+    assessment_id: str,
+    new_findings: list[Finding],
+) -> int:
+    if not new_findings:
+        return 0
+
+    try:
+        db.commit()
+        db.refresh(assessment)
+        evidence_created_count = _create_evidence_for_findings(
+            db=db,
+            assessment_id=assessment_id,
+            new_findings=new_findings,
+        )
+        db.commit()
+        return evidence_created_count
+    except Exception as err:
+        db.rollback()
+        logger.error("Failed to commit findings: %s", err, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Failed to save vulnerability findings. "
+                "Please try again with a different software stack or contact support."
+            ),
+        ) from err
+
+
+def _build_dependabot_findings(
+    db: Session,
+    assessment_id: str,
+    alerts: list[dict[str, Any]],
+    nvd_service: NVDService,
+    available_control_ids: set[str],
+) -> tuple[list[Finding], int, int]:
+    new_findings: list[Finding] = []
+    mapped_via_cwe = 0
+    unmapped_alerts = 0
+
+    for alert in alerts:
+        cve_id = _to_str(alert.get("cve_id"), default="")
+        if not cve_id:
+            continue
+        if _finding_exists(db, assessment_id, cve_id):
+            continue
+
+        cvss_score = _to_float(alert.get("cvss_score"))
+        cwe_ids = _to_str_list(alert.get("cwe_ids"))
+        control_id, mapping_source = _map_control_id_for_cwes(
+            cwe_ids=cwe_ids,
+            available_control_ids=available_control_ids,
+        )
+
+        if mapping_source == "cwe":
+            mapped_via_cwe += 1
+        elif mapping_source == "none":
+            unmapped_alerts += 1
+
+        package_name = _to_str(alert.get("package_name"), default="unknown-package")
+        ecosystem = _to_str(alert.get("ecosystem"), default="unknown-ecosystem")
+        advisory_url = _to_str(alert.get("url"), default="N/A")
+
+        finding = Finding(
+            assessment_id=assessment_id,  # type: ignore[arg-type]
+            control_id=control_id,
+            external_id=cve_id,
+            title=(
+                f"{cve_id}: {package_name} " f"({ecosystem}) dependency vulnerability"
+            ),
+            description=_to_str(alert.get("description"), default=""),
+            severity=nvd_service.get_severity_from_cvss(cvss_score),
+            cvss_score=cvss_score,
+            cwe_ids=cwe_ids,
+            priority_window=nvd_service.get_priority_window_from_cvss(cvss_score),
+            owner="Supply Chain Security",
+            remediation_guidance=(
+                f"Update {package_name} to a patched version. "
+                f"See GitHub Advisory: {advisory_url}"
+            ),
+        )
+        db.add(finding)
+        new_findings.append(finding)
+
+    return new_findings, mapped_via_cwe, unmapped_alerts
+
 
 @router.post("", response_model=AssessmentResponse, status_code=201)
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+@_rate_limited(f"{settings.rate_limit_per_minute}/minute")
 def create_assessment(
     request: Request,
     assessment_data: AssessmentCreate,
@@ -50,10 +349,10 @@ def create_assessment(
 ) -> Assessment:
     """Create and run a new assessment."""
     # Verify organization and metadata profile exist
-    org = get_or_404(
+    get_or_404(
         db, Organization, assessment_data.organization_id, "Organization not found"
     )
-    profile = get_or_404(
+    get_or_404(
         db,
         MetadataProfile,
         assessment_data.metadata_profile_id,
@@ -65,7 +364,7 @@ def create_assessment(
         assessment = Assessment(
             organization_id=assessment_data.organization_id,
             metadata_profile_id=assessment_data.metadata_profile_id,
-            status="running",
+            status=AssessmentStatus.RUNNING,
         )
         db.add(assessment)
         db.commit()
@@ -75,7 +374,7 @@ def create_assessment(
         logger.error(f"Failed to create assessment: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500, detail="Failed to create assessment. Please try again."
-        )
+        ) from e
 
     # Audit log - assessment created
     log_audit_event(
@@ -97,7 +396,7 @@ def create_assessment(
             db.add(finding)
 
         # Mark assessment complete
-        assessment.status = "completed"  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
+        assessment.status = AssessmentStatus.COMPLETED  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         assessment.completed_at = datetime.now(UTC)  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         db.commit()
 
@@ -112,10 +411,13 @@ def create_assessment(
         )
 
     except Exception as e:
-        assessment.status = "failed"  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
+        assessment.status = AssessmentStatus.FAILED  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         try:
             db.commit()
-        except:
+        except Exception as commit_error:
+            logger.warning(
+                f"Failed to commit assessment failure status: {commit_error}"
+            )
             db.rollback()
 
         logger.error(f"Assessment failed: {str(e)}", exc_info=True)
@@ -133,7 +435,7 @@ def create_assessment(
         raise HTTPException(
             status_code=500,
             detail="Assessment execution failed. Please try again or contact support.",
-        )
+        ) from e
 
     db.refresh(assessment)
     return assessment
@@ -227,7 +529,7 @@ def evaluate_compliance_as_code(
                 existing_finding.description = failure_description  # type: ignore[attr-defined]
                 existing_finding.severity = severity  # type: ignore[attr-defined]
                 existing_finding.remediation_guidance = remediation_guidance  # type: ignore[attr-defined]
-                existing_finding.priority_window = "immediate" if severity in ["critical", "high"] else "30_days"  # type: ignore[attr-defined]
+                existing_finding.priority_window = PriorityWindow.IMMEDIATE if Severity.is_high_priority(severity) else PriorityWindow.THIRTY_DAYS  # type: ignore[attr-defined]
                 existing_finding.owner = "Security"  # type: ignore[attr-defined]
             else:
                 finding = Finding(
@@ -241,7 +543,9 @@ def evaluate_compliance_as_code(
                     cwe_ids=[],
                     remediation_guidance=remediation_guidance,
                     priority_window=(
-                        "immediate" if severity in ["critical", "high"] else "30_days"
+                        PriorityWindow.IMMEDIATE
+                        if Severity.is_high_priority(severity)
+                        else PriorityWindow.THIRTY_DAYS
                     ),
                     owner="Security",
                 )
@@ -292,47 +596,55 @@ def get_assessment_findings(
     assessment_id: str, db: Session = Depends(get_db)
 ) -> list[FindingResponse]:
     """Get findings for an assessment with threat intelligence context."""
-    assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
+    get_or_404(db, Assessment, assessment_id, "Assessment not found")
     findings: list[Finding] = (
         db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
     )
 
     # Enrich each finding with MITRE ATT&CK threat context
-    enriched_findings = []
+    enriched_findings: list[FindingResponse] = []
     for finding in findings:
-        # Build base response from Finding model
-        finding_dict = {
-            "id": finding.id,
-            "assessment_id": finding.assessment_id,
-            "control_id": finding.control_id,
-            "title": finding.title,
-            "description": finding.description,
-            "severity": finding.severity,
-            "cvss_score": finding.cvss_score,
-            "external_id": finding.external_id,
-            "cve_ids": finding.cve_ids,
-            "cwe_ids": finding.cwe_ids,
-            "remediation_guidance": finding.remediation_guidance,
-            "priority_window": finding.priority_window,
-            "owner": finding.owner,
-            "created_at": finding.created_at,
-        }
+        control_id = _to_str(getattr(finding, "control_id", None))
+        cwe_ids = _to_str_list(getattr(finding, "cwe_ids", None))
+        threat_context: ThreatContext | None = None
 
-        # Add MITRE threat context if CWEs are present
-        if finding.cwe_ids:
-            threat_context = mitre_service.enrich_finding_with_threat_context(
-                cwe_ids=finding.cwe_ids, control_id=finding.control_id or ""
+        if cwe_ids:
+            candidate_context = mitre_service.enrich_finding_with_threat_context(
+                cwe_ids=cwe_ids,
+                control_id=control_id,
             )
-            if threat_context and threat_context.get("techniques"):
-                finding_dict["threat_context"] = threat_context
+            if candidate_context and candidate_context.get("techniques"):
+                threat_context = ThreatContext(**candidate_context)
 
-        enriched_findings.append(FindingResponse(**finding_dict))
+        enriched_findings.append(
+            FindingResponse(
+                id=_to_str(getattr(finding, "id", None)),
+                assessment_id=_to_str(getattr(finding, "assessment_id", None)),
+                control_id=control_id,
+                title=_to_str(getattr(finding, "title", None)),
+                description=_to_str(getattr(finding, "description", None)),
+                severity=_to_str(getattr(finding, "severity", None)),
+                cvss_score=_to_float(getattr(finding, "cvss_score", None), default=0.0),
+                external_id=_to_optional_str(getattr(finding, "external_id", None)),
+                cve_ids=_to_str_list(getattr(finding, "cve_ids", None)),
+                cwe_ids=cwe_ids,
+                remediation_guidance=_to_optional_str(
+                    getattr(finding, "remediation_guidance", None)
+                ),
+                priority_window=_to_optional_str(
+                    getattr(finding, "priority_window", None)
+                ),
+                owner=_to_optional_str(getattr(finding, "owner", None)),
+                created_at=getattr(finding, "created_at", datetime.now(UTC)),
+                threat_context=threat_context,
+            )
+        )
 
     return enriched_findings
 
 
 @router.get("/{assessment_id}/roadmap", response_model=RemediationRoadmapResponse)
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+@_rate_limited(f"{settings.rate_limit_per_minute}/minute")
 def get_remediation_roadmap(
     request: Request,
     assessment_id: str,
@@ -349,10 +661,10 @@ def get_remediation_roadmap(
     )
 
     # Group findings by priority window
-    immediate = []
-    thirty_days = []
-    quarterly = []
-    annual = []
+    immediate: list[RoadmapItem] = []
+    thirty_days: list[RoadmapItem] = []
+    quarterly: list[RoadmapItem] = []
+    annual: list[RoadmapItem] = []
 
     # Count by severity
     critical_count = 0
@@ -391,14 +703,14 @@ def get_remediation_roadmap(
             quarterly.append(item)  # Default to quarterly
 
         # Count by severity
-        severity = finding.severity.lower()
-        if severity == "critical":
+        severity = _to_str(getattr(finding, "severity", None)).lower()
+        if severity == Severity.CRITICAL:
             critical_count += 1
-        elif severity == "high":
+        elif severity == Severity.HIGH:
             high_count += 1
-        elif severity == "medium":
+        elif severity == Severity.MEDIUM:
             medium_count += 1
-        elif severity == "low":
+        elif severity == Severity.LOW:
             low_count += 1
 
     # Build summary
@@ -443,7 +755,7 @@ def get_remediation_roadmap(
 
 
 @router.post("/{assessment_id}/analyze-nvd", response_model=list[FindingResponse])
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+@_rate_limited(f"{settings.rate_limit_per_minute}/minute")
 def analyze_nvd_vulnerabilities(
     assessment_id: str,
     request: Request,
@@ -461,18 +773,15 @@ def analyze_nvd_vulnerabilities(
     # Get assessment and metadata
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
 
-    metadata_profile: MetadataProfile | None = (
-        db.query(MetadataProfile)
-        .filter(
-            MetadataProfile.id == assessment.metadata_profile_id  # type: ignore[attr-defined]
-        )
-        .first()
-    )
-    if not metadata_profile:
-        raise HTTPException(status_code=404, detail="Metadata profile not found")
+    metadata_profile = _get_metadata_profile_or_404(db=db, assessment=assessment)
 
     # Get software stack from metadata profile
-    software_stack: dict = metadata_profile.software_stack or {}  # type: ignore[attr-defined]
+    software_stack_raw = metadata_profile.software_stack or {}  # type: ignore[attr-defined]
+    software_stack: dict[str, str] = {
+        str(name): str(version)
+        for name, version in cast(dict[str, Any], software_stack_raw).items()
+        if version is not None
+    }
     if not software_stack:
         # Log and return empty (no software stack provided yet)
         log_audit_event(
@@ -493,165 +802,40 @@ def analyze_nvd_vulnerabilities(
 
     # Analyze software stack for vulnerabilities
     nvd_results = nvd_service.analyze_software_stack(software_stack)
+    normalized_nvd_results: dict[str, list[dict[str, Any]]] = {
+        component: [cast(dict[str, Any], cve) for cve in cves]
+        for component, cves in nvd_results.items()
+    }
 
-    # Cache available controls for deterministic and efficient mapping
-    available_control_ids = {control_id for (control_id,) in db.query(Control.id).all()}
-    if not available_control_ids:
-        logger.warning(
-            "No controls found in database; NVD findings will be created without control mapping"
-        )
+    available_control_ids = _get_available_control_ids(db=db)
+    (
+        new_findings,
+        total_cves_processed,
+        mapped_via_cwe,
+        mapped_via_fallback,
+        unmapped_cves,
+    ) = _build_nvd_findings(
+        db=db,
+        assessment_id=assessment_id,
+        nvd_results=normalized_nvd_results,
+        nvd_service=nvd_service,
+        available_control_ids=available_control_ids,
+    )
+    evidence_created_count = _persist_nvd_findings_and_evidence(
+        db=db,
+        assessment=assessment,
+        assessment_id=assessment_id,
+        new_findings=new_findings,
+    )
 
-    # Create findings from NVD results
-    new_findings: list[Finding] = []
-
-    total_cves_processed = 0
-    mapped_via_cwe = 0
-    mapped_via_fallback = 0
-    unmapped_cves = 0
-
-    for component, cves in nvd_results.items():
-        for cve in cves:
-            total_cves_processed += 1
-            # Check if this CVE finding already exists
-            existing = (
-                db.query(Finding)
-                .filter(
-                    Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
-                    Finding.external_id == cve["cve_id"],  # type: ignore[attr-defined]
-                )
-                .first()
-            )
-
-            if existing:
-                # Skip if finding already exists
-                continue
-
-            # Determine priority window based on CVSS score
-            priority_window = nvd_service.get_priority_window_from_cvss(
-                cve["cvss_score"]
-            )
-            severity = nvd_service.get_severity_from_cvss(cve["cvss_score"])
-
-            # Map CWE IDs to applicable controls
-            control_id = None
-            cwe_ids = cve.get("cwe_ids", [])
-            mapping_source = "none"
-
-            if cwe_ids:
-                # Check if any CWE maps to a control
-                for cwe in cwe_ids:
-                    if cwe in CWE_TO_HIPAA_CONTROL:
-                        control_id = CWE_TO_HIPAA_CONTROL[cwe]
-                        mapping_source = "cwe"
-                        break
-
-            # Ensure mapped control exists in database
-            if control_id and control_id not in available_control_ids:
-                control_id = None
-                mapping_source = "none"
-
-            # Fallback mapping when no direct CWE mapping is available
-            if not control_id:
-                for fallback_control in FALLBACK_CONTROL_CANDIDATES:
-                    if fallback_control in available_control_ids:
-                        control_id = fallback_control
-                        mapping_source = "fallback"
-                        break
-
-            if mapping_source == "cwe":
-                mapped_via_cwe += 1
-            elif mapping_source == "fallback":
-                mapped_via_fallback += 1
-            else:
-                unmapped_cves += 1
-
-            # Create finding record
-            # NOTE: Do NOT set id manually - let the database generate UUIDs to avoid uniqueness violations
-            finding = Finding(
-                assessment_id=assessment_id,  # type: ignore[arg-type]
-                control_id=control_id,
-                external_id=cve["cve_id"],
-                title=f"{cve['cve_id']}: {component} vulnerability",
-                description=cve["description"],
-                severity=severity,
-                cvss_score=cve["cvss_score"],
-                cwe_ids=cve["cwe_ids"],
-                priority_window=priority_window,
-                remediation_guidance=f"Update {component} to a patched version. Check CVE details at https://nvd.nist.gov/vuln/detail/{cve['cve_id']}",
-            )
-
-            db.add(finding)
-            new_findings.append(finding)
-
-    evidence_created_count = 0
-
-    # Commit findings to database
-    if new_findings:
-        try:
-            db.commit()
-            logger.info(f"✓ Committed {len(new_findings)} findings")
-
-            # After committing findings, generate evidence items for controls
-            db.refresh(assessment)
-            unique_control_ids = set(f.control_id for f in new_findings if f.control_id)
-            logger.info(f"✓ Unique control IDs from findings: {unique_control_ids}")
-
-            for control_id in unique_control_ids:
-                logger.info(f"  Processing control: {control_id}")
-                control = db.query(Control).filter(Control.id == control_id).first()
-                logger.info(f"  Control found: {control is not None}")
-                if control:
-                    logger.info(f"  Control.evidence_types: {control.evidence_types}")
-
-                if control and control.evidence_types:
-                    logger.info(
-                        f"  Creating evidence items for {len(control.evidence_types)} types"
-                    )
-                    for evidence_type in control.evidence_types:
-                        # Check if evidence item already exists
-                        existing = (
-                            db.query(Evidence)
-                            .filter(
-                                Evidence.assessment_id == assessment_id,
-                                Evidence.control_id == control_id,
-                                Evidence.evidence_type == evidence_type,
-                            )
-                            .first()
-                        )
-
-                        if not existing:
-                            # Create new evidence item
-                            evidence_item = Evidence(
-                                assessment_id=assessment_id,
-                                control_id=control_id,
-                                evidence_type=evidence_type,
-                                title=f"{control_id}: {evidence_type}",
-                                description=f"Evidence for {control.title}",
-                                status="not_started",
-                                owner="system",
-                            )
-                            logger.info(f"    Adding evidence item: {evidence_type}")
-                            db.add(evidence_item)
-                            evidence_created_count += 1
-
-            db.commit()
-            logger.info("✓ Committed all evidence items")
-            logger.warning(
-                "NVD analysis summary: findings=%s mapped_via_cwe=%s mapped_via_fallback=%s unmapped=%s evidence_created=%s",
-                len(new_findings),
-                mapped_via_cwe,
-                mapped_via_fallback,
-                unmapped_cves,
-                evidence_created_count,
-            )
-        except Exception as e:
-            db.rollback()
-            # Log the actual error server-side but don't expose to user
-            logger.error(f"Failed to commit findings: {str(e)}", exc_info=True)
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to save vulnerability findings. Please try again with a different software stack or contact support.",
-            )
+    logger.warning(
+        "NVD analysis summary: findings=%s mapped_via_cwe=%s mapped_via_fallback=%s unmapped=%s evidence_created=%s",
+        len(new_findings),
+        mapped_via_cwe,
+        mapped_via_fallback,
+        unmapped_cves,
+        evidence_created_count,
+    )
 
     # Audit log
     log_audit_event(
@@ -680,7 +864,7 @@ def analyze_nvd_vulnerabilities(
 @router.post(
     "/{assessment_id}/analyze-dependabot", response_model=list[FindingResponse]
 )
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+@_rate_limited(f"{settings.rate_limit_per_minute}/minute")
 def analyze_dependabot_alerts(
     assessment_id: str,
     request: Request,
@@ -697,7 +881,7 @@ def analyze_dependabot_alerts(
     Rate limit: Standard (60 req/min)
     """
     # Get assessment and metadata
-    assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
+    get_or_404(db, Assessment, assessment_id, "Assessment not found")
 
     # Check if GitHub token is configured
     github_token = settings.github_token if hasattr(settings, "github_token") else None
@@ -744,80 +928,15 @@ def analyze_dependabot_alerts(
         )
         return []
 
-    # Cache available controls for deterministic mapping
-    available_control_ids = {control_id for (control_id,) in db.query(Control.id).all()}
-    if not available_control_ids:
-        logger.warning(
-            "No controls found in database; Dependabot findings will be created without control mapping"
-        )
-
-    # Create findings from Dependabot alerts
-    new_findings: list[Finding] = []
-    mapped_via_cwe = 0
-    unmapped_alerts = 0
-
-    for alert in dependabot_alerts:
-        # Check if this alert finding already exists
-        existing = (
-            db.query(Finding)
-            .filter(
-                Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
-                Finding.external_id == alert["cve_id"],  # type: ignore[attr-defined]
-            )
-            .first()
-        )
-
-        if existing:
-            # Skip if finding already exists
-            continue
-
-        # Determine priority window based on CVSS score
-        nvd_service = NVDService()
-        priority_window = nvd_service.get_priority_window_from_cvss(alert["cvss_score"])
-        severity = nvd_service.get_severity_from_cvss(alert["cvss_score"])
-
-        # Map CWE IDs to applicable controls
-        control_id = None
-        cwe_ids = alert.get("cwe_ids", [])
-
-        if cwe_ids:
-            # Check if any CWE maps to a control
-            for cwe in cwe_ids:
-                if cwe in CWE_TO_HIPAA_CONTROL:
-                    control_id = CWE_TO_HIPAA_CONTROL[cwe]
-                    mapped_via_cwe += 1
-                    break
-
-        # Ensure mapped control exists in database
-        if control_id and control_id not in available_control_ids:
-            control_id = None
-
-        # Fallback mapping when no direct CWE mapping is available
-        if not control_id:
-            for fallback_control in FALLBACK_CONTROL_CANDIDATES:
-                if fallback_control in available_control_ids:
-                    control_id = fallback_control
-                    break
-        else:
-            unmapped_alerts += 1
-
-        # Create finding record
-        finding = Finding(
-            assessment_id=assessment_id,  # type: ignore[arg-type]
-            control_id=control_id,
-            external_id=alert["cve_id"],
-            title=f"{alert['cve_id']}: {alert['package_name']} ({alert['ecosystem']}) dependency vulnerability",
-            description=alert["description"],
-            severity=severity,
-            cvss_score=alert["cvss_score"],
-            cwe_ids=cwe_ids,
-            priority_window=priority_window,
-            owner="Supply Chain Security",
-            remediation_guidance=f"Update {alert['package_name']} to a patched version. See GitHub Advisory: {alert.get('url', 'N/A')}",
-        )
-
-        db.add(finding)
-        new_findings.append(finding)
+    available_control_ids = _get_available_control_ids(db=db)
+    nvd_service = NVDService()
+    new_findings, mapped_via_cwe, unmapped_alerts = _build_dependabot_findings(
+        db=db,
+        assessment_id=assessment_id,
+        alerts=dependabot_alerts,
+        nvd_service=nvd_service,
+        available_control_ids=available_control_ids,
+    )
 
     # Commit all findings
     if new_findings:
@@ -865,7 +984,13 @@ def generate_evidence_checklist(
     )
 
     # Get unique control IDs from findings
-    control_ids = list(set(f.control_id for f in findings if f.control_id))
+    control_ids = [
+        control_id
+        for control_id in {
+            _to_str(getattr(finding, "control_id", None)) for finding in findings
+        }
+        if control_id
+    ]
 
     # Get controls with evidence requirements
     controls: list[Control] = (
@@ -902,30 +1027,59 @@ def generate_evidence_checklist(
 
     # Create a map of (control_id, evidence_type) -> evidence
     # Prefer most recently updated evidence for each (control, type) combo
-    evidence_map = {}
-    for ev in sorted(all_evidence, key=lambda e: e.updated_at):
-        evidence_map[(ev.control_id, ev.evidence_type)] = ev
+    evidence_map: dict[tuple[str, str], Evidence] = {}
+    for ev in sorted(
+        all_evidence, key=lambda e: getattr(e, "updated_at", datetime.min)
+    ):
+        evidence_map[
+            (
+                _to_str(getattr(ev, "control_id", None)),
+                _to_str(getattr(ev, "evidence_type", None)),
+            )
+        ] = ev
 
     # Generate checklist items
     checklist_items: list[EvidenceChecklistItem] = []
     for control in controls:
-        if not control.evidence_types:
+        evidence_types = _to_str_list(getattr(control, "evidence_types", None))
+        if not evidence_types:
             continue
 
-        for evidence_type in control.evidence_types:
-            evidence = evidence_map.get((control.id, evidence_type))
+        control_id = _to_str(getattr(control, "id", None))
+        control_title = _to_str(getattr(control, "title", None))
+
+        for evidence_type in evidence_types:
+            evidence = evidence_map.get((control_id, evidence_type))
 
             item = EvidenceChecklistItem(
-                control_id=control.id,
-                control_title=control.title,
+                control_id=control_id,
+                control_title=control_title,
                 evidence_type=evidence_type,
                 required_evidence=evidence_type.replace("_", " ").title(),
-                status=evidence.status if evidence else "not_started",
-                owner=evidence.owner if evidence else None,
-                due_date=evidence.due_date if evidence else None,
-                collected_at=evidence.collected_at if evidence else None,
-                notes=evidence.notes if evidence else None,
-                evidence_id=evidence.id if evidence else None,  # type: ignore[attr-defined]
+                status=(
+                    _to_str(getattr(evidence, "status", None), default="not_started")
+                    if evidence
+                    else "not_started"
+                ),
+                owner=(
+                    _to_optional_str(getattr(evidence, "owner", None))
+                    if evidence
+                    else None
+                ),
+                due_date=getattr(evidence, "due_date", None) if evidence else None,
+                collected_at=(
+                    getattr(evidence, "collected_at", None) if evidence else None
+                ),
+                notes=(
+                    _to_optional_str(getattr(evidence, "notes", None))
+                    if evidence
+                    else None
+                ),
+                evidence_id=(
+                    _to_optional_str(getattr(evidence, "id", None))
+                    if evidence
+                    else None
+                ),
             )
             checklist_items.append(item)
 
@@ -937,7 +1091,7 @@ def generate_evidence_checklist(
 
     return EvidenceChecklistResponse(
         assessment_id=assessment_id,
-        organization_id=assessment.organization_id,
+        organization_id=_to_str(getattr(assessment, "organization_id", None)),
         generated_at=datetime.now(UTC).replace(tzinfo=None),
         total_items=total_items,
         completed=completed,
