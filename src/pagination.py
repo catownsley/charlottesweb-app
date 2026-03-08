@@ -21,7 +21,7 @@ Usage:
 - GET /controls?skip=0&limit=50 → PaginatedResponse
 - GET /controls?limit=9999 → Plain array (backward compat)
 """
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel, Field
 

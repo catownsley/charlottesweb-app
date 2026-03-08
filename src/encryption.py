@@ -129,7 +129,7 @@ def decrypt_env_file(
         plaintext = cipher.decrypt(encrypted).decode()
         return plaintext
     except Exception as e:
-        raise ValueError(f"Failed to decrypt file - wrong password? Error: {str(e)}")
+        raise ValueError(f"Failed to decrypt file - wrong password? Error: {str(e)}") from e
 
 
 def load_encrypted_env(

@@ -26,11 +26,11 @@ def create_evidence(
 ) -> Evidence:
     """Create a new evidence item."""
     # Verify control exists
-    control = get_or_404(db, Control, evidence_data.control_id, "Control not found")
+    get_or_404(db, Control, evidence_data.control_id, "Control not found")
 
     # Verify assessment exists if provided
     if evidence_data.assessment_id:
-        assessment = get_or_404(db, Assessment, evidence_data.assessment_id, "Assessment not found")
+        get_or_404(db, Assessment, evidence_data.assessment_id, "Assessment not found")
 
     evidence = Evidence(
         control_id=evidence_data.control_id,
@@ -52,13 +52,7 @@ def create_evidence(
         raise HTTPException(
             status_code=500,
             detail="Failed to create evidence item. Please try again."
-        )
-
-    # Audit log
-    log_audit_event(
-        action=AuditAction.DATA_CREATED,
-        request=request,
-        api_key=api_key,
+        ) from e
         resource_type="evidence",
         resource_id=evidence.id,  # type: ignore[arg-type]
         details={"control_id": evidence.control_id, "evidence_type": evidence.evidence_type},

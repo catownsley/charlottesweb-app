@@ -31,7 +31,7 @@ def list_controls(
     Returns paginated response if limit is provided, otherwise all controls.
     Uses caching for performance (1 hour TTL).
     """
-    cache_key = f"controls:all"
+    cache_key = "controls:all"
     cached_controls = controls_cache.get(cache_key)
 
     if cached_controls is not None:

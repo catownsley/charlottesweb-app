@@ -25,7 +25,7 @@ def create_metadata_profile(
 ) -> MetadataProfile:
     """Create a new metadata profile."""
     # Verify organization exists
-    org = get_or_404(db, Organization, profile_data.organization_id, "Organization not found")
+    get_or_404(db, Organization, profile_data.organization_id, "Organization not found")
 
     profile = MetadataProfile(
         organization_id=profile_data.organization_id,
@@ -47,13 +47,7 @@ def create_metadata_profile(
         raise HTTPException(
             status_code=500,
             detail="Failed to create metadata profile. Please try again."
-        )
-
-    # Audit log
-    log_audit_event(
-        action=AuditAction.PROFILE_CREATED,
-        request=request,
-        api_key=api_key,
+        ) from e
         resource_type="metadata_profile",
         resource_id=profile.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
         details={"organization_id": profile.organization_id},
