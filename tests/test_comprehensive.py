@@ -6,7 +6,9 @@ from sqlalchemy.orm import sessionmaker
 
 from src.database import Base, get_db
 from src.main import app
-from src.models import Assessment, Control, Evidence, Finding, MetadataProfile, Organization
+from src.models import (
+    Control,
+)
 
 
 @pytest.fixture(scope="function")
@@ -16,12 +18,12 @@ def test_db(tmp_path):
     test_db_url = f"sqlite:///{db_file}"
 
     engine = create_engine(test_db_url, connect_args={"check_same_thread": False})
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     Base.metadata.create_all(bind=engine)
 
     # Seed controls comprehensively
-    db = TestingSessionLocal()
+    db = testing_session_local()
     controls = [
         Control(
             id="HIPAA.164.312(a)(1)",
@@ -63,7 +65,7 @@ def test_db(tmp_path):
 
     def override_get_db():
         try:
-            db = TestingSessionLocal()
+            db = testing_session_local()
             yield db
         finally:
             db.close()
