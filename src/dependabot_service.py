@@ -1,7 +1,8 @@
 """GitHub Dependabot integration for supply chain vulnerability intelligence."""
+
 import logging
-from typing import Any, Optional
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
 import requests
 
@@ -30,7 +31,9 @@ class DependabotService:
         "denial": ["CWE-400"],  # Uncontrolled resource consumption
     }
 
-    def __init__(self, repo_owner: str, repo_name: str, github_token: Optional[str] = None):
+    def __init__(
+        self, repo_owner: str, repo_name: str, github_token: str | None = None
+    ):
         """Initialize Dependabot service.
 
         Args:
@@ -54,9 +57,9 @@ class DependabotService:
         self._cache_ttl = timedelta(hours=24)
 
     def get_alerts(
-        self, 
+        self,
         state: str = "open",
-        ecosystem: Optional[str] = None,
+        ecosystem: str | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch Dependabot alerts from GitHub repository.
 
@@ -72,7 +75,7 @@ class DependabotService:
         # Check cache
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
-            if datetime.now(timezone.utc) - cached_time < self._cache_ttl:
+            if datetime.now(UTC) - cached_time < self._cache_ttl:
                 logger.info(f"Cache hit for dependabot alerts: {state}")
                 return cached_data
 
@@ -91,11 +94,15 @@ class DependabotService:
             )
             response.raise_for_status()
 
-            alerts = response.json()
-            if not isinstance(alerts, list):
+            raw_alerts = response.json()
+            alerts: list[dict[str, Any]]
+            if isinstance(raw_alerts, list):
+                typed_alerts = cast(list[dict[str, Any]], raw_alerts)
+                alerts = typed_alerts
+            else:
                 alerts = []
 
-            results = []
+            results: list[dict[str, Any]] = []
             for alert in alerts:
                 try:
                     parsed = self._parse_alert(alert)
@@ -106,7 +113,7 @@ class DependabotService:
                     continue
 
             # Cache results
-            self._cache[cache_key] = (results, datetime.now(timezone.utc))
+            self._cache[cache_key] = (results, datetime.now(UTC))
             logger.info(f"Fetched {len(results)} Dependabot alerts (state: {state})")
             return results
 
@@ -117,7 +124,7 @@ class DependabotService:
             logger.error(f"Error processing Dependabot response: {e}")
             return []
 
-    def _parse_alert(self, alert: dict[str, Any]) -> Optional[dict[str, Any]]:
+    def _parse_alert(self, alert: dict[str, Any]) -> dict[str, Any] | None:
         """Parse a GitHub Dependabot alert into standardized format.
 
         Args:
@@ -143,12 +150,14 @@ class DependabotService:
             published_at = advisory.get("published_at", "")
 
             # Extract CWE IDs
-            cwe_ids = []
+            cwe_ids: list[str] = []
             cwes = advisory.get("cwes", [])
-            for cwe in cwes:
-                cwe_id = cwe.get("cwe_id")
-                if cwe_id:
-                    cwe_ids.append(cwe_id)
+            if isinstance(cwes, list):
+                typed_cwes = cast(list[dict[str, Any]], cwes)
+                for cwe in typed_cwes:
+                    cwe_id = cwe.get("cwe_id")
+                    if cwe_id:
+                        cwe_ids.append(str(cwe_id))
 
             # Fallback: infer CWE from description and package name
             if not cwe_ids:
@@ -182,7 +191,7 @@ class DependabotService:
         Returns:
             List of inferred CWE IDs
         """
-        inferred = []
+        inferred: list[str] = []
         search_text = f"{package_name} {description}".lower()
 
         for keyword, cwe_list in self.ADVISORY_CWE_MAP.items():
@@ -190,9 +199,11 @@ class DependabotService:
                 inferred.extend(cwe_list)
 
         # Return unique CWE IDs
-        return list(set(inferred)) if inferred else ["CWE-1104"]  # Default: outdated library
+        return (
+            list(set(inferred)) if inferred else ["CWE-1104"]
+        )  # Default: outdated library
 
-    def get_severity_from_cvss(self, cvss_score: Optional[float]) -> str:
+    def get_severity_from_cvss(self, cvss_score: float | None) -> str:
         """Convert CVSS score to severity level.
 
         Args:
@@ -226,13 +237,13 @@ class DependabotService:
 
 
 # Singleton instance (created when needed)
-dependabot_service: Optional[DependabotService] = None
+dependabot_service: DependabotService | None = None
 
 
 def get_dependabot_service(
     repo_owner: str = "catownsley",
     repo_name: str = "charlottesweb-app",
-    github_token: Optional[str] = None,
+    github_token: str | None = None,
 ) -> DependabotService:
     """Get or create Dependabot service instance.
 

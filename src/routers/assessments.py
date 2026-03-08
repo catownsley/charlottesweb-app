@@ -1,7 +1,9 @@
 """Assessment workflow endpoints."""
 
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Any, TypeVar, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
@@ -35,10 +37,51 @@ from src.schemas import (
     RemediationRoadmapResponse,
     RoadmapItem,
     RoadmapSummary,
+    ThreatContext,
 )
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
 logger = logging.getLogger(__name__)
+
+F = TypeVar("F", bound=Callable[..., object])
+
+
+def _rate_limited(limit_value: str) -> Callable[[F], F]:
+    limiter_any = cast(Any, limiter)
+    return cast(Callable[[F], F], limiter_any.limit(limit_value))
+
+
+def _to_str(value: object | None, default: str = "") -> str:
+    if value is None:
+        return default
+    return str(value)
+
+
+def _to_optional_str(value: object | None) -> str | None:
+    if value is None:
+        return None
+    return str(value)
+
+
+def _to_float(value: object | None, default: float = 0.0) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return default
+    return default
+
+
+def _to_str_list(value: object | None) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in cast(list[Any], value)]
+    if isinstance(value, tuple):
+        return [str(item) for item in cast(tuple[Any, ...], value)]
+    if isinstance(value, set):
+        return [str(item) for item in cast(set[Any], value)]
+    return []
 
 
 def _get_metadata_profile_or_404(
@@ -95,7 +138,7 @@ def _finding_exists(db: Session, assessment_id: str, external_id: str) -> bool:
 def _build_nvd_findings(
     db: Session,
     assessment_id: str,
-    nvd_results: dict[str, list[dict[str, object]]],
+    nvd_results: dict[str, list[dict[str, Any]]],
     nvd_service: NVDService,
     available_control_ids: set[str],
 ) -> tuple[list[Finding], int, int, int, int]:
@@ -107,13 +150,15 @@ def _build_nvd_findings(
 
     for component, cves in nvd_results.items():
         for cve in cves:
-            cve_id = str(cve["cve_id"])
+            cve_id = _to_str(cve.get("cve_id"), default="")
+            if not cve_id:
+                continue
             if _finding_exists(db, assessment_id, cve_id):
                 continue
 
             total_cves_processed += 1
-            cvss_score = float(cve["cvss_score"])
-            cwe_ids = [str(cwe_id) for cwe_id in cve.get("cwe_ids", [])]
+            cvss_score = _to_float(cve.get("cvss_score"))
+            cwe_ids = _to_str_list(cve.get("cwe_ids"))
 
             control_id, mapping_source = _map_control_id_for_cwes(
                 cwe_ids=cwe_ids,
@@ -132,7 +177,7 @@ def _build_nvd_findings(
                 control_id=control_id,
                 external_id=cve_id,
                 title=f"{cve_id}: {component} vulnerability",
-                description=str(cve["description"]),
+                description=_to_str(cve.get("description"), default=""),
                 severity=nvd_service.get_severity_from_cvss(cvss_score),
                 cvss_score=cvss_score,
                 cwe_ids=cwe_ids,
@@ -161,15 +206,21 @@ def _create_evidence_for_findings(
 ) -> int:
     evidence_created_count = 0
     unique_control_ids = {
-        finding.control_id for finding in new_findings if finding.control_id
+        _to_str(getattr(finding, "control_id", None))
+        for finding in new_findings
+        if _to_str(getattr(finding, "control_id", None))
     }
 
     for control_id in unique_control_ids:
         control = db.query(Control).filter(Control.id == control_id).first()
-        if not control or not control.evidence_types:
+        if not control:
             continue
 
-        for evidence_type in control.evidence_types:
+        evidence_types = _to_str_list(getattr(control, "evidence_types", None))
+        if not evidence_types:
+            continue
+
+        for evidence_type in evidence_types:
             existing_evidence = (
                 db.query(Evidence)
                 .filter(
@@ -233,7 +284,7 @@ def _persist_nvd_findings_and_evidence(
 def _build_dependabot_findings(
     db: Session,
     assessment_id: str,
-    alerts: list[dict[str, object]],
+    alerts: list[dict[str, Any]],
     nvd_service: NVDService,
     available_control_ids: set[str],
 ) -> tuple[list[Finding], int, int]:
@@ -242,12 +293,14 @@ def _build_dependabot_findings(
     unmapped_alerts = 0
 
     for alert in alerts:
-        cve_id = str(alert["cve_id"])
+        cve_id = _to_str(alert.get("cve_id"), default="")
+        if not cve_id:
+            continue
         if _finding_exists(db, assessment_id, cve_id):
             continue
 
-        cvss_score = float(alert["cvss_score"])
-        cwe_ids = [str(cwe_id) for cwe_id in alert.get("cwe_ids", [])]
+        cvss_score = _to_float(alert.get("cvss_score"))
+        cwe_ids = _to_str_list(alert.get("cwe_ids"))
         control_id, mapping_source = _map_control_id_for_cwes(
             cwe_ids=cwe_ids,
             available_control_ids=available_control_ids,
@@ -258,9 +311,9 @@ def _build_dependabot_findings(
         elif mapping_source == "none":
             unmapped_alerts += 1
 
-        package_name = str(alert["package_name"])
-        ecosystem = str(alert["ecosystem"])
-        advisory_url = str(alert.get("url", "N/A"))
+        package_name = _to_str(alert.get("package_name"), default="unknown-package")
+        ecosystem = _to_str(alert.get("ecosystem"), default="unknown-ecosystem")
+        advisory_url = _to_str(alert.get("url"), default="N/A")
 
         finding = Finding(
             assessment_id=assessment_id,  # type: ignore[arg-type]
@@ -269,7 +322,7 @@ def _build_dependabot_findings(
             title=(
                 f"{cve_id}: {package_name} " f"({ecosystem}) dependency vulnerability"
             ),
-            description=str(alert["description"]),
+            description=_to_str(alert.get("description"), default=""),
             severity=nvd_service.get_severity_from_cvss(cvss_score),
             cvss_score=cvss_score,
             cwe_ids=cwe_ids,
@@ -287,7 +340,7 @@ def _build_dependabot_findings(
 
 
 @router.post("", response_model=AssessmentResponse, status_code=201)
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+@_rate_limited(f"{settings.rate_limit_per_minute}/minute")
 def create_assessment(
     request: Request,
     assessment_data: AssessmentCreate,
@@ -549,41 +602,49 @@ def get_assessment_findings(
     )
 
     # Enrich each finding with MITRE ATT&CK threat context
-    enriched_findings = []
+    enriched_findings: list[FindingResponse] = []
     for finding in findings:
-        # Build base response from Finding model
-        finding_dict = {
-            "id": finding.id,
-            "assessment_id": finding.assessment_id,
-            "control_id": finding.control_id,
-            "title": finding.title,
-            "description": finding.description,
-            "severity": finding.severity,
-            "cvss_score": finding.cvss_score,
-            "external_id": finding.external_id,
-            "cve_ids": finding.cve_ids,
-            "cwe_ids": finding.cwe_ids,
-            "remediation_guidance": finding.remediation_guidance,
-            "priority_window": finding.priority_window,
-            "owner": finding.owner,
-            "created_at": finding.created_at,
-        }
+        control_id = _to_str(getattr(finding, "control_id", None))
+        cwe_ids = _to_str_list(getattr(finding, "cwe_ids", None))
+        threat_context: ThreatContext | None = None
 
-        # Add MITRE threat context if CWEs are present
-        if finding.cwe_ids:
-            threat_context = mitre_service.enrich_finding_with_threat_context(
-                cwe_ids=finding.cwe_ids, control_id=finding.control_id or ""
+        if cwe_ids:
+            candidate_context = mitre_service.enrich_finding_with_threat_context(
+                cwe_ids=cwe_ids,
+                control_id=control_id,
             )
-            if threat_context and threat_context.get("techniques"):
-                finding_dict["threat_context"] = threat_context
+            if candidate_context and candidate_context.get("techniques"):
+                threat_context = ThreatContext(**candidate_context)
 
-        enriched_findings.append(FindingResponse(**finding_dict))
+        enriched_findings.append(
+            FindingResponse(
+                id=_to_str(getattr(finding, "id", None)),
+                assessment_id=_to_str(getattr(finding, "assessment_id", None)),
+                control_id=control_id,
+                title=_to_str(getattr(finding, "title", None)),
+                description=_to_str(getattr(finding, "description", None)),
+                severity=_to_str(getattr(finding, "severity", None)),
+                cvss_score=_to_float(getattr(finding, "cvss_score", None), default=0.0),
+                external_id=_to_optional_str(getattr(finding, "external_id", None)),
+                cve_ids=_to_str_list(getattr(finding, "cve_ids", None)),
+                cwe_ids=cwe_ids,
+                remediation_guidance=_to_optional_str(
+                    getattr(finding, "remediation_guidance", None)
+                ),
+                priority_window=_to_optional_str(
+                    getattr(finding, "priority_window", None)
+                ),
+                owner=_to_optional_str(getattr(finding, "owner", None)),
+                created_at=getattr(finding, "created_at", datetime.now(UTC)),
+                threat_context=threat_context,
+            )
+        )
 
     return enriched_findings
 
 
 @router.get("/{assessment_id}/roadmap", response_model=RemediationRoadmapResponse)
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+@_rate_limited(f"{settings.rate_limit_per_minute}/minute")
 def get_remediation_roadmap(
     request: Request,
     assessment_id: str,
@@ -600,10 +661,10 @@ def get_remediation_roadmap(
     )
 
     # Group findings by priority window
-    immediate = []
-    thirty_days = []
-    quarterly = []
-    annual = []
+    immediate: list[RoadmapItem] = []
+    thirty_days: list[RoadmapItem] = []
+    quarterly: list[RoadmapItem] = []
+    annual: list[RoadmapItem] = []
 
     # Count by severity
     critical_count = 0
@@ -642,7 +703,7 @@ def get_remediation_roadmap(
             quarterly.append(item)  # Default to quarterly
 
         # Count by severity
-        severity = finding.severity.lower()
+        severity = _to_str(getattr(finding, "severity", None)).lower()
         if severity == Severity.CRITICAL:
             critical_count += 1
         elif severity == Severity.HIGH:
@@ -694,7 +755,7 @@ def get_remediation_roadmap(
 
 
 @router.post("/{assessment_id}/analyze-nvd", response_model=list[FindingResponse])
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+@_rate_limited(f"{settings.rate_limit_per_minute}/minute")
 def analyze_nvd_vulnerabilities(
     assessment_id: str,
     request: Request,
@@ -715,9 +776,12 @@ def analyze_nvd_vulnerabilities(
     metadata_profile = _get_metadata_profile_or_404(db=db, assessment=assessment)
 
     # Get software stack from metadata profile
-    software_stack: dict[str, object] = (
-        metadata_profile.software_stack or {}  # type: ignore[attr-defined]
-    )
+    software_stack_raw = metadata_profile.software_stack or {}  # type: ignore[attr-defined]
+    software_stack: dict[str, str] = {
+        str(name): str(version)
+        for name, version in cast(dict[str, Any], software_stack_raw).items()
+        if version is not None
+    }
     if not software_stack:
         # Log and return empty (no software stack provided yet)
         log_audit_event(
@@ -738,6 +802,10 @@ def analyze_nvd_vulnerabilities(
 
     # Analyze software stack for vulnerabilities
     nvd_results = nvd_service.analyze_software_stack(software_stack)
+    normalized_nvd_results: dict[str, list[dict[str, Any]]] = {
+        component: [cast(dict[str, Any], cve) for cve in cves]
+        for component, cves in nvd_results.items()
+    }
 
     available_control_ids = _get_available_control_ids(db=db)
     (
@@ -749,7 +817,7 @@ def analyze_nvd_vulnerabilities(
     ) = _build_nvd_findings(
         db=db,
         assessment_id=assessment_id,
-        nvd_results=nvd_results,
+        nvd_results=normalized_nvd_results,
         nvd_service=nvd_service,
         available_control_ids=available_control_ids,
     )
@@ -796,7 +864,7 @@ def analyze_nvd_vulnerabilities(
 @router.post(
     "/{assessment_id}/analyze-dependabot", response_model=list[FindingResponse]
 )
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+@_rate_limited(f"{settings.rate_limit_per_minute}/minute")
 def analyze_dependabot_alerts(
     assessment_id: str,
     request: Request,
@@ -916,7 +984,13 @@ def generate_evidence_checklist(
     )
 
     # Get unique control IDs from findings
-    control_ids = list(set(f.control_id for f in findings if f.control_id))
+    control_ids = [
+        control_id
+        for control_id in {
+            _to_str(getattr(finding, "control_id", None)) for finding in findings
+        }
+        if control_id
+    ]
 
     # Get controls with evidence requirements
     controls: list[Control] = (
@@ -953,30 +1027,59 @@ def generate_evidence_checklist(
 
     # Create a map of (control_id, evidence_type) -> evidence
     # Prefer most recently updated evidence for each (control, type) combo
-    evidence_map = {}
-    for ev in sorted(all_evidence, key=lambda e: e.updated_at):
-        evidence_map[(ev.control_id, ev.evidence_type)] = ev
+    evidence_map: dict[tuple[str, str], Evidence] = {}
+    for ev in sorted(
+        all_evidence, key=lambda e: getattr(e, "updated_at", datetime.min)
+    ):
+        evidence_map[
+            (
+                _to_str(getattr(ev, "control_id", None)),
+                _to_str(getattr(ev, "evidence_type", None)),
+            )
+        ] = ev
 
     # Generate checklist items
     checklist_items: list[EvidenceChecklistItem] = []
     for control in controls:
-        if not control.evidence_types:
+        evidence_types = _to_str_list(getattr(control, "evidence_types", None))
+        if not evidence_types:
             continue
 
-        for evidence_type in control.evidence_types:
-            evidence = evidence_map.get((control.id, evidence_type))
+        control_id = _to_str(getattr(control, "id", None))
+        control_title = _to_str(getattr(control, "title", None))
+
+        for evidence_type in evidence_types:
+            evidence = evidence_map.get((control_id, evidence_type))
 
             item = EvidenceChecklistItem(
-                control_id=control.id,
-                control_title=control.title,
+                control_id=control_id,
+                control_title=control_title,
                 evidence_type=evidence_type,
                 required_evidence=evidence_type.replace("_", " ").title(),
-                status=evidence.status if evidence else "not_started",
-                owner=evidence.owner if evidence else None,
-                due_date=evidence.due_date if evidence else None,
-                collected_at=evidence.collected_at if evidence else None,
-                notes=evidence.notes if evidence else None,
-                evidence_id=evidence.id if evidence else None,  # type: ignore[attr-defined]
+                status=(
+                    _to_str(getattr(evidence, "status", None), default="not_started")
+                    if evidence
+                    else "not_started"
+                ),
+                owner=(
+                    _to_optional_str(getattr(evidence, "owner", None))
+                    if evidence
+                    else None
+                ),
+                due_date=getattr(evidence, "due_date", None) if evidence else None,
+                collected_at=(
+                    getattr(evidence, "collected_at", None) if evidence else None
+                ),
+                notes=(
+                    _to_optional_str(getattr(evidence, "notes", None))
+                    if evidence
+                    else None
+                ),
+                evidence_id=(
+                    _to_optional_str(getattr(evidence, "id", None))
+                    if evidence
+                    else None
+                ),
             )
             checklist_items.append(item)
 
@@ -988,7 +1091,7 @@ def generate_evidence_checklist(
 
     return EvidenceChecklistResponse(
         assessment_id=assessment_id,
-        organization_id=assessment.organization_id,
+        organization_id=_to_str(getattr(assessment, "organization_id", None)),
         generated_at=datetime.now(UTC).replace(tzinfo=None),
         total_items=total_items,
         completed=completed,
