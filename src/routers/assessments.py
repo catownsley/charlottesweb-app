@@ -64,7 +64,7 @@ def _to_optional_str(value: object | None) -> str | None:
 
 
 def _to_float(value: object | None, default: float = 0.0) -> float:
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
     if isinstance(value, str):
         try:
