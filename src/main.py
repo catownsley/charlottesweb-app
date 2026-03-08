@@ -15,6 +15,7 @@ Architecture:
 - Lifecycle event hooks (startup/shutdown)
 - Configuration via environment variables
 """
+
 import logging
 from typing import Any
 
@@ -38,7 +39,14 @@ from src.middleware import (
     ResponseTimeMiddleware,
     SecurityHeadersMiddleware,
 )
-from src.models import Assessment, Control, Evidence, Finding, MetadataProfile, Organization
+from src.models import (
+    Assessment,
+    Control,
+    Evidence,
+    Finding,
+    MetadataProfile,
+    Organization,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +67,7 @@ REGISTERED_MODEL_CLASSES = (
 # - Example: "60/minute" = 60 requests per minute per IP
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=[f"{settings.rate_limit_per_minute}/minute"]
+    default_limits=[f"{settings.rate_limit_per_minute}/minute"],
 )
 
 # Create FastAPI application instance
@@ -67,7 +75,6 @@ app = FastAPI(
     title=settings.app_name,
     version=__version__,
     description="HIPAA Compliance-as-Code Platform",
-
     # Security: Disable API documentation in production
     # Interactive docs can leak API structure and be used for reconnaissance
     # Enable in development for convenience
@@ -143,8 +150,11 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 # debuggability in development. All errors are logged to audit trail.
 # ============================================================================
 
+
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request[Any], exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(
+    request: Request[Any], exc: RequestValidationError
+) -> JSONResponse:
     """Handle Pydantic validation errors with security in mind.
 
     Triggered when:
@@ -185,7 +195,9 @@ async def validation_exception_handler(request: Request[Any], exc: RequestValida
 
 
 @app.exception_handler(Exception)
-async def general_exception_handler(request: Request[Any], exc: Exception) -> JSONResponse:
+async def general_exception_handler(
+    request: Request[Any], exc: Exception
+) -> JSONResponse:
     """Handle unexpected exceptions (catch-all handler).
 
     Catches any unhandled exception that propagates to the top level.
@@ -248,13 +260,17 @@ FAVICON_HEADERS = {
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon() -> Response:
     """Return branded shield-web favicon (200 OK)."""
-    return Response(content=FAVICON_SVG, media_type="image/svg+xml", headers=FAVICON_HEADERS)
+    return Response(
+        content=FAVICON_SVG, media_type="image/svg+xml", headers=FAVICON_HEADERS
+    )
 
 
 @app.head("/favicon.ico", include_in_schema=False)
 async def favicon_head() -> Response:
     """Return favicon HEAD response (200 OK)."""
-    return Response(status_code=200, media_type="image/svg+xml", headers=FAVICON_HEADERS)
+    return Response(
+        status_code=200, media_type="image/svg+xml", headers=FAVICON_HEADERS
+    )
 
 
 # ============================================================================
@@ -307,19 +323,24 @@ async def favicon_head() -> Response:
 #
 try:
     import os
-    static_path = os.path.join(os.path.dirname(__file__), '..', 'static')
+
+    static_path = os.path.join(os.path.dirname(__file__), "..", "static")
 
     # Only mount if directory exists (graceful handling if static/ removed)
     if os.path.isdir(static_path):
         app.mount(
             "/",  # Mount at root (lower priority than API routes)
-            StaticFiles(directory=static_path, html=True),  # html=True: Serve index.html for dirs
-            name="static"
+            StaticFiles(
+                directory=static_path, html=True
+            ),  # html=True: Serve index.html for dirs
+            name="static",
         )
 except Exception as e:
     # Log static file mounting error but continue (API still works)
-    import logging
-    logging.warning(f"Failed to mount static files: {e}. Web UI will not be available.")
+    logger.warning(
+        "Failed to mount static files: %s. Web UI will not be available.",
+        e,
+    )
 
 
 # ============================================================================
@@ -328,6 +349,7 @@ except Exception as e:
 # These functions run when the application starts/stops.
 # Useful for: logging, initialization, cleanup, health checks
 # ============================================================================
+
 
 @app.on_event("startup")
 async def startup_event() -> None:
@@ -348,7 +370,9 @@ async def startup_event() -> None:
     # Ensure all database tables are created with the latest schema.
     # Destructive reset is opt-in only.
     if settings.reset_db_on_startup:
-        logger.warning("RESET_DB_ON_STARTUP enabled: dropping and recreating all tables")
+        logger.warning(
+            "RESET_DB_ON_STARTUP enabled: dropping and recreating all tables"
+        )
         Base.metadata.drop_all(bind=engine)
 
     Base.metadata.create_all(bind=engine)
@@ -356,6 +380,7 @@ async def startup_event() -> None:
     # Validate security configuration
     # Check for common misconfigurations that could lead to security issues
     from src.config import validate_security_config
+
     security_warnings = validate_security_config()
     if security_warnings:
         for warning in security_warnings:
@@ -410,9 +435,21 @@ async def shutdown_event() -> None:
 # Used for local development only. Production uses uvicorn directly.
 # ============================================================================
 
-if __name__ == "__main__":
+
+def run_dev_server() -> None:
+    """Run development server with controlled failure handling."""
     import uvicorn
 
-    # Development server (NOT for production)
-    # Use gunicorn + uvicorn worker in production
-    uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
+    try:
+        # Development server (NOT for production)
+        # Use gunicorn + uvicorn worker in production
+        uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
+    except KeyboardInterrupt:
+        logger.info("Development server interrupted by user")
+    except Exception:
+        logger.exception("Failed to start development server")
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    run_dev_server()

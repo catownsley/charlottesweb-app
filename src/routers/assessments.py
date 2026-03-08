@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from src.audit import AuditAction, AuditLevel, log_audit_event
 from src.compliance_as_code import ComplianceAsCodeEvaluator
 from src.config import settings
+from src.constants import AssessmentStatus, PriorityWindow, Severity
 from src.cwe_mappings import CWE_TO_HIPAA_CONTROL, FALLBACK_CONTROL_CANDIDATES
 from src.database import get_db, get_or_404
 from src.dependabot_service import DependabotService
@@ -65,7 +66,7 @@ def create_assessment(
         assessment = Assessment(
             organization_id=assessment_data.organization_id,
             metadata_profile_id=assessment_data.metadata_profile_id,
-            status="running",
+            status=AssessmentStatus.RUNNING,
         )
         db.add(assessment)
         db.commit()
@@ -97,7 +98,7 @@ def create_assessment(
             db.add(finding)
 
         # Mark assessment complete
-        assessment.status = "completed"  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
+        assessment.status = AssessmentStatus.COMPLETED  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         assessment.completed_at = datetime.now(UTC)  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         db.commit()
 
@@ -112,10 +113,13 @@ def create_assessment(
         )
 
     except Exception as e:
-        assessment.status = "failed"  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
+        assessment.status = AssessmentStatus.FAILED  # type: ignore[attr-defined] - SQLAlchemy ORM attribute assignment
         try:
             db.commit()
-        except:
+        except Exception as commit_error:
+            logger.warning(
+                f"Failed to commit assessment failure status: {commit_error}"
+            )
             db.rollback()
 
         logger.error(f"Assessment failed: {str(e)}", exc_info=True)
@@ -227,7 +231,7 @@ def evaluate_compliance_as_code(
                 existing_finding.description = failure_description  # type: ignore[attr-defined]
                 existing_finding.severity = severity  # type: ignore[attr-defined]
                 existing_finding.remediation_guidance = remediation_guidance  # type: ignore[attr-defined]
-                existing_finding.priority_window = "immediate" if severity in ["critical", "high"] else "30_days"  # type: ignore[attr-defined]
+                existing_finding.priority_window = PriorityWindow.IMMEDIATE if Severity.is_high_priority(severity) else PriorityWindow.THIRTY_DAYS  # type: ignore[attr-defined]
                 existing_finding.owner = "Security"  # type: ignore[attr-defined]
             else:
                 finding = Finding(
@@ -241,7 +245,9 @@ def evaluate_compliance_as_code(
                     cwe_ids=[],
                     remediation_guidance=remediation_guidance,
                     priority_window=(
-                        "immediate" if severity in ["critical", "high"] else "30_days"
+                        PriorityWindow.IMMEDIATE
+                        if Severity.is_high_priority(severity)
+                        else PriorityWindow.THIRTY_DAYS
                     ),
                     owner="Security",
                 )
@@ -392,13 +398,13 @@ def get_remediation_roadmap(
 
         # Count by severity
         severity = finding.severity.lower()
-        if severity == "critical":
+        if severity == Severity.CRITICAL:
             critical_count += 1
-        elif severity == "high":
+        elif severity == Severity.HIGH:
             high_count += 1
-        elif severity == "medium":
+        elif severity == Severity.MEDIUM:
             medium_count += 1
-        elif severity == "low":
+        elif severity == Severity.LOW:
             low_count += 1
 
     # Build summary
