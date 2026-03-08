@@ -446,9 +446,9 @@ def run_dev_server() -> None:
         uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
     except KeyboardInterrupt:
         logger.info("Development server interrupted by user")
-    except Exception:
+    except Exception as err:
         logger.exception("Failed to start development server")
-        raise SystemExit(1)
+        raise SystemExit(1) from err
 
 
 if __name__ == "__main__":
