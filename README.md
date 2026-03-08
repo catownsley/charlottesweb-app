@@ -4,7 +4,7 @@
 
 CharlottesWeb automates regulatory mapping by correlating HIPAA requirements with real-world exploitable vulnerabilities (CVE/CWE), producing prioritized remediation roadmaps and audit-ready evidence packages.
 
-## 🔒 Security First
+## Security First
 
 **Production-ready security controls:**
 - API key authentication
@@ -18,11 +18,11 @@ See [SECURITY.md](SECURITY.md) for complete security documentation.
 
 ## Quick Links
 
-- 📋 **[Business Plan](BUSINESS_PLAN.md)** - Market strategy, competitive landscape, go-to-market, team hiring
-- 🏗️ **[Architecture & Product Vision](ARCHITECTURE.md)** - Technical design, domain model, system architecture, API design
-- 🔒 **[Security Documentation](SECURITY.md)** - Security features, configuration, and best practices
-- 🎫 **[Ticket Index](docs/tickets/TICKET_INDEX.md)** - Phased execution roadmap with detailed tickets
-- 🐛 **[GitHub Issues](https://github.com/catownsley/charlottesweb-app/issues)** - Active implementation backlog
+- **[Business Plan](BUSINESS_PLAN.md)** - Market strategy, competitive landscape, go-to-market, team hiring
+- ️ **[Architecture & Product Vision](ARCHITECTURE.md)** - Technical design, domain model, system architecture, API design
+- **[Security Documentation](SECURITY.md)** - Security features, configuration, and best practices
+- **[Ticket Index](docs/tickets/TICKET_INDEX.md)** - Phased execution roadmap with detailed tickets
+- **[GitHub Issues](https://github.com/catownsley/charlottesweb-app/issues)** - Active implementation backlog
 
 ## Core Value Proposition
 
@@ -42,22 +42,22 @@ Most tools tell you what controls you need. We tell you which vulnerabilities in
 
 ```
 charlottesweb-app/
-├── BUSINESS_PLAN.md          # Complete business strategy and market analysis
-├── ARCHITECTURE.md            # Technical design and implementation guide
-├── README.md                  # This file
+├── BUSINESS_PLAN.md # Complete business strategy and market analysis
+├── ARCHITECTURE.md # Technical design and implementation guide
+├── README.md # This file
 ├── docs/
-│   └── tickets/              # Phased execution backlog
-│       ├── TICKET_INDEX.md
-│       ├── phase-0-foundation.md
-│       ├── phase-1-intelligence-engine.md
-│       ├── phase-2-audit-evidence.md
-│       ├── phase-3-web-app-workflows.md
-│       ├── phase-4-pilot-readiness.md
-│       └── phase-5-continuous-monitoring.md
-├── src/                      # Application code (to be implemented)
-├── scripts/                  # Automation scripts
+│ └── tickets/ # Phased execution backlog
+│ ├── TICKET_INDEX.md
+│ ├── phase-0-foundation.md
+│ ├── phase-1-intelligence-engine.md
+│ ├── phase-2-audit-evidence.md
+│ ├── phase-3-web-app-workflows.md
+│ ├── phase-4-pilot-readiness.md
+│ └── phase-5-continuous-monitoring.md
+├── src/ # Application code (to be implemented)
+├── scripts/ # Automation scripts
 └── .github/
-    └── ISSUE_TEMPLATE/       # GitHub issue templates
+└── ISSUE_TEMPLATE/ # GitHub issue templates
 ```
 
 ## Getting Started
@@ -65,16 +65,16 @@ charlottesweb-app/
 ### For New Contributors or AI Agents
 
 1. **Read the context:**
-   - [BUSINESS_PLAN.md](BUSINESS_PLAN.md) - Understand the market, problem, and business model
-   - [ARCHITECTURE.md](ARCHITECTURE.md) - Understand the technical vision and domain model
+- [BUSINESS_PLAN.md](BUSINESS_PLAN.md) - Understand the market, problem, and business model
+- [ARCHITECTURE.md](ARCHITECTURE.md) - Understand the technical vision and domain model
 
 2. **Review the roadmap:**
-   - [docs/tickets/TICKET_INDEX.md](docs/tickets/TICKET_INDEX.md) - See all planned phases
-   - [GitHub Issues](https://github.com/catownsley/charlottesweb-app/issues) - Check active tickets
+- [docs/tickets/TICKET_INDEX.md](docs/tickets/TICKET_INDEX.md) - See all planned phases
+- [GitHub Issues](https://github.com/catownsley/charlottesweb-app/issues) - Check active tickets
 
 3. **Start building:**
-   - Begin with **[CW-001]** Define domain model and architecture decisions
-   - Follow Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5
+- Begin with **[CW-001]** Define domain model and architecture decisions
+- Follow Phase 0 → Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5
 
 ### Technology Stack (Current MVP)
 
@@ -90,21 +90,21 @@ charlottesweb-app/
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| **Phase 0** | Foundation (domain model, backend skeleton, schema) | ✅ **Complete** |
-| **Phase 1** | HIPAA Intelligence Engine (intake, mapping, correlation, scoring) | ✅ **Complete** |
-| **Phase 2** | Audit Evidence Automation (templates, checklists, binder export) | 🚧 **In Progress** (50%) |
-| **Phase 3** | Web App Workflows (auth, UI, dashboard, reports) | 🔄 Not Started |
-| **Phase 4** | Pilot Readiness (isolation, observability, onboarding) | 🔄 Not Started |
-| **Phase 5** | Continuous Monitoring (scheduled jobs, delta alerts, trends) | 🔄 Not Started |
+| **Phase 0** | Foundation (domain model, backend skeleton, schema) | **Complete** |
+| **Phase 1** | HIPAA Intelligence Engine (intake, mapping, correlation, scoring) | **Complete** |
+| **Phase 2** | Audit Evidence Automation (templates, checklists, binder export) | **In Progress** (50%) |
+| **Phase 3** | Web App Workflows (auth, UI, dashboard, reports) | Not Started |
+| **Phase 4** | Pilot Readiness (isolation, observability, onboarding) | Not Started |
+| **Phase 5** | Continuous Monitoring (scheduled jobs, delta alerts, trends) | Not Started |
 
-### ✅ Phase 0 - Foundation (Complete)
+### Phase 0 - Foundation (Complete)
 - FastAPI application with health check and CRUD endpoints
 - SQLite database with SQLAlchemy models (Organization, MetadataProfile, Control, Assessment, Finding, Evidence)
 - Pydantic schemas for API validation
 - Security controls: API key auth, rate limiting, audit logging, HTTPS
 - Development guide and E2E test scripts
 
-### ✅ Phase 1 - Intelligence Engine (Complete)
+### Phase 1 - Intelligence Engine (Complete)
 - 22 HIPAA Security Rule controls seeded (10 baseline + 12 healthcare-specific)
 - Rules engine with NVD vulnerability correlation
 - Finding generation with CVSS scores, CWE IDs, and prioritization
@@ -114,14 +114,14 @@ charlottesweb-app/
 - Optional finding persistence via `GET /api/v1/assessments/{assessment_id}/compliance-as-code?persist_findings=true`
 - Auto-resolve: findings automatically removed when policy rules pass (`auto_resolve=true` by default)
 
-### 🚧 Phase 2 - Audit Evidence (In Progress)
-- ✅ Evidence model with artifact tracking and status workflow
-- ✅ Evidence CRUD API endpoints with audit logging
-- ✅ Evidence checklist generation endpoint (24 evidence requirements across controls)
-- ✅ Evidence persistence across assessments for the same organization (status updates carry over)
-- ✅ UI integration: clickable evidence checklist link with inline panel rendering
-- ⏳ Policy templates (CW-203 - not started)
-- ⏳ Audit binder export to PDF/ZIP (CW-204 - not started)
+### Phase 2 - Audit Evidence (In Progress)
+- Evidence model with artifact tracking and status workflow
+- Evidence CRUD API endpoints with audit logging
+- Evidence checklist generation endpoint (24 evidence requirements across controls)
+- Evidence persistence across assessments for the same organization (status updates carry over)
+- UI integration: clickable evidence checklist link with inline panel rendering
+- Policy templates (CW-203 - not started)
+- Audit binder export to PDF/ZIP (CW-204 - not started)
 
 ## Why This Exists
 

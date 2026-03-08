@@ -8,17 +8,17 @@ CharlottesWeb implements comprehensive security controls appropriate for a HIPAA
 
 | Feature | Purpose | Status |
 |---------|---------|--------|
-| **API Key Authentication** | Verify request origin with cryptographic keys | ✅ Active |
-| **JWT Token Auth** | Secure session handling with HS256 signing (PyJWT) | ✅ Active |
-| **Rate Limiting** | Prevent abuse with per-IP throttling (60 req/min) | ✅ Active |
-| **Security Headers** | 7 HTTP headers protecting against common attacks | ✅ Active |
-| **Audit Logging** | JSON structured logs with comprehensive event tracking | ✅ Active |
-| **Request Tracing** | UUID per request for incident investigation | ✅ Active |
-| **Password Hashing** | Automatic bcrypt with dynamic salt | ✅ Active |
-| **Secrets Management** | Environment-based configuration, zero secrets in code | ✅ Active |
-| **CodeQL + Bandit SAST** | Automated code scanning in CI/CD pipeline | ✅ Active |
-| **pip-audit Scanning** | Dependency vulnerability detection (blocks CVEs) | ✅ Active |
-| **Startup Validation** | Configuration security checks at boot | ✅ Active |
+| **API Key Authentication** | Verify request origin with cryptographic keys | Active |
+| **JWT Token Auth** | Secure session handling with HS256 signing (PyJWT) | Active |
+| **Rate Limiting** | Prevent abuse with per-IP throttling (60 req/min) | Active |
+| **Security Headers** | 7 HTTP headers protecting against common attacks | Active |
+| **Audit Logging** | JSON structured logs with comprehensive event tracking | Active |
+| **Request Tracing** | UUID per request for incident investigation | Active |
+| **Password Hashing** | Automatic bcrypt with dynamic salt | Active |
+| **Secrets Management** | Environment-based configuration, zero secrets in code | Active |
+| **CodeQL + Bandit SAST** | Automated code scanning in CI/CD pipeline | Active |
+| **pip-audit Scanning** | Dependency vulnerability detection (blocks CVEs) | Active |
+| **Startup Validation** | Configuration security checks at boot | Active |
 
 ---
 
@@ -30,10 +30,10 @@ CharlottesWeb implements comprehensive security controls appropriate for a HIPAA
 - **Location:** [`src/security.py`](src/security.py)
 - **Purpose:** Protect API endpoints from unauthorized access
 - **How it works:**
-  - API keys passed via `X-API-Key` header
-  - Configurable via `API_KEY_REQUIRED` environment variable
-  - Development: Optional (default: disabled)
-  - Production: Must be enabled
+- API keys passed via `X-API-Key` header
+- Configurable via `API_KEY_REQUIRED` environment variable
+- Development: Optional (default: disabled)
+- Production: Must be enabled
 
 **Generating API Keys:**
 ```python
@@ -109,21 +109,21 @@ X-RateLimit-Reset: 1709582400
 **Log Format:**
 ```json
 {
-  "timestamp": "2026-03-04T12:34:56.789",
-  "action": "assessment_created",
-  "success": true,
-  "level": "info",
-  "request": {
-    "id": "uuid-here",
-    "ip": "192.168.1.100",
-    "method": "POST",
-    "path": "/api/v1/assessments",
-    "user_agent": "curl/7.88.1"
-  },
-  "api_key_suffix": "xyz9",
-  "resource_type": "assessment",
-  "resource_id": "abc123",
-  "details": {"organization_id": "org-456"}
+"timestamp": "2026-03-04T12:34:56.789",
+"action": "assessment_created",
+"success": true,
+"level": "info",
+"request": {
+"id": "uuid-here",
+"ip": "192.168.1.100",
+"method": "POST",
+"path": "/api/v1/assessments",
+"user_agent": "curl/7.88.1"
+},
+"api_key_suffix": "xyz9",
+"resource_type": "assessment",
+"resource_id": "abc123",
+"details": {"organization_id": "org-456"}
 }
 ```
 
@@ -193,10 +193,10 @@ CORS_ALLOW_CREDENTIALS=true
 - **Location:** [`src/schemas.py`](src/schemas.py)
 - **Method:** Automatic validation via Pydantic models
 - **Benefits:**
-  - Type checking
-  - Format validation
-  - SQL injection prevention (via ORM)
-  - XSS prevention (API returns JSON only)
+- Type checking
+- Format validation
+- SQL injection prevention (via ORM)
+- XSS prevention (API returns JSON only)
 
 ### 10. HTTPS/TLS
 
@@ -215,8 +215,8 @@ CORS_ALLOW_CREDENTIALS=true
 ./run_https.sh
 # or
 uvicorn src.main:app --host 0.0.0.0 --port 8443 \
-  --ssl-keyfile certs/key.pem \
-  --ssl-certfile certs/cert.pem
+--ssl-keyfile certs/key.pem \
+--ssl-certfile certs/cert.pem
 ```
 
 ---
@@ -228,16 +228,16 @@ uvicorn src.main:app --host 0.0.0.0 --port 8443 \
 - [ ] **Set `APP_ENV=production`** in environment variables
 - [ ] **Set `DEBUG=false`** to disable debug mode
 - [ ] **Generate strong `SECRET_KEY`** (minimum 32 characters)
-  ```bash
-  python -c "import secrets; print(secrets.token_urlsafe(32))"
-  ```
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 - [ ] **Enable API key authentication** (`API_KEY_REQUIRED=true`)
 - [ ] **Generate and distribute API keys** to authorized clients
 - [ ] **Configure CORS origins** (don't use `*` in production)
 - [ ] **Use PostgreSQL** instead of SQLite
-  ```bash
-  DATABASE_URL=postgresql://user:pass@host:5432/dbname
-  ```
+```bash
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+```
 - [ ] **Obtain valid TLS certificate** (Let's Encrypt recommended)
 - [ ] **Set up log rotation** for `audit.log`
 - [ ] **Configure firewall** to restrict database access
@@ -286,13 +286,13 @@ uvicorn src.main:app --host 0.0.0.0 --port 8443 \
 **Example Output:**
 ```bash
 $ pip-audit -r requirements.txt
-No known vulnerabilities found ✅
+No known vulnerabilities found
 ```
 
 **Recent Fixes:**
 - **CVE-2024-23342** (March 2026): Replaced python-jose → PyJWT
-  - Eliminated Minerva timing attack in ecdsa transitive dependency
-  - Reduced attack surface by 80% (4 deps → 0 deps for HS256)
+- Eliminated Minerva timing attack in ecdsa transitive dependency
+- Reduced attack surface by 80% (4 deps → 0 deps for HS256)
 
 ### Startup Security Validation
 
@@ -302,23 +302,23 @@ No known vulnerabilities found ✅
 - **Checks:** 6 critical security settings
 
 **Validation Rules:**
-1. ✅ Debug mode disabled in production (`DEBUG=false`)
-2. ✅ Strong SECRET_KEY (32+ characters)
-3. ✅ CORS explicit whitelist (no wildcard `*`)
-4. ✅ API authentication enabled (`API_KEY_REQUIRED=true`)
-5. ✅ PostgreSQL recommended for production (not SQLite)
-6. ✅ Rate limiting enabled (`RATE_LIMIT_ENABLED=true`)
+1. Debug mode disabled in production (`DEBUG=false`)
+2. Strong SECRET_KEY (32+ characters)
+3. CORS explicit whitelist (no wildcard `*`)
+4. API authentication enabled (`API_KEY_REQUIRED=true`)
+5. PostgreSQL recommended for production (not SQLite)
+6. Rate limiting enabled (`RATE_LIMIT_ENABLED=true`)
 
 **Example Output:**
 ```python
 # Development - no warnings
-Security Warnings: 0 ✅
+Security Warnings: 0
 
 # Production with issues
-🚨 SECURITY: DEBUG=True in production!
-🚨 SECURITY: CORS allows all origins (*) in production!
-⚠️  SECURITY: API authentication disabled in production.
-⚠️  PRODUCTION: SQLite not recommended for production.
+SECURITY: DEBUG=True in production!
+SECURITY: CORS allows all origins (*) in production!
+️ SECURITY: API authentication disabled in production.
+️ PRODUCTION: SQLite not recommended for production.
 ```
 
 **Integration:**
@@ -331,7 +331,7 @@ Security Warnings: 0 ✅
 ## Compliance Mapping
 
 ### HIPAA 164.312(b) - Audit Controls
-✅ **Met by**: Audit logging with comprehensive event tracking, JSON structured logs, request tracing
+**Met by**: Audit logging with comprehensive event tracking, JSON structured logs, request tracing
 
 **Evidence:**
 - All authentication events logged
@@ -340,7 +340,7 @@ Security Warnings: 0 ✅
 - API key usage tracked (last 4 characters only)
 
 ### SOC 2 CC6.1 - Logical Access Controls
-✅ **Met by**: API key authentication, JWT tokens, password hashing, rate limiting
+**Met by**: API key authentication, JWT tokens, password hashing, rate limiting
 
 **Evidence:**
 - Multi-layer authentication (API keys + JWT)
@@ -349,7 +349,7 @@ Security Warnings: 0 ✅
 - Per-IP rate limiting to prevent brute force
 
 ### SOC 2 CC7.1 - System Monitoring
-✅ **Met by**: Audit logs, security alerts, request tracing, startup validation
+**Met by**: Audit logs, security alerts, request tracing, startup validation
 
 **Evidence:**
 - Real-time security event logging
@@ -378,7 +378,7 @@ Security Warnings: 0 ✅
 API_KEY_REQUIRED=false
 
 # Restart application - all requests now allowed
-# ⚠️ IMMEDIATELY re-enable authentication after restoring service
+# ️ IMMEDIATELY re-enable authentication after restoring service
 ```
 
 ### Block Suspicious IP Address
@@ -389,9 +389,9 @@ API_KEY_REQUIRED=false
 
 ### Rotate All Secrets (Security Incident)
 1. Generate new `SECRET_KEY`:
-   ```bash
-   python -c "import secrets; print(secrets.token_urlsafe(32))"
-   ```
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 2. Update `.env` file
 3. Restart application
 4. **Impact:** All existing JWT tokens become invalid
@@ -439,7 +439,7 @@ curl -H "X-API-Key: YOUR_KEY" https://localhost:8443/api/v1/organizations
 ```bash
 # Run 65 requests in rapid succession
 for i in {1..65}; do
-  curl -H "X-API-Key: YOUR_KEY" https://localhost:8443/api/v1/health
+curl -H "X-API-Key: YOUR_KEY" https://localhost:8443/api/v1/health
 done
 # First 60 return 200 OK, requests 61-65 return 429 Too Many Requests
 ```
@@ -462,9 +462,9 @@ curl -I https://localhost:8443/api/v1/health
 ```bash
 # Trigger an action
 curl -X POST -H "X-API-Key: YOUR_KEY" \
-     -H "Content-Type: application/json" \
-     -d '{"name": "Test Org"}' \
-     https://localhost:8443/api/v1/organizations
+-H "Content-Type: application/json" \
+-d '{"name": "Test Org"}' \
+https://localhost:8443/api/v1/organizations
 
 # Check audit log for the event
 tail -10 audit.log | python3 -m json.tool
@@ -488,23 +488,23 @@ grep "my-trace-123" audit.log
 
 ### Suspected API Key Compromise
 1. **Immediate:** Rotate the compromised key
-   ```bash
-   # Remove from VALID_API_KEYS in .env
-   # Generate new key
-   python -c "from src.security import generate_api_key; print(generate_api_key())"
-   ```
+```bash
+# Remove from VALID_API_KEYS in .env
+# Generate new key
+python -c "from src.security import generate_api_key; print(generate_api_key())"
+```
 2. **Review audit logs** for unauthorized access
-   ```bash
-   grep "api_key_suffix: <last-4-chars>" audit.log
-   ```
+```bash
+grep "api_key_suffix: <last-4-chars>" audit.log
+```
 3. **Notify affected parties**
 4. **Document incident**
 
 ### Suspicious Activity
 1. **Check audit logs** for patterns
-   ```bash
-   grep '"success": false' audit.log | grep auth_failed
-   ```
+```bash
+grep '"success": false' audit.log | grep auth_failed
+```
 2. **Block offending IPs** at firewall/proxy level
 3. **Reduce rate limits** temporarily if under attack
 4. **Enable additional monitoring**
@@ -581,5 +581,5 @@ For security issues or questions:
 ---
 
 **Last Updated:** March 5, 2026
-**Status:** Production Ready ✅
+**Status:** Production Ready
 **Security Posture:** Zero known vulnerabilities

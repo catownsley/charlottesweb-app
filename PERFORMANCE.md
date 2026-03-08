@@ -21,14 +21,14 @@ In-memory TTL (time-to-live) caching reduces redundant database queries for freq
 **File**: `src/cache.py`
 
 - **TTLCache Class**: Simple timestamp-based cache with automatic expiration
-  - Thread-safe dictionary-based storage
-  - O(1) get/set operations
-  - Lazy deletion: expired entries removed on access attempt
-  - No background cleanup thread (lightweight design)
+- Thread-safe dictionary-based storage
+- O(1) get/set operations
+- Lazy deletion: expired entries removed on access attempt
+- No background cleanup thread (lightweight design)
 
 - **Global Instances**:
-  - `controls_cache`: 1-hour TTL (3600s) - controls rarely change
-  - `assessments_cache`: 30-minute TTL (1800s) - assessments more volatile
+- `controls_cache`: 1-hour TTL (3600s) - controls rarely change
+- `assessments_cache`: 30-minute TTL (1800s) - assessments more volatile
 
 ### Cached Data
 | Endpoint | Key | TTL | Rationale |
@@ -45,8 +45,8 @@ from src.cache import controls_cache
 cache_key = "controls:all"
 cached = controls_cache.get(cache_key)
 if cached is None:
-    controls = db.query(Control).all()
-    controls_cache.set(cache_key, controls)
+controls = db.query(Control).all()
+controls_cache.set(cache_key, controls)
 ```
 
 ### Invalidation
@@ -55,8 +55,8 @@ if cached is None:
 - Full clear via `cache.clear()`
 
 ### Trade-offs
-✅ **Pros**: Minimal code overhead, no external dependencies, instant hits
-⚠️ **Cons**: In-memory only (lost on restart), no distributed caching
+**Pros**: Minimal code overhead, no external dependencies, instant hits
+️ **Cons**: In-memory only (lost on restart), no distributed caching
 
 ---
 
@@ -75,11 +75,11 @@ Offset-based pagination with configurable limits reduces bandwidth and improves 
 #### Response Format
 ```json
 {
-  "items": [...],
-  "total": 150,
-  "skip": 0,
-  "limit": 50,
-  "has_more": true
+"items": [...],
+"total": 150,
+"skip": 0,
+"limit": 50,
+"has_more": true
 }
 ```
 
@@ -95,7 +95,7 @@ Response: PaginatedResponse with has_more=true
 
 # Get all items
 GET /controls?limit=9999
-Response: [Control, Control, ...]  # Plain array
+Response: [Control, Control, ...] # Plain array
 ```
 
 ### Design Decisions
@@ -206,7 +206,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 | HTML responses | ~150KB | 25KB | 83% |
 
 ### Browser Support
-✅ All modern browsers automatically:
+All modern browsers automatically:
 - Include `Accept-Encoding: gzip` header
 - Decompress responses transparently
 - No client-side changes required
@@ -255,12 +255,12 @@ from src.cache import controls_cache
 
 @router.get("/custom")
 def get_custom(db: Session = Depends(get_db)):
-    cache_key = "custom:data"
-    result = controls_cache.get(cache_key)
-    if result is None:
-        result = db.query(Model).filter(...).all()
-        controls_cache.set(cache_key, result)
-    return result
+cache_key = "custom:data"
+result = controls_cache.get(cache_key)
+if result is None:
+result = db.query(Model).filter(...).all()
+controls_cache.set(cache_key, result)
+return result
 ```
 
 ### Adding Pagination to New Endpoints
@@ -269,25 +269,25 @@ from src.pagination import PaginatedResponse, PaginationParams
 
 @router.get("/items", response_model=PaginatedResponse[ItemResponse] | list[ItemResponse])
 def list_items(db: Session = Depends(get_db),
-               skip: int = Query(0, ge=0),
-               limit: int = Query(50, ge=1, le=1000)):
-    items = db.query(Item).offset(skip).limit(limit).all()
-    total = db.query(Item).count()
-    return PaginatedResponse.create(items, total, skip, limit)
+skip: int = Query(0, ge=0),
+limit: int = Query(50, ge=1, le=1000)):
+items = db.query(Item).offset(skip).limit(limit).all()
+total = db.query(Item).count()
+return PaginatedResponse.create(items, total, skip, limit)
 ```
 
 ### Invalidating Cache After Mutations
 ```python
 @router.post("/controls")
 def create_control(data: ControlCreate, db: Session = Depends(get_db)):
-    control = Control(**data.dict())
-    db.add(control)
-    db.commit()
+control = Control(**data.dict())
+db.add(control)
+db.commit()
 
-    # Invalidate related caches
-    controls_cache.invalidate("controls:all")
+# Invalidate related caches
+controls_cache.invalidate("controls:all")
 
-    return control
+return control
 ```
 
 ### Monitoring Performance
@@ -311,12 +311,12 @@ EXPLAIN QUERY PLAN SELECT * FROM assessment WHERE status = 'pending';
 from src.cache import controls_cache
 
 def test_something():
-    controls_cache.clear()  # Clear before test
-    try:
-        # Your test
-        pass
-    finally:
-        controls_cache.clear()  # Cleanup
+controls_cache.clear() # Clear before test
+try:
+# Your test
+pass
+finally:
+controls_cache.clear() # Cleanup
 ```
 
 ---
@@ -330,7 +330,7 @@ curl https://localhost:8443/api/v1/controls
 # Second request should be ~250ms faster with cache hit
 
 # Check indexes are being used
-curl https://localhost:8443/docs  # Swagger UI
+curl https://localhost:8443/docs # Swagger UI
 # Test with skip/limit parameters
 ```
 

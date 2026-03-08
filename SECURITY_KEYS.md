@@ -6,20 +6,20 @@ This document explains how CharlottesWeb manages sensitive credentials securely.
 
 ## Security Hierarchy
 
-### 🟢 Production (Recommended)
+### Production (Recommended)
 **Use environment variables ONLY** - no files involved
 - Hosting platform manages variables (Heroku, AWS Lambda, GCP Cloud Run, etc.)
 - Docker secrets for container environments
 - Kubernetes secrets for orchestrated deployments
 - No files to commit or leak
 
-### 🟡 Staging / Development
+### Staging / Development
 **Use environment variables + optional encryption**
 - Load from `.env` file (excluded from git via `.gitignore`)
 - File encryption if keys must be at-rest (optional, for additional safety)
 - Regenerate frequently
 
-### ❌ NEVER
+### NEVER
 - Commit `.env` files to git
 - Hardcode secrets in Python files
 - Store plaintext secrets in committed configuration files
@@ -122,11 +122,11 @@ heroku config:set VALID_API_KEYS="key1,key2"
 ### Docker / Docker Compose
 ```yaml
 services:
-  app:
-    environment:
-      SECRET_KEY: ${SECRET_KEY}
-      VALID_API_KEYS: ${VALID_API_KEYS}
-      DATABASE_URL: ${DATABASE_URL}
+app:
+environment:
+SECRET_KEY: ${SECRET_KEY}
+VALID_API_KEYS: ${VALID_API_KEYS}
+DATABASE_URL: ${DATABASE_URL}
 ```
 
 ### Cloudflare Pages / Workers
@@ -140,8 +140,8 @@ secrets = ["SECRET_KEY", "VALID_API_KEYS"]
 ### Google Cloud Run
 ```bash
 gcloud run deploy charlottesweb \
-  --set-env-vars APP_ENV=production,DEBUG=false \
-  --set-secrets SECRET_KEY=secret-manager-secret-version,VALID_API_KEYS=secret-manager-secret-version
+--set-env-vars APP_ENV=production,DEBUG=false \
+--set-secrets SECRET_KEY=secret-manager-secret-version,VALID_API_KEYS=secret-manager-secret-version
 ```
 
 ## Rotation & Revocation

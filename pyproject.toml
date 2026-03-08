@@ -6,14 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "charlottesweb"
 version = "0.3.0"
 description = "HIPAA Compliance-as-Code Platform with Evidence Automation"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 
 [tool.black]
 # Code formatter configuration
 # - Line length: 88 chars (Black standard, conventional in Python community)
-# - Target Python version: 3.10+
+# - Target Python version: 3.14+
 line-length = 88
-target-version = ['py310', 'py311', 'py312']
+target-version = ['py312']
 
 # Files/directories to exclude
 exclude = '''
@@ -34,7 +34,7 @@ exclude = '''
 # - Fast, modern Python linter (Rust-based)
 # - Replaces flake8 + isort + many plugins
 line-length = 88
-target-version = "py310"
+target-version = "py312"
 
 # Linting rules to enforce
 select = [
@@ -52,7 +52,6 @@ select = [
 # Rules to ignore (these are opinionated)
 ignore = [
     "E501",   # Line too long (handled by Black)
-    "W503",   # Line break before binary operator (handled by Black)
     "B008",   # Do not perform function calls in argument defaults (false positives with FastAPI)
 ]
 
@@ -66,7 +65,6 @@ extend-exclude = [
 [tool.ruff.isort]
 # Import ordering configuration (isort within ruff)
 # Groups: future, stdlib, third-party, first-party, local
-profile = "black"
 known-first-party = ["src"]
 
 [tool.mypy]
@@ -85,9 +83,6 @@ ignore_missing_imports = true
 
 # Warn about unused type: ignore comments
 warn_unused_ignores = true
-
-# Exit with error code if any issues found
-exit_status = true
 
 # Pretty-print output
 pretty = true

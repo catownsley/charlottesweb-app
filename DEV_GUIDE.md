@@ -1,6 +1,6 @@
 # CharlottesWeb - Development Guide
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -64,7 +64,7 @@ These checks block common mistakes before commit, including accidental private k
 
 ---
 
-## 🔒 Security Configuration
+## Security Configuration
 
 ### Managing Secrets Securely
 
@@ -111,7 +111,7 @@ cp .env.example .env
 python -m src.main
 ```
 
-⚠️ **Important**: `.env` is automatically ignored by git - check `.gitignore` if concerned.
+️ **Important**: `.env` is automatically ignored by git - check `.gitignore` if concerned.
 
 #### Development: Option 3 - Encrypted .env File (Extra Protection)
 
@@ -174,7 +174,7 @@ For development, API key authentication is optional:
 
 ```bash
 # In .env file
-API_KEY_REQUIRED=false  # Development default
+API_KEY_REQUIRED=false # Development default
 VALID_API_KEYS=dev-key-1,dev-key-2
 ```
 
@@ -198,8 +198,8 @@ Rate limiting is **enabled** by default (60 requests/minute per IP). To adjust:
 
 ```bash
 # In .env file
-RATE_LIMIT_PER_MINUTE=120  # Increase limit
-RATE_LIMIT_ENABLED=false   # Or disable entirely
+RATE_LIMIT_PER_MINUTE=120 # Increase limit
+RATE_LIMIT_ENABLED=false # Or disable entirely
 ```
 
 ### Audit Logging
@@ -217,10 +217,10 @@ grep "assessment_created" audit.log | python -m json.tool
 ### Security Best Practices
 
 **Development**:
-- ✅ Store secrets in `.env` file (git-ignored)
-- ✅ Regenerate secrets frequently
-- ✅ Use self-signed certificates for HTTPS testing
-- ✅ Review audit logs periodically
+- Store secrets in `.env` file (git-ignored)
+- Regenerate secrets frequently
+- Use self-signed certificates for HTTPS testing
+- Review audit logs periodically
 
 **Before Production Deployment**:
 - □ Use platform environment variables (no .env files)
@@ -237,7 +237,7 @@ See [SECURITY_KEYS.md](SECURITY_KEYS.md) and [SECURITY.md](SECURITY.md) for comp
 
 ---
 
-## 🧪 Testing the Vertical Slice
+## Testing the Vertical Slice
 
 To run the server with HTTPS using self-signed certificates for local development:
 
@@ -270,11 +270,11 @@ The API will be available at:
 ```bash
 # Or run uvicorn directly with TLS options
 uvicorn src.main:app \
-    --host 0.0.0.0 \
-    --port 8443 \
-    --ssl-keyfile certs/key.pem \
-    --ssl-certfile certs/cert.pem \
-    --reload
+--host 0.0.0.0 \
+--port 8443 \
+--ssl-keyfile certs/key.pem \
+--ssl-certfile certs/cert.pem \
+--reload
 ```
 
 ### Test HTTPS Endpoint
@@ -286,7 +286,7 @@ curl -k https://localhost:8443/api/v1/health
 
 ---
 
-## �📚 API Usage Examples
+## � API Usage Examples
 
 ### Health Check
 
@@ -298,22 +298,22 @@ curl http://localhost:8000/api/v1/health
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/organizations \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "HealthTech Startup",
-    "industry": "digital_health",
-    "stage": "seed"
-  }'
+-H "Content-Type: application/json" \
+-d '{
+"name": "HealthTech Startup",
+"industry": "digital_health",
+"stage": "seed"
+}'
 ```
 
 Response:
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "HealthTech Startup",
-  "industry": "digital_health",
-  "stage": "seed",
-  "created_at": "2026-03-04T..."
+"id": "550e8400-e29b-41d4-a716-446655440000",
+"name": "HealthTech Startup",
+"industry": "digital_health",
+"stage": "seed",
+"created_at": "2026-03-04T..."
 }
 ```
 
@@ -321,47 +321,47 @@ Response:
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/metadata-profiles \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organization_id": "YOUR_ORG_ID",
-    "phi_types": ["demographic", "clinical", "payment"],
-    "cloud_provider": "aws",
-    "infrastructure": {
-      "encryption_at_rest": false,
-      "tls_enabled": true,
-      "logging_enabled": true,
-      "log_retention_days": 90
-    },
-    "access_controls": {
-      "mfa_enabled": false
-    },
-    "applications": {
-      "frameworks": ["Django", "React"],
-      "databases": ["PostgreSQL", "Redis"]
-    }
-  }'
+-H "Content-Type: application/json" \
+-d '{
+"organization_id": "YOUR_ORG_ID",
+"phi_types": ["demographic", "clinical", "payment"],
+"cloud_provider": "aws",
+"infrastructure": {
+"encryption_at_rest": false,
+"tls_enabled": true,
+"logging_enabled": true,
+"log_retention_days": 90
+},
+"access_controls": {
+"mfa_enabled": false
+},
+"applications": {
+"frameworks": ["Django", "React"],
+"databases": ["PostgreSQL", "Redis"]
+}
+}'
 ```
 
 ### Run a Compliance Assessment
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/assessments \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organization_id": "YOUR_ORG_ID",
-    "metadata_profile_id": "YOUR_PROFILE_ID"
-  }'
+-H "Content-Type: application/json" \
+-d '{
+"organization_id": "YOUR_ORG_ID",
+"metadata_profile_id": "YOUR_PROFILE_ID"
+}'
 ```
 
 Response:
 ```json
 {
-  "id": "assessment-id",
-  "organization_id": "org-id",
-  "metadata_profile_id": "profile-id",
-  "status": "completed",
-  "initiated_at": "2026-03-04T...",
-  "completed_at": "2026-03-04T..."
+"id": "assessment-id",
+"organization_id": "org-id",
+"metadata_profile_id": "profile-id",
+"status": "completed",
+"initiated_at": "2026-03-04T...",
+"completed_at": "2026-03-04T..."
 }
 ```
 
@@ -374,21 +374,21 @@ curl http://localhost:8000/api/v1/assessments/YOUR_ASSESSMENT_ID/findings
 Response:
 ```json
 [
-  {
-    "id": "finding-id",
-    "assessment_id": "assessment-id",
-    "control_id": "HIPAA.164.312(a)(1)",
-    "title": "Multi-Factor Authentication (MFA) Not Enabled",
-    "description": "MFA is not enabled for user authentication...",
-    "severity": "high",
-    "cvss_score": 7.5,
-    "cve_ids": [],
-    "cwe_ids": ["CWE-308"],
-    "remediation_guidance": "Enable MFA for all users...",
-    "priority_window": "immediate",
-    "owner": "Security",
-    "created_at": "2026-03-04T..."
-  }
+{
+"id": "finding-id",
+"assessment_id": "assessment-id",
+"control_id": "HIPAA.164.312(a)(1)",
+"title": "Multi-Factor Authentication (MFA) Not Enabled",
+"description": "MFA is not enabled for user authentication...",
+"severity": "high",
+"cvss_score": 7.5,
+"cve_ids": [],
+"cwe_ids": ["CWE-308"],
+"remediation_guidance": "Enable MFA for all users...",
+"priority_window": "immediate",
+"owner": "Security",
+"created_at": "2026-03-04T..."
+}
 ]
 ```
 
@@ -400,7 +400,7 @@ curl http://localhost:8000/api/v1/controls
 
 ---
 
-## 🧪 Testing the Vertical Slice
+## Testing the Vertical Slice
 
 ### End-to-End Test Scenario
 
@@ -412,35 +412,35 @@ python -m src.main
 
 # 2. Create organization
 ORG_RESPONSE=$(curl -X POST http://localhost:8000/api/v1/organizations \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Test Startup"}')
+-H "Content-Type: application/json" \
+-d '{"name": "Test Startup"}')
 ORG_ID=$(echo $ORG_RESPONSE | python -c "import sys,json; print(json.load(sys.stdin)['id'])")
 
 # 3. Create metadata profile with security gaps
 PROFILE_RESPONSE=$(curl -X POST http://localhost:8000/api/v1/metadata-profiles \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"organization_id\": \"$ORG_ID\",
-    \"phi_types\": [\"demographic\", \"clinical\"],
-    \"cloud_provider\": \"aws\",
-    \"infrastructure\": {
-      \"encryption_at_rest\": false,
-      \"tls_enabled\": false,
-      \"logging_enabled\": false
-    },
-    \"access_controls\": {
-      \"mfa_enabled\": false
-    }
-  }")
+-H "Content-Type: application/json" \
+-d "{
+\"organization_id\": \"$ORG_ID\",
+\"phi_types\": [\"demographic\", \"clinical\"],
+\"cloud_provider\": \"aws\",
+\"infrastructure\": {
+\"encryption_at_rest\": false,
+\"tls_enabled\": false,
+\"logging_enabled\": false
+},
+\"access_controls\": {
+\"mfa_enabled\": false
+}
+}")
 PROFILE_ID=$(echo $PROFILE_RESPONSE | python -c "import sys,json; print(json.load(sys.stdin)['id'])")
 
 # 4. Run assessment
 ASSESSMENT_RESPONSE=$(curl -X POST http://localhost:8000/api/v1/assessments \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"organization_id\": \"$ORG_ID\",
-    \"metadata_profile_id\": \"$PROFILE_ID\"
-  }")
+-H "Content-Type: application/json" \
+-d "{
+\"organization_id\": \"$ORG_ID\",
+\"metadata_profile_id\": \"$PROFILE_ID\"
+}")
 ASSESSMENT_ID=$(echo $ASSESSMENT_RESPONSE | python -c "import sys,json; print(json.load(sys.stdin)['id'])")
 
 # 5. Get findings
@@ -448,57 +448,57 @@ curl http://localhost:8000/api/v1/assessments/$ASSESSMENT_ID/findings | python -
 ```
 
 You should see findings for:
-- ✅ MFA not enabled → HIGH severity
-- ✅ Encryption at rest not enabled → HIGH severity
-- ✅ TLS not enabled → HIGH severity
-- ✅ Logging insufficient → MEDIUM severity
-- ✅ Risk analysis required → MEDIUM severity
+- MFA not enabled → HIGH severity
+- Encryption at rest not enabled → HIGH severity
+- TLS not enabled → HIGH severity
+- Logging insufficient → MEDIUM severity
+- Risk analysis required → MEDIUM severity
 
 ---
 
-## 🏗️ Project Structure
+## ️ Project Structure
 
 ```
 src/
-├── __init__.py          # Package version
-├── config.py            # Settings and environment config
-├── database.py          # SQLAlchemy engine and session
-├── models.py            # Database models (Organization, Control, Finding, etc.)
-├── schemas.py           # Pydantic schemas for API validation
-├── api.py               # API route handlers
-├── rules_engine.py      # Core rules logic (metadata → controls → findings)
-├── main.py              # FastAPI application entry point
-└── seed.py              # Database seed script for HIPAA controls
+├── __init__.py # Package version
+├── config.py # Settings and environment config
+├── database.py # SQLAlchemy engine and session
+├── models.py # Database models (Organization, Control, Finding, etc.)
+├── schemas.py # Pydantic schemas for API validation
+├── api.py # API route handlers
+├── rules_engine.py # Core rules logic (metadata → controls → findings)
+├── main.py # FastAPI application entry point
+└── seed.py # Database seed script for HIPAA controls
 
 tests/
-└── test_api.py          # API integration tests
+└── test_api.py # API integration tests
 
 scripts/
-├── create_issues.py     # GitHub issue creation
+├── create_issues.py # GitHub issue creation
 └── fix_existing_issues.py
 ```
 
 ---
 
-## 🔍 What the Vertical Slice Demonstrates
+## What the Vertical Slice Demonstrates
 
 This MVP proves the entire data flow:
 
 1. **Metadata Intake** → Organization + MetadataProfile models
 2. **Control Mapping** → 10 seeded HIPAA controls
 3. **Rules Engine** → 5 implemented rules that map metadata to findings:
-   - Access Control (MFA check)
-   - Encryption at Rest
-   - Encryption in Transit (TLS)
-   - Audit Logging
-   - Risk Analysis
+- Access Control (MFA check)
+- Encryption at Rest
+- Encryption in Transit (TLS)
+- Audit Logging
+- Risk Analysis
 4. **Risk Scoring** → CVSS scores + CWE mappings
 5. **Prioritization** → immediate / 30_days / quarterly windows
 6. **Output** → JSON findings with remediation guidance
 
 ---
 
-## 🎯 Next Steps
+## Next Steps
 
 See [docs/tickets/TICKET_INDEX.md](docs/tickets/TICKET_INDEX.md) for the full roadmap.
 
@@ -520,7 +520,7 @@ See [docs/tickets/TICKET_INDEX.md](docs/tickets/TICKET_INDEX.md) for the full ro
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Database Issues
 
@@ -557,7 +557,7 @@ uvicorn src.main:app --port 8001
 
 ---
 
-## 📖 Additional Resources
+## Additional Resources
 
 - [BUSINESS_PLAN.md](BUSINESS_PLAN.md) - Market strategy and business model
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Complete technical architecture

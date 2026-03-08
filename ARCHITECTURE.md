@@ -45,12 +45,12 @@ Metadata Input → Rules Engine → Vulnerability Correlation → Risk Scoring �
 **Data Model:**
 ```python
 Control:
-  - id: "HIPAA.164.308(a)(1)(ii)(A)"
-  - title: "Risk Analysis"
-  - category: "Administrative Safeguards"
-  - requirement: "Conduct an accurate and thorough assessment..."
-  - applicability_conditions: [...]
-  - evidence_required: ["risk_assessment_documentation", "asset_inventory"]
+- id: "HIPAA.164.308(a)(1)(ii)(A)"
+- title: "Risk Analysis"
+- category: "Administrative Safeguards"
+- requirement: "Conduct an accurate and thorough assessment..."
+- applicability_conditions: [...]
+- evidence_required: ["risk_assessment_documentation", "asset_inventory"]
 ```
 
 #### 3. Vulnerability Intelligence Layer
@@ -109,10 +109,10 @@ Prioritization Buckets:
 ```
 Control: HIPAA.164.308(a)(6)(ii) - Response and Reporting
 Evidence Required:
-  - Incident response plan document
-  - IR tabletop exercise records (annual)
-  - Breach notification procedures
-  - Historical incident logs
+- Incident response plan document
+- IR tabletop exercise records (annual)
+- Breach notification procedures
+- Historical incident logs
 Status: [Complete | Partial | Missing]
 Owner: [Security Team]
 ```
@@ -125,72 +125,72 @@ Owner: [Security Team]
 
 ```python
 Organization:
-  - id: UUID
-  - name: str
-  - industry: str
-  - stage: str (seed, series_a, etc.)
-  - created_at: datetime
+- id: UUID
+- name: str
+- industry: str
+- stage: str (seed, series_a, etc.)
+- created_at: datetime
 
 MetadataProfile:
-  - id: UUID
-  - organization_id: FK
-  - phi_types: list[str]
-  - cloud_provider: str
-  - infrastructure: dict
-  - applications: list[dict]
-  - access_controls: dict
-  - version: int
-  - created_at: datetime
+- id: UUID
+- organization_id: FK
+- phi_types: list[str]
+- cloud_provider: str
+- infrastructure: dict
+- applications: list[dict]
+- access_controls: dict
+- version: int
+- created_at: datetime
 
 Control:
-  - id: str (e.g., "HIPAA.164.312(a)(1)")
-  - framework: str ("HIPAA_Security_Rule")
-  - title: str
-  - requirement: text
-  - category: str
-  - evidence_types: list[str]
+- id: str (e.g., "HIPAA.164.312(a)(1)")
+- framework: str ("HIPAA_Security_Rule")
+- title: str
+- requirement: text
+- category: str
+- evidence_types: list[str]
 
 Assessment:
-  - id: UUID
-  - organization_id: FK
-  - metadata_profile_id: FK
-  - status: str (pending, running, completed, failed)
-  - initiated_at: datetime
-  - completed_at: datetime
+- id: UUID
+- organization_id: FK
+- metadata_profile_id: FK
+- status: str (pending, running, completed, failed)
+- initiated_at: datetime
+- completed_at: datetime
 
 Finding:
-  - id: UUID
-  - assessment_id: FK
-  - control_id: FK
-  - title: str
-  - description: text
-  - severity: str (immediate, high, medium, low)
-  - cvss_score: float
-  - cve_ids: list[str]
-  - cwe_ids: list[str]
-  - remediation_guidance: text
-  - priority_window: str
-  - owner: str
+- id: UUID
+- assessment_id: FK
+- control_id: FK
+- title: str
+- description: text
+- severity: str (immediate, high, medium, low)
+- cvss_score: float
+- cve_ids: list[str]
+- cwe_ids: list[str]
+- remediation_guidance: text
+- priority_window: str
+- owner: str
 
 EvidenceArtifact:
-  - id: UUID
-  - organization_id: FK
-  - assessment_id: FK
-  - control_id: FK
-  - artifact_type: str (policy, checklist, report)
-  - content: text | blob
-  - status: str (generated, reviewed, approved)
-  - generated_at: datetime
+- id: UUID
+- organization_id: FK
+- assessment_id: FK
+- control_id: FK
+- artifact_type: str (policy, checklist, report)
+- content: text | blob
+- status: str (generated, reviewed, approved)
+- generated_at: datetime
 
 RemediationTask:
-  - id: UUID
-  - finding_id: FK
-  - title: str
-  - description: text
-  - priority: str
-  - due_date: date
-  - assigned_to: str
-  - status: str (open, in_progress, completed)
+- id: UUID
+- finding_id: FK
+- title: str
+- description: text
+- priority: str
+- due_date: date
+- assigned_to: str
+- status: str (open, in_progress, completed)
 ```
 
 ---
@@ -252,19 +252,19 @@ RemediationTask:
 
 ### RESTful Endpoints
 ```
-POST   /api/v1/organizations
-GET    /api/v1/organizations/{org_id}
+POST /api/v1/organizations
+GET /api/v1/organizations/{org_id}
 
-POST   /api/v1/organizations/{org_id}/metadata-profiles
-GET    /api/v1/organizations/{org_id}/metadata-profiles/{profile_id}
+POST /api/v1/organizations/{org_id}/metadata-profiles
+GET /api/v1/organizations/{org_id}/metadata-profiles/{profile_id}
 
-POST   /api/v1/organizations/{org_id}/assessments
-GET    /api/v1/organizations/{org_id}/assessments/{assessment_id}
-GET    /api/v1/organizations/{org_id}/assessments/{assessment_id}/findings
-GET    /api/v1/organizations/{org_id}/assessments/{assessment_id}/evidence
+POST /api/v1/organizations/{org_id}/assessments
+GET /api/v1/organizations/{org_id}/assessments/{assessment_id}
+GET /api/v1/organizations/{org_id}/assessments/{assessment_id}/findings
+GET /api/v1/organizations/{org_id}/assessments/{assessment_id}/evidence
 
-GET    /api/v1/controls
-GET    /api/v1/controls/{control_id}
+GET /api/v1/controls
+GET /api/v1/controls/{control_id}
 ```
 
 ### Authentication
@@ -281,27 +281,27 @@ GET    /api/v1/controls/{control_id}
 
 ```
 ┌─────────────────┐
-│   Frontend      │  (React/Next.js)
-│   Static Site   │
+│ Frontend │ (React/Next.js)
+│ Static Site │
 └────────┬────────┘
-         │
+│
 ┌────────▼────────┐
-│   API Gateway   │  (FastAPI)
-│   /api/v1/*     │
+│ API Gateway │ (FastAPI)
+│ /api/v1/* │
 └────────┬────────┘
-         │
-    ┌────┴────┐
-    │         │
+│
+┌────┴────┐
+│ │
 ┌───▼───┐ ┌──▼──────────┐
-│  DB   │ │ Task Queue  │  (Celery + Redis)
-│ (PG)  │ │ Background  │
+│ DB │ │ Task Queue │ (Celery + Redis)
+│ (PG) │ │ Background │
 └───────┘ │ Assessments │
-          └──────┬──────┘
-                 │
-          ┌──────▼──────┐
-          │ NVD/CWE API │
-          │   Ingestion │
-          └─────────────┘
+└──────┬──────┘
+│
+┌──────▼──────┐
+│ NVD/CWE API │
+│ Ingestion │
+└─────────────┘
 ```
 
 ---

@@ -17,11 +17,11 @@ This example describes a real-time, AI-enabled medical translation product for p
 **Data Flow:**
 ```
 Provider-Patient Audio Stream
-  → Client SDK (end-to-end encryption?)
-  → WebSocket over TLS 1.2+
-  → AWS ALB (certificate pinning)
-  → API Gateway (OAuth + API key validation)
-  → SQS Queue (encrypted payloads with KMS)
+→ Client SDK (end-to-end encryption?)
+→ WebSocket over TLS 1.2+
+→ AWS ALB (certificate pinning)
+→ API Gateway (OAuth + API key validation)
+→ SQS Queue (encrypted payloads with KMS)
 ```
 
 **Audit Concerns:**
@@ -44,12 +44,12 @@ Provider-Patient Audio Stream
 **Data Flow:**
 ```
 SQS Message (encrypted audio)
-  → Audio Processing Pod (KMS decryption)
-  → ASR Service (audio stays in memory, NOT persisted)
-  → Context LLM (transcription + context tokenized)
-  → Translation LLM (generates translation)
-  → Metadata saved to RDS
-  → Audio deleted immediately after processing
+→ Audio Processing Pod (KMS decryption)
+→ ASR Service (audio stays in memory, NOT persisted)
+→ Context LLM (transcription + context tokenized)
+→ Translation LLM (generates translation)
+→ Metadata saved to RDS
+→ Audio deleted immediately after processing
 ```
 
 **Critical Audit Points:**
@@ -66,8 +66,8 @@ SQS Message (encrypted audio)
 **Components:**
 - **RDS PostgreSQL** for metadata: conversation ID, provider ID, patient context (no names/MRN in plaintext)
 - **S3 Buckets** (encrypted with KMS, versioning disabled, MFA delete enabled)
-  - `healthcare-org-audit-logs/` - CloudTrail logs
-  - `healthcare-org-database-backups/` - encrypted snapshots
+- `healthcare-org-audit-logs/` - CloudTrail logs
+- `healthcare-org-database-backups/` - encrypted snapshots
 - **DynamoDB** (optional) for session state, caching
 - **VPC Endpoints** for S3/RDS to avoid internet egress
 
