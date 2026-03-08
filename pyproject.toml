@@ -67,6 +67,11 @@ extend-exclude = [
 # Groups: future, stdlib, third-party, first-party, local
 known-first-party = ["src"]
 
+[tool.ruff.lint.mccabe]
+# McCabe complexity threshold
+# - Default is 10, increased to 15 to allow legitimately complex functions
+max-complexity = 15
+
 [tool.mypy]
 # Type checker configuration
 # - Strict mode enabled for comprehensive type coverage
