@@ -245,9 +245,13 @@ class NVDService:
                                 parts = cpe23uri.split(":")
                                 if len(parts) >= 6:
                                     version = parts[5]
-                                    # Filter out wildcards and generic versions
+                                    # Filter out wildcards, generic versions, and invalid formats
+                                    # Valid versions should contain dots (e.g., "21.0.1") or be simple numbers ≤ 50
+                                    # This filters out update/build numbers like "382", "3802" that aren't valid versions
                                     if version and version not in ["*", "-", ""]:
-                                        versions_set.add(version)
+                                        # Accept versions with dots (21.0.1) or reasonable single numbers (21, not 3802)
+                                        if "." in version or (version.isdigit() and int(version) <= 50):
+                                            versions_set.add(version)
 
                             # Also check version ranges
                             version_start_including = match.get("versionStartIncluding")
