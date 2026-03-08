@@ -53,6 +53,12 @@ def create_evidence(
             status_code=500,
             detail="Failed to create evidence item. Please try again."
         ) from e
+
+    # Audit log
+    log_audit_event(
+        action=AuditAction.DATA_CREATED,
+        request=request,
+        api_key=api_key,
         resource_type="evidence",
         resource_id=evidence.id,  # type: ignore[arg-type]
         details={"control_id": evidence.control_id, "evidence_type": evidence.evidence_type},

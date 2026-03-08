@@ -48,6 +48,12 @@ def create_metadata_profile(
             status_code=500,
             detail="Failed to create metadata profile. Please try again."
         ) from e
+
+    # Audit log
+    log_audit_event(
+        action=AuditAction.DATA_CREATED,
+        request=request,
+        api_key=api_key,
         resource_type="metadata_profile",
         resource_id=profile.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
         details={"organization_id": profile.organization_id},
