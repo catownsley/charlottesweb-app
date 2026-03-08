@@ -254,6 +254,22 @@ class Settings(BaseSettings):
     # Get key from: https://nvd.nist.gov/developers/request-an-api-key
     nvd_api_key: str = ""
 
+    # GitHub API Token for Dependabot alerts integration
+    # Optional: Required to fetch Dependabot security alerts
+    # Generate token at: https://github.com/settings/tokens with repo/security_events scopes
+    # Set via: GITHUB_TOKEN environment variable
+    github_token: str = ""
+
+    # GitHub repository owner (e.g., "catownsley")
+    # Used with Dependabot alert fetching
+    # Default: "catownsley" (CharlottesWeb repo owner)
+    github_repo_owner: str = "catownsley"
+
+    # GitHub repository name (e.g., "charlottesweb-app")
+    # Used with Dependabot alert fetching
+    # Default: "charlottesweb-app"
+    github_repo_name: str = "charlottesweb-app"
+
     # ========================================================================
     # COMPUTED PROPERTIES (Convenience Helpers)
     # ========================================================================

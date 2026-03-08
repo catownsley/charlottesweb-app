@@ -10,6 +10,7 @@ from src.audit import AuditAction, AuditLevel, log_audit_event
 from src.compliance_as_code import ComplianceAsCodeEvaluator
 from src.config import settings
 from src.database import get_db, get_or_404
+from src.dependabot_service import DependabotService
 from src.middleware import get_api_key_optional, limiter
 from src.mitre_service import mitre_service
 from src.models import Assessment, Control, Evidence, Finding, MetadataProfile, Organization
@@ -635,6 +636,156 @@ def analyze_nvd_vulnerabilities(
             "unmapped_cves": unmapped_cves,
             "evidence_created": evidence_created_count,
             "components_analyzed": list(nvd_results.keys()),
+        },
+        level=AuditLevel.INFO,
+    )
+
+    return new_findings
+
+
+@router.post("/{assessment_id}/analyze-dependabot", response_model=list[FindingResponse])
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def analyze_dependabot_alerts(
+    assessment_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+) -> list[Finding]:
+    """Analyze GitHub Dependabot alerts as threat intelligence.
+
+    Fetches open Dependabot alerts from the repository and creates findings
+    for dependency vulnerabilities. Complements NVD analysis with GitHub's
+    advisory database.
+
+    Requires: GitHub API token in GITHUB_TOKEN environment variable
+    Rate limit: Standard (60 req/min)
+    """
+    # Get assessment and metadata
+    assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
+
+    # Check if GitHub token is configured
+    github_token = settings.github_token if hasattr(settings, "github_token") else None
+    if not github_token:
+        log_audit_event(
+            action=AuditAction.THREAT_INTEL_QUERY,
+            request=request,
+            api_key=api_key,
+            resource_type="assessment",
+            resource_id=assessment_id,
+            details={"status": "skipped", "reason": "github_token_not_configured"},
+            level=AuditLevel.WARNING,
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="GitHub token not configured. Set GITHUB_TOKEN environment variable."
+        )
+
+    # Initialize Dependabot service
+    repo_owner = settings.github_repo_owner if hasattr(settings, "github_repo_owner") else "catownsley"
+    repo_name = settings.github_repo_name if hasattr(settings, "github_repo_name") else "charlottesweb-app"
+    dependabot = DependabotService(repo_owner, repo_name, github_token)
+
+    # Fetch open Dependabot alerts
+    dependabot_alerts = dependabot.get_alerts(state="open", ecosystem="pip")
+
+    if not dependabot_alerts:
+        log_audit_event(
+            action=AuditAction.THREAT_INTEL_QUERY,
+            request=request,
+            api_key=api_key,
+            resource_type="assessment",
+            resource_id=assessment_id,
+            details={"status": "completed", "alerts_found": 0},
+            level=AuditLevel.INFO,
+        )
+        return []
+
+    # Cache available controls for deterministic mapping
+    available_control_ids = {control_id for (control_id,) in db.query(Control.id).all()}
+    if not available_control_ids:
+        logger.warning("No controls found in database; Dependabot findings will be created without control mapping")
+
+    # Create findings from Dependabot alerts
+    new_findings: list[Finding] = []
+    mapped_via_cwe = 0
+    unmapped_alerts = 0
+
+    for alert in dependabot_alerts:
+        # Check if this alert finding already exists
+        existing = db.query(Finding).filter(
+            Finding.assessment_id == assessment_id,  # type: ignore[attr-defined]
+            Finding.external_id == alert["cve_id"],  # type: ignore[attr-defined]
+        ).first()
+
+        if existing:
+            # Skip if finding already exists
+            continue
+
+        # Determine priority window based on CVSS score
+        nvd_service = NVDService()
+        priority_window = nvd_service.get_priority_window_from_cvss(alert["cvss_score"])
+        severity = nvd_service.get_severity_from_cvss(alert["cvss_score"])
+
+        # Map CWE IDs to applicable controls
+        control_id = None
+        cwe_ids = alert.get("cwe_ids", [])
+
+        if cwe_ids:
+            # Check if any CWE maps to a control
+            for cwe in cwe_ids:
+                if cwe in CWE_CONTROL_MAP:
+                    control_id = CWE_CONTROL_MAP[cwe]
+                    mapped_via_cwe += 1
+                    break
+
+        # Ensure mapped control exists in database
+        if control_id and control_id not in available_control_ids:
+            control_id = None
+
+        # Fallback mapping when no direct CWE mapping is available
+        if not control_id:
+            for fallback_control in FALLBACK_CONTROL_CANDIDATES:
+                if fallback_control in available_control_ids:
+                    control_id = fallback_control
+                    break
+        else:
+            unmapped_alerts += 1
+
+        # Create finding record
+        finding = Finding(
+            assessment_id=assessment_id,  # type: ignore[arg-type]
+            control_id=control_id,
+            external_id=alert["cve_id"],
+            title=f"{alert['cve_id']}: {alert['package_name']} ({alert['ecosystem']}) dependency vulnerability",
+            description=alert["description"],
+            severity=severity,
+            cvss_score=alert["cvss_score"],
+            cwe_ids=cwe_ids,
+            priority_window=priority_window,
+            owner="Supply Chain Security",
+            remediation_guidance=f"Update {alert['package_name']} to a patched version. See GitHub Advisory: {alert.get('url', 'N/A')}",
+        )
+
+        db.add(finding)
+        new_findings.append(finding)
+
+    # Commit all findings
+    if new_findings:
+        db.commit()
+
+    # Audit log
+    log_audit_event(
+        action=AuditAction.THREAT_INTEL_QUERY,
+        request=request,
+        api_key=api_key,
+        resource_type="assessment",
+        resource_id=assessment_id,
+        details={
+            "source": "dependabot",
+            "alerts_found": len(dependabot_alerts),
+            "findings_created": len(new_findings),
+            "mapped_via_cwe": mapped_via_cwe,
+            "unmapped_alerts": unmapped_alerts,
         },
         level=AuditLevel.INFO,
     )
