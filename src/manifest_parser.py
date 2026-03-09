@@ -33,7 +33,7 @@ def _resolve_property(value: str | None, properties: dict[str, str]) -> str | No
     return candidate
 
 
-def parse_pom_xml(content: str) -> list[dict[str, str]]:
+def parse_pom_xml(content: str) -> list[dict[str, str]]:  # noqa: C901
     """Parse Maven pom.xml content into component/version pairs.
 
     Returns a deterministic, de-duplicated list sorted by component name.
