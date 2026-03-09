@@ -3,7 +3,10 @@
 
 set -e
 
-CERT_DIR="./certs"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+CERT_DIR="$PROJECT_ROOT/certs"
 DAYS_VALID=365
 
 echo "Generating self-signed TLS certificates for local development..."

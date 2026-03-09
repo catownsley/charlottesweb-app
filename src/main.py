@@ -17,6 +17,8 @@ Architecture:
 """
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, Request, status
@@ -72,11 +74,74 @@ limiter = Limiter(
     default_limits=[f"{settings.rate_limit_per_minute}/minute"],
 )
 
+
+@asynccontextmanager
+async def app_lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
+    """Run startup and shutdown lifecycle events using FastAPI lifespan.
+
+    Replaces deprecated @app.on_event("startup") and @app.on_event("shutdown").
+    """
+    # Ensure all database tables are created with the latest schema.
+    # Destructive reset is opt-in only.
+    if settings.reset_db_on_startup:
+        logger.warning(
+            "RESET_DB_ON_STARTUP enabled: dropping and recreating all tables"
+        )
+        Base.metadata.drop_all(bind=engine)
+
+    Base.metadata.create_all(bind=engine)
+
+    # Validate security configuration
+    # Check for common misconfigurations that could lead to security issues
+    from src.config import validate_security_config
+
+    security_warnings = validate_security_config()
+    if security_warnings:
+        for warning in security_warnings:
+            log_audit_event(
+                action=AuditAction.SECURITY_ALERT,
+                level=(
+                    AuditLevel.CRITICAL
+                    if "[CRITICAL]" in warning
+                    else AuditLevel.WARNING
+                ),
+                success=False,
+                details={"alert_type": "MISCONFIGURATION", "warning": warning},
+            )
+            print(f"\n{warning}\n")
+
+    log_audit_event(
+        action=AuditAction.CONFIG_CHANGED,
+        level=AuditLevel.INFO,
+        details={
+            "event": "application_startup",
+            "version": __version__,
+            "environment": settings.app_env,
+            "debug": settings.debug,
+            "api_key_required": settings.api_key_required,
+            "security_warnings_count": len(security_warnings),
+        },
+    )
+
+    try:
+        yield
+    finally:
+        log_audit_event(
+            action=AuditAction.CONFIG_CHANGED,
+            level=AuditLevel.INFO,
+            details={
+                "event": "application_shutdown",
+                "version": __version__,
+            },
+        )
+
+
 # Create FastAPI application instance
 app = FastAPI(
     title=settings.app_name,
     version=__version__,
     description="HIPAA Compliance-as-Code Platform",
+    lifespan=app_lifespan,
     # Security: Disable API documentation in production
     # Interactive docs can leak API structure and be used for reconnaissance
     # Enable in development for convenience
@@ -342,96 +407,6 @@ except Exception as e:
     logger.warning(
         "Failed to mount static files: %s. Web UI will not be available.",
         e,
-    )
-
-
-# ============================================================================
-# APPLICATION LIFECYCLE HOOKS
-# ============================================================================
-# These functions run when the application starts/stops.
-# Useful for: logging, initialization, cleanup, health checks
-# ============================================================================
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Log application startup for audit trail.
-
-    Runs once when the application starts.
-    Logs configuration state for:
-    - Incident investigation (when did config change?)
-    - Compliance auditing (what security settings are active?)
-    - Troubleshooting (what version is running?)
-
-    Future enhancements:
-    - Database connection pool initialization
-    - Cache warming
-    - External service health checks
-    - Feature flag loading
-    """
-    # Ensure all database tables are created with the latest schema.
-    # Destructive reset is opt-in only.
-    if settings.reset_db_on_startup:
-        logger.warning(
-            "RESET_DB_ON_STARTUP enabled: dropping and recreating all tables"
-        )
-        Base.metadata.drop_all(bind=engine)
-
-    Base.metadata.create_all(bind=engine)
-
-    # Validate security configuration
-    # Check for common misconfigurations that could lead to security issues
-    from src.config import validate_security_config
-
-    security_warnings = validate_security_config()
-    if security_warnings:
-        for warning in security_warnings:
-            log_audit_event(
-                action=AuditAction.SECURITY_ALERT,
-                level=(
-                    AuditLevel.CRITICAL
-                    if "[CRITICAL]" in warning
-                    else AuditLevel.WARNING
-                ),
-                success=False,
-                details={"alert_type": "MISCONFIGURATION", "warning": warning},
-            )
-            # Also print to console for visibility during startup
-            print(f"\n{warning}\n")
-
-    log_audit_event(
-        action=AuditAction.CONFIG_CHANGED,
-        level=AuditLevel.INFO,
-        details={
-            "event": "application_startup",
-            "version": __version__,
-            "environment": settings.app_env,
-            "debug": settings.debug,
-            "api_key_required": settings.api_key_required,
-            "security_warnings_count": len(security_warnings),
-        },
-    )
-
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    """Log application shutdown for audit trail.
-
-    Runs once when the application stops (graceful shutdown).
-
-    Future enhancements:
-    - Close database connections
-    - Flush audit logs
-    - Cancel background tasks
-    - Send shutdown notifications
-    """
-    log_audit_event(
-        action=AuditAction.CONFIG_CHANGED,
-        level=AuditLevel.INFO,
-        details={
-            "event": "application_shutdown",
-            "version": __version__,
-        },
     )
 
 
