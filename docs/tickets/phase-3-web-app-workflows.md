@@ -21,7 +21,7 @@
 ## CW-303 Findings dashboard and filters
 - Type: Frontend
 - Priority: P0
-- Status: 🎯 Next Focus
+- Status: ✅ Complete (PR #34)
 - Outcome: Display findings by severity/control/domain.
 - Acceptance:
 - Supports sorting/filtering by priority window
@@ -30,7 +30,7 @@
 ## CW-304 Report download and share flow
 - Type: Frontend/Backend
 - Priority: P1
-- Status: Backlog
+- Status: 🎯 Next Focus
 - Outcome: Download executive report and technical appendix.
 - Acceptance:
 - Report generation status visible
