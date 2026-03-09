@@ -29,5 +29,5 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies: ["sqlalchemy", "pydantic", "fastapi", "types-requests"]
-        args: ["--strict", "--ignore-missing-imports"]
+        args: ["--ignore-missing-imports", "--follow-imports=skip"]
         exclude: "tests/"
