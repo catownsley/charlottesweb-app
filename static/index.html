@@ -722,6 +722,59 @@
             setManifestStore(store);
         }
 
+        function populateComponentsFromSoftwareStack(softwareStack) {
+            const entries = Object.entries(softwareStack || {});
+
+            componentsContainer.innerHTML = '';
+
+            entries.forEach(([name, version]) => {
+                const componentName = String(name || '').trim();
+                const componentVersion = String(version || '').trim();
+                if (!componentName || !componentVersion) {
+                    return;
+                }
+                addComponentRow(componentName, componentVersion);
+            });
+
+            if (document.querySelectorAll('.component-row').length === 0) {
+                addComponentRow();
+            }
+        }
+
+        async function loadLatestSoftwareStackForOrgName(orgName) {
+            const normalizedOrgName = String(orgName || '').trim();
+            if (!normalizedOrgName) {
+                return null;
+            }
+
+            const orgLookupResponse = await fetch(`/api/v1/organizations?name=${encodeURIComponent(normalizedOrgName)}`);
+            if (!orgLookupResponse.ok) {
+                return null;
+            }
+
+            const organizations = await orgLookupResponse.json();
+            if (!Array.isArray(organizations) || organizations.length === 0) {
+                return null;
+            }
+
+            const organizationId = organizations[0]?.id;
+            if (!organizationId) {
+                return null;
+            }
+
+            const profileResponse = await fetch(
+                `/api/v1/metadata-profiles/latest?organization_id=${encodeURIComponent(organizationId)}`
+            );
+            if (!profileResponse.ok) {
+                return null;
+            }
+
+            const profile = await profileResponse.json();
+            return profile.software_stack && typeof profile.software_stack === 'object'
+                ? profile.software_stack
+                : null;
+        }
+
         async function populateComponentsFromManifest(manifestContent, { replaceExisting = true, showAlert = false } = {}) {
             const content = String(manifestContent || '').trim();
             if (!content) {
@@ -817,7 +870,8 @@
             if (!orgNameInput) {
                 return;
             }
-            const savedManifest = getSavedManifestForOrg(orgNameInput.value);
+            const currentOrgName = orgNameInput.value;
+            const savedManifest = getSavedManifestForOrg(currentOrgName);
             if (savedManifest) {
                 manifestContentInput.value = savedManifest;
                 manifestFileInput.value = '';
@@ -832,8 +886,18 @@
             } else {
                 manifestContentInput.value = '';
                 manifestFileInput.value = '';
-                componentsContainer.innerHTML = '';
-                addComponentRow();
+
+                try {
+                    const savedSoftwareStack = await loadLatestSoftwareStackForOrgName(currentOrgName);
+                    if (savedSoftwareStack) {
+                        populateComponentsFromSoftwareStack(savedSoftwareStack);
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('Failed to restore dependencies from latest profile:', error);
+                }
+
+                populateComponentsFromSoftwareStack({});
             }
         }
 
