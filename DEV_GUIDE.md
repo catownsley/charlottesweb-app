@@ -239,6 +239,37 @@ See [SECURITY_KEYS.md](SECURITY_KEYS.md) and [SECURITY.md](SECURITY.md) for comp
 
 ## Testing the Vertical Slice
 
+## Risk-Convergence API (HIPAA-first)
+
+CharlottesWeb now exposes a convergence endpoint that merges compliance posture
+and threat intelligence into an actionable backlog:
+
+```bash
+GET /api/v1/risk/prioritized-backlog?assessment_id=<assessment_id>&top=20
+```
+
+### Why this endpoint exists
+- Converts evidence checklist status into measurable `control_confidence`
+- Converts findings/CVEs into measurable `threat_pressure`
+- Produces `residual_risk` so engineering can prioritize by true risk reduction
+
+### Secure coding and operational safeguards
+- Requires scoped queries (`assessment_id` or `organization_id`)
+- Bounds all scores to 0-100 to prevent unstable outputs
+- Uses deterministic sorting and output for audit reproducibility
+- Logs read access for compliance traceability
+
+### Example usage
+
+```bash
+curl "http://localhost:8000/api/v1/risk/prioritized-backlog?assessment_id=<id>&top=10"
+```
+
+### Future direction (planned)
+- Dynamic HIPAA feed ingestion (versioned controls)
+- Multi-regulation adapters (SOC 2, PCI DSS, GDPR, etc.)
+- Data-lifecycle metadata inference for regulation applicability
+
 To run the server with HTTPS using self-signed certificates for local development:
 
 ### Generate Self-Signed Certificates
