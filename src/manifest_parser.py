@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from xml.etree import ElementTree as ET
+from typing import cast
+
+from defusedxml import ElementTree as DefusedET
 
 
 def _local_name(tag: str) -> str:
@@ -12,10 +14,10 @@ def _local_name(tag: str) -> str:
     return tag
 
 
-def _find_child_text(node: ET.Element, child_name: str) -> str | None:
+def _find_child_text(node: DefusedET.Element, child_name: str) -> str | None:
     for child in list(node):
         if _local_name(child.tag) == child_name and child.text:
-            value = child.text.strip()
+            value = cast(str, child.text).strip()
             if value:
                 return value
     return None
@@ -33,7 +35,7 @@ def _resolve_property(value: str | None, properties: dict[str, str]) -> str | No
     return candidate
 
 
-def _extract_properties(root: ET.Element) -> dict[str, str]:
+def _extract_properties(root: DefusedET.Element) -> dict[str, str]:
     properties: dict[str, str] = {}
     for node in root.iter():
         if _local_name(node.tag) != "properties":
@@ -47,12 +49,12 @@ def _extract_properties(root: ET.Element) -> dict[str, str]:
     return properties
 
 
-def _iter_dependencies(root: ET.Element) -> list[ET.Element]:
+def _iter_dependencies(root: DefusedET.Element) -> list[DefusedET.Element]:
     return [node for node in root.iter() if _local_name(node.tag) == "dependency"]
 
 
 def _parse_dependency_coords(
-    dep: ET.Element, properties: dict[str, str]
+    dep: DefusedET.Element, properties: dict[str, str]
 ) -> tuple[str | None, str | None, str | None]:
     group_id = _resolve_property(_find_child_text(dep, "groupId"), properties)
     artifact_id = _resolve_property(_find_child_text(dep, "artifactId"), properties)
@@ -61,7 +63,7 @@ def _parse_dependency_coords(
 
 
 def _collect_managed_versions(
-    root: ET.Element, properties: dict[str, str]
+    root: DefusedET.Element, properties: dict[str, str]
 ) -> dict[tuple[str, str], str]:
     managed_versions: dict[tuple[str, str], str] = {}
     for node in root.iter():
@@ -80,8 +82,8 @@ def parse_pom_xml(content: str) -> list[dict[str, str]]:
     Returns a deterministic, de-duplicated list sorted by component name.
     """
     try:
-        root = ET.fromstring(content)
-    except ET.ParseError as exc:
+        root = DefusedET.fromstring(content)
+    except DefusedET.ParseError as exc:
         raise ValueError("Invalid XML format for pom.xml") from exc
 
     properties = _extract_properties(root)
