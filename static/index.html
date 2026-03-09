@@ -621,6 +621,10 @@
                     <div style="font-weight: 600; margin-bottom: 8px;">Import Manifest (MVP: pom.xml)</div>
                     <input type="file" id="manifestFile" accept=".xml,.pom" style="margin-bottom: 8px; width: 100%;">
                     <textarea id="manifestContent" rows="6" placeholder="Paste pom.xml content here (optional if file selected)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+                    <label style="display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: #444;">
+                        <input type="checkbox" id="replaceManifestMode">
+                        Replace existing component list
+                    </label>
                     <button type="button" id="importManifestBtn" class="btn-secondary" style="margin-top: 8px;">Import Manifest</button>
                     <div class="help-text" style="margin-top: 6px;">Imports dependencies from pom.xml and auto-fills component/version rows.</div>
                 </div>
@@ -660,6 +664,7 @@
         const tryDemoBtn = document.getElementById('tryDemoBtn');
         const manifestFileInput = document.getElementById('manifestFile');
         const manifestContentInput = document.getElementById('manifestContent');
+        const replaceManifestModeInput = document.getElementById('replaceManifestMode');
         const importManifestBtn = document.getElementById('importManifestBtn');
 
         console.log('Form elements loaded:', {
@@ -873,6 +878,27 @@
                 const data = await response.json();
                 if (!response.ok) {
                     throw new Error(data.detail || 'Failed to import manifest');
+                }
+
+                const replaceMode = !!(replaceManifestModeInput && replaceManifestModeInput.checked);
+
+                if (replaceMode) {
+                    componentsContainer.innerHTML = '';
+                    data.components.forEach((component) => {
+                        const name = String(component.name || '').trim();
+                        const version = String(component.version || '').trim();
+                        if (!name || !version) {
+                            return;
+                        }
+                        addComponentRow(name, version);
+                    });
+
+                    if (document.querySelectorAll('.component-row').length === 0) {
+                        addComponentRow();
+                    }
+
+                    alert(`Imported ${data.total_components} components from pom.xml (replaced existing list)`);
+                    return;
                 }
 
                 const existingRows = Array.from(document.querySelectorAll('.component-row'));
