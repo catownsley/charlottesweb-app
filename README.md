@@ -93,7 +93,7 @@ charlottesweb-app/
 | **Phase 0** | Foundation (domain model, backend skeleton, schema) | **Complete** |
 | **Phase 1** | HIPAA Intelligence Engine (intake, mapping, correlation, scoring) | **Complete** |
 | **Phase 2** | Audit Evidence Automation (templates, checklists, binder export) | **In Progress** (50%) |
-| **Phase 3** | Web App Workflows (auth, UI, dashboard, reports) | **In Progress** (MVP UI / partial workflows) |
+| **Phase 3** | Web App Workflows (auth, UI, dashboard, reports) | **In Progress** (CW-301/CW-302 complete; CW-303 next) |
 | **Phase 4** | Pilot Readiness (isolation, observability, onboarding) | Not Started |
 | **Phase 5** | Continuous Monitoring (scheduled jobs, delta alerts, trends) | Not Started |
 

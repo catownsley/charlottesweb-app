@@ -19,10 +19,10 @@
 - CW-203: Policy/document templates generation
 - CW-204: Audit binder export endpoint
 
-## Phase 3 – Web App Workflows 🚧 **IN PROGRESS** (MVP UI / partial workflows)
-- CW-301: Auth and organization onboarding
-- CW-302: Assessment run workflow UI
-- CW-303: Findings dashboard and filters
+## Phase 3 – Web App Workflows 🚧 **IN PROGRESS** (CW-301/CW-302 complete)
+- CW-301: Auth and organization onboarding ✅ COMPLETE
+- CW-302: Assessment run workflow UI ✅ COMPLETE
+- CW-303: Findings dashboard and filters 🎯 NEXT FOCUS
 - CW-304: Report download and share flow
 
 ## Phase 4 – Pilot Readiness ⏸️ **NOT STARTED**
