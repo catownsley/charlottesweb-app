@@ -1393,36 +1393,24 @@ def generate_evidence_checklist(
     assessment_id: str,
     db: Session = Depends(get_db),
 ) -> EvidenceChecklistResponse:
-    """Generate evidence checklist for an assessment."""
+    """Generate evidence checklist for an assessment.
+
+    Shows ALL controls with evidence requirements, not just ones with findings.
+    Automatically creates evidence records so everything can be tracked.
+    """
     from src.models import Evidence
 
     # Verify assessment exists
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
 
-    # Get all findings for this assessment
-    findings: list[Finding] = (
-        db.query(Finding)
-        .filter(Finding.assessment_id == assessment_id)
-        .filter(Finding.control_id.isnot(None))
-        .all()
-    )
-
-    # Get unique control IDs from findings
-    control_ids = [
-        control_id
-        for control_id in {
-            _to_str(getattr(finding, "control_id", None)) for finding in findings
-        }
-        if control_id
-    ]
-
-    # Get controls with evidence requirements
+    # Get ALL controls with evidence requirements (not just ones with findings)
+    # This ensures all HIPAA requirements appear in the checklist
     controls: list[Control] = (
-        db.query(Control)
-        .filter(Control.id.in_(control_ids))
-        .filter(Control.evidence_types.isnot(None))
-        .all()
+        db.query(Control).filter(Control.evidence_types.isnot(None)).all()
     )
+
+    # Extract control IDs for evidence lookup
+    control_ids = [_to_str(getattr(control, "id", None)) for control in controls]
 
     # Get existing evidence for these controls, scoped to the organization
     # This allows evidence to persist across assessments for the same org
@@ -1475,8 +1463,10 @@ def generate_evidence_checklist(
         ):
             evidence_map[map_key] = evidence_item
 
-    # Generate checklist items
+    # Generate checklist items and auto-create missing evidence records
     checklist_items: list[EvidenceChecklistItem] = []
+    new_evidence_records: list[Evidence] = []
+
     for control in controls:
         evidence_types = _to_str_list(getattr(control, "evidence_types", None))
         if not evidence_types:
@@ -1488,37 +1478,50 @@ def generate_evidence_checklist(
         for evidence_type in evidence_types:
             evidence = evidence_map.get((control_id, evidence_type))
 
+            # Auto-create evidence record if it doesn't exist
+            # This ensures every checklist item has an Edit button
+            if evidence is None:
+                new_evidence = Evidence(
+                    assessment_id=assessment_id,
+                    control_id=control_id,
+                    evidence_type=evidence_type,
+                    title=f"{control_id}: {evidence_type}",
+                    description=f"Evidence for {control_title}",
+                    status="not_started",
+                    owner="system",
+                )
+                db.add(new_evidence)
+                new_evidence_records.append(new_evidence)
+                evidence = new_evidence
+                evidence_map[(control_id, evidence_type)] = new_evidence
+
             item = EvidenceChecklistItem(
                 control_id=control_id,
                 control_title=control_title,
                 evidence_type=evidence_type,
                 required_evidence=evidence_type.replace("_", " ").title(),
-                status=(
-                    _to_str(getattr(evidence, "status", None), default="not_started")
-                    if evidence
-                    else "not_started"
+                status=_to_str(
+                    getattr(evidence, "status", None), default="not_started"
                 ),
-                owner=(
-                    _to_optional_str(getattr(evidence, "owner", None))
-                    if evidence
-                    else None
-                ),
-                due_date=getattr(evidence, "due_date", None) if evidence else None,
-                collected_at=(
-                    getattr(evidence, "collected_at", None) if evidence else None
-                ),
-                notes=(
-                    _to_optional_str(getattr(evidence, "notes", None))
-                    if evidence
-                    else None
-                ),
-                evidence_id=(
-                    _to_optional_str(getattr(evidence, "id", None))
-                    if evidence
-                    else None
-                ),
+                owner=_to_optional_str(getattr(evidence, "owner", None)),
+                due_date=getattr(evidence, "due_date", None),
+                collected_at=getattr(evidence, "collected_at", None),
+                notes=_to_optional_str(getattr(evidence, "notes", None)),
+                evidence_id=_to_optional_str(getattr(evidence, "id", None)),
             )
             checklist_items.append(item)
+
+    # Commit any new evidence records that were created
+    if new_evidence_records:
+        try:
+            db.commit()
+            # Refresh to get IDs assigned
+            for new_ev in new_evidence_records:
+                db.refresh(new_ev)
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to create evidence records: {str(e)}", exc_info=True)
+            # Continue anyway - worst case some items won't have IDs yet
 
     # Calculate statistics
     total_items = len(checklist_items)
