@@ -1132,6 +1132,170 @@
             });
         }
 
+        function getFindingSeverityClass(finding) {
+            if (finding.severity) {
+                const normalized = String(finding.severity).toLowerCase();
+                if (['critical', 'high', 'medium', 'low'].includes(normalized)) {
+                    return normalized;
+                }
+            }
+
+            const score = Number(finding.cvss_score || 0);
+            if (score >= 9) return 'critical';
+            if (score >= 7) return 'high';
+            if (score >= 4) return 'medium';
+            return 'low';
+        }
+
+        function buildFindingsListMarkup(findings) {
+            if (!findings || findings.length === 0) {
+                return '<p style="color: #28a745; font-weight: 600;">✅ No findings match the selected filters.</p>';
+            }
+
+            let findingsHtml = '<h4>🔍 Vulnerabilities Found:</h4><ul class="findings-list">';
+
+            findings.slice(0, 10).forEach((finding, index) => {
+                const severityClass = getFindingSeverityClass(finding);
+                const remediationId = `remediation-${index}`;
+                const externalId = finding.external_id || 'Internal finding';
+                const guidanceText = finding.remediation_guidance || 'No remediation guidance available.';
+                const controlDomain = finding.control_domain ? ` • Domain: ${finding.control_domain}` : '';
+
+                findingsHtml += `
+                    <li class="finding-item ${severityClass}">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <span class="cve-id">${externalId}</span>
+                                <span class="cvss-score ${severityClass}">
+                                    CVSS ${finding.cvss_score || 'N/A'}
+                                </span>
+                            </div>
+                            <div style="text-align: right; font-size: 12px; color: #666;">
+                                Action: <strong>${finding.priority_window || 'n/a'}</strong>${controlDomain}
+                            </div>
+                        </div>
+                        <p style="margin: 8px 0 4px 0;"><strong>${finding.title}</strong></p>
+                        <p style="margin: 0; font-size: 13px; color: #555;">
+                            ${finding.description.substring(0, 150)}${finding.description.length > 150 ? '...' : ''}
+                        </p>
+                        <p style="margin: 6px 0 0 0; font-size: 12px;">
+                            <a href="#${remediationId}" style="color: #007bff;">Jump to remediation guidance</a>
+                        </p>
+                `;
+
+                if (finding.threat_context && finding.threat_context.techniques && finding.threat_context.techniques.length > 0) {
+                    findingsHtml += `<div class="threat-context">`;
+
+                    if (finding.threat_context.summary) {
+                        findingsHtml += `<div class="threat-summary">💡 ${finding.threat_context.summary}</div>`;
+                    }
+
+                    finding.threat_context.techniques.forEach(technique => {
+                        findingsHtml += `
+                            <a href="https://attack.mitre.org/techniques/${technique.id}/"
+                               target="_blank"
+                               class="mitre-technique"
+                               rel="noopener noreferrer">
+                                🎯 ${technique.id}: ${technique.name}
+                            </a>
+                        `;
+
+                        if (technique.breach_example) {
+                            const breach = technique.breach_example;
+                            findingsHtml += `
+                                <div class="breach-example">
+                                    🚨 <strong>Real-World Impact:</strong> ${breach.breach}
+                                    <div class="breach-impact">
+                                        ${breach.impact} (${breach.date})
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        if (technique.primary_mitigation) {
+                            const mitigation = technique.primary_mitigation;
+                            findingsHtml += `
+                                <div class="mitigation-hint">
+                                    ✅ <strong>Recommended Action:</strong> ${mitigation.name}
+                                </div>
+                            `;
+                        }
+                    });
+
+                    findingsHtml += `</div>`;
+                }
+
+                findingsHtml += `
+                        <div id="${remediationId}" style="margin: 10px 0 0 0; font-size: 12px; background: #f2f7ff; border-left: 3px solid #667eea; padding: 8px; border-radius: 2px;">
+                            <strong>Remediation:</strong> ${guidanceText}
+                        </div>
+                        ${finding.external_id ? `<p style="margin: 8px 0 0 0; font-size: 12px; color: #007bff;">
+                            📚 <a href="https://nvd.nist.gov/vuln/detail/${finding.external_id}" target="_blank" rel="noopener noreferrer">
+                                View full details on NVD
+                            </a>
+                        </p>` : ''}
+                    </li>
+                `;
+            });
+
+            findingsHtml += '</ul>';
+            if (findings.length > 10) {
+                findingsHtml += `<p style="color: #666; font-size: 12px;">Showing first 10 of ${findings.length} findings</p>`;
+            }
+            return findingsHtml;
+        }
+
+        async function applyFindingsFilters(assessmentId) {
+            const severity = document.getElementById('findingsFilterSeverity')?.value || '';
+            const priority = document.getElementById('findingsFilterPriority')?.value || '';
+            const domain = document.getElementById('findingsFilterDomain')?.value || '';
+            const sortBy = document.getElementById('findingsSortBy')?.value || 'severity';
+            const sortOrder = document.getElementById('findingsSortOrder')?.value || 'desc';
+            const container = document.getElementById('findingsDashboardContainer');
+
+            if (!assessmentId || !container) return;
+
+            container.innerHTML = '<p>⏳ Applying filters...</p>';
+
+            const params = new URLSearchParams();
+            if (severity) params.set('severity', severity);
+            if (priority) params.set('priority_window', priority);
+            if (domain) params.set('control_domain', domain);
+            if (sortBy) params.set('sort_by', sortBy);
+            if (sortOrder) params.set('sort_order', sortOrder);
+
+            try {
+                const response = await fetch(`/api/v1/assessments/${encodeURIComponent(assessmentId)}/findings?${params.toString()}`);
+                if (!response.ok) throw new Error('Unable to load filtered findings');
+
+                const filteredFindings = await response.json();
+                container.innerHTML = buildFindingsListMarkup(filteredFindings);
+
+                if (window.currentAssessment) {
+                    window.currentAssessment.filteredFindings = filteredFindings;
+                }
+            } catch (error) {
+                container.innerHTML = '<p style="color:#b00020;">❌ Failed to apply filters. Please try again.</p>';
+            }
+        }
+
+        function resetFindingsFilters(assessmentId) {
+            const defaults = {
+                findingsFilterSeverity: '',
+                findingsFilterPriority: '',
+                findingsFilterDomain: '',
+                findingsSortBy: 'severity',
+                findingsSortOrder: 'desc'
+            };
+
+            Object.entries(defaults).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.value = value;
+            });
+
+            applyFindingsFilters(assessmentId);
+        }
+
         function displayResults(stack, findings, org, assessmentId, defaultedVersions = [], runStatus = null) {
             // Store data for export
             window.currentAssessment = { stack, findings, org, assessmentId };
@@ -1214,97 +1378,60 @@
                         </ul>
                     </div>
                 `;
-                html += '<h4>🔍 Vulnerabilities Found:</h4>';
-                html += '<ul class="findings-list">';
-
-                findings.slice(0, 10).forEach(finding => {
-                    const severity = finding.cvss_score >= 9 ? 'critical'
-                                  : finding.cvss_score >= 7 ? 'high'
-                                  : finding.cvss_score >= 4 ? 'medium'
-                                  : 'low';
-
-                    html += `
-                        <li class="finding-item ${severity}">
-                            <div style="display: flex; justify-content: space-between; align-items: start;">
-                                <div>
-                                    <span class="cve-id">${finding.external_id}</span>
-                                    <span class="cvss-score ${severity}">
-                                        CVSS ${finding.cvss_score || 'N/A'}
-                                    </span>
-                                </div>
-                                <div style="text-align: right; font-size: 12px; color: #666;">
-                                    Action: <strong>${finding.priority_window}</strong>
-                                </div>
-                            </div>
-                            <p style="margin: 8px 0 4px 0;"><strong>${finding.title}</strong></p>
-                            <p style="margin: 0; font-size: 13px; color: #555;">
-                                ${finding.description.substring(0, 150)}${finding.description.length > 150 ? '...' : ''}
-                            </p>
-                    `;
-
-                    // THREAT INTELLIGENCE - visually prominent for demo impact
-                    if (finding.threat_context && finding.threat_context.techniques && finding.threat_context.techniques.length > 0) {
-                        html += `<div class="threat-context">`;
-
-                        // Executive summary
-                        if (finding.threat_context.summary) {
-                            html += `<div class="threat-summary">💡 ${finding.threat_context.summary}</div>`;
-                        }
-
-                        // MITRE techniques with badges
-                        finding.threat_context.techniques.forEach(technique => {
-                            html += `
-                                <a href="https://attack.mitre.org/techniques/${technique.id}/"
-                                   target="_blank"
-                                   class="mitre-technique"
-                                   rel="noopener noreferrer">
-                                    🎯 ${technique.id}: ${technique.name}
-                                </a>
-                            `;
-
-                            // Real-world breach example - high impact for demos
-                            if (technique.breach_example) {
-                                const breach = technique.breach_example;
-                                html += `
-                                    <div class="breach-example">
-                                        🚨 <strong>Real-World Impact:</strong> ${breach.breach}
-                                        <div class="breach-impact">
-                                            ${breach.impact} (${breach.date})
-                                        </div>
-                                    </div>
-                                `;
-                            }
-
-                            // Primary mitigation recommendation
-                            if (technique.primary_mitigation) {
-                                const mitigation = technique.primary_mitigation;
-                                html += `
-                                    <div class="mitigation-hint">
-                                        ✅ <strong>Recommended Action:</strong> ${mitigation.name}
-                                    </div>
-                                `;
-                            }
-                        });
-
-                        html += `</div>`;
-                    }
-
-                    html += `
-                            <p style="margin: 8px 0 0 0; font-size: 12px; color: #007bff;">
-                                📚 <a href="https://nvd.nist.gov/vuln/detail/${finding.external_id}"
-                                      target="_blank" rel="noopener noreferrer">
-                                   View full details on NVD
-                                </a>
-                            </p>
-                        </li>
-                    `;
-                });
-
-                html += '</ul>';
-
-                if (findings.length > 10) {
-                    html += `<p style="color: #666; font-size: 12px;">Showing first 10 of ${findings.length} findings</p>`;
-                }
+                html += `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 14px 0 10px 0; padding: 12px; background: #f8f9fb; border: 1px solid #e5e7eb; border-radius: 6px;">
+                        <div>
+                            <label for="findingsFilterSeverity" style="margin: 0 0 6px 0; font-size: 12px;">Severity</label>
+                            <select id="findingsFilterSeverity" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">All</option>
+                                <option value="critical">Critical</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="findingsFilterPriority" style="margin: 0 0 6px 0; font-size: 12px;">Priority Window</label>
+                            <select id="findingsFilterPriority" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">All</option>
+                                <option value="immediate">Immediate</option>
+                                <option value="30_days">30 Days</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="annual">Annual</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="findingsFilterDomain" style="margin: 0 0 6px 0; font-size: 12px;">Control Domain</label>
+                            <select id="findingsFilterDomain" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">All</option>
+                                <option value="Technical">Technical Safeguards</option>
+                                <option value="Administrative">Administrative Safeguards</option>
+                                <option value="Physical">Physical Safeguards</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="findingsSortBy" style="margin: 0 0 6px 0; font-size: 12px;">Sort By</label>
+                            <select id="findingsSortBy" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="severity">Severity</option>
+                                <option value="cvss_score">CVSS Score</option>
+                                <option value="priority_window">Priority Window</option>
+                                <option value="created_at">Created Time</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="findingsSortOrder" style="margin: 0 0 6px 0; font-size: 12px;">Sort Order</label>
+                            <select id="findingsSortOrder" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="desc">Descending</option>
+                                <option value="asc">Ascending</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <button id="applyFindingsFiltersBtn" type="button" style="margin-top: 0; padding: 8px 14px; font-size: 14px;">Apply Filters</button>
+                        <button id="resetFindingsFiltersBtn" type="button" class="btn-secondary" style="margin-top: 0; padding: 8px 14px; font-size: 14px;">Reset</button>
+                    </div>
+                    <div id="findingsDashboardContainer">${buildFindingsListMarkup(findings)}</div>
+                `;
             }
 
             resultDiv.classList.remove('hidden', 'loading', 'error');
@@ -1316,6 +1443,20 @@
                 checklistLink.addEventListener('click', async (event) => {
                     event.preventDefault();
                     await loadEvidenceChecklist(checklistLink.dataset.assessmentId || '');
+                });
+            }
+
+            const applyFiltersBtn = document.getElementById('applyFindingsFiltersBtn');
+            if (applyFiltersBtn) {
+                applyFiltersBtn.addEventListener('click', async () => {
+                    await applyFindingsFilters(assessmentId);
+                });
+            }
+
+            const resetFiltersBtn = document.getElementById('resetFindingsFiltersBtn');
+            if (resetFiltersBtn) {
+                resetFiltersBtn.addEventListener('click', () => {
+                    resetFindingsFilters(assessmentId);
                 });
             }
         }

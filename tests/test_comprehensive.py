@@ -399,6 +399,24 @@ class TestAssessments:
         data = response.json()
         assert isinstance(data, list)
 
+    def test_get_assessment_findings_invalid_sort(
+        self, client, org_data, metadata_profile_data
+    ):
+        """Test findings endpoint rejects invalid sort field."""
+        create_response = client.post(
+            "/api/v1/assessments",
+            json={
+                "organization_id": org_data["id"],
+                "metadata_profile_id": metadata_profile_data["id"],
+            },
+        )
+        assessment_id = create_response.json()["id"]
+
+        response = client.get(
+            f"/api/v1/assessments/{assessment_id}/findings?sort_by=invalid_field"
+        )
+        assert response.status_code == 400
+
     def test_get_remediation_roadmap(self, client, org_data, metadata_profile_data):
         """Test remediation roadmap generation."""
         # Create assessment with gaps
