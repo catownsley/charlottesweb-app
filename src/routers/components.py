@@ -6,15 +6,21 @@ from src.config import settings
 from src.manifest_parser import parse_pom_xml
 from src.middleware import limiter
 from src.nvd_service import NVDService
-from src.schemas import ManifestIngestRequest, ManifestIngestResponse
+from src.schemas import (
+    ManifestComponent,
+    ManifestIngestRequest,
+    ManifestIngestResponse,
+)
 
 router = APIRouter(prefix="/components", tags=["components"])
 nvd_service = NVDService(api_key=settings.nvd_api_key)
 
 
-@router.get("/{component_name}/versions")
-@limiter.limit(f"{settings.rate_limit_per_minute * 3}/minute")
-def get_component_versions(request: Request, component_name: str) -> dict:
+@router.get("/{component_name}/versions")  # type: ignore[misc]
+@limiter.limit(f"{settings.rate_limit_per_minute * 3}/minute")  # type: ignore[misc]
+def get_component_versions(
+    request: Request, component_name: str
+) -> dict[str, list[str]]:
     """Get known versions of a component from NVD vulnerability data.
 
     Queries the National Vulnerability Database to find versions of components
@@ -42,8 +48,8 @@ def get_component_versions(request: Request, component_name: str) -> dict:
     return {"versions": versions}
 
 
-@router.post("/ingest-manifest", response_model=ManifestIngestResponse)
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+@router.post("/ingest-manifest", response_model=ManifestIngestResponse)  # type: ignore[misc]
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")  # type: ignore[misc]
 def ingest_manifest(
     request: Request, payload: ManifestIngestRequest
 ) -> ManifestIngestResponse:
@@ -52,9 +58,15 @@ def ingest_manifest(
         raise HTTPException(status_code=400, detail="Unsupported manifest format")
 
     try:
-        components = parse_pom_xml(payload.content)
+        raw_components = parse_pom_xml(payload.content)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # Convert dict entries to ManifestComponent instances
+    components = [
+        ManifestComponent(name=comp["name"], version=comp["version"])
+        for comp in raw_components
+    ]
 
     return ManifestIngestResponse(
         format=payload.format,
