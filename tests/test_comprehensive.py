@@ -298,7 +298,11 @@ class TestAssessments:
         assert response.status_code == 201
         data = response.json()
         assert data["status"] == "completed"
-        assert "id" in data
+
+    def test_get_assessment_status_not_found(self, client):
+        """Test assessment status endpoint returns 404 for unknown assessment."""
+        response = client.get("/api/v1/assessments/nonexistent-assessment/status")
+        assert response.status_code == 404
 
     def test_create_assessment_incomplete_gaps(self, client, org_data):
         """Test assessment with security gaps."""

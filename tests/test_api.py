@@ -198,3 +198,38 @@ def test_run_assessment(client):
     finding_titles = [f["title"] for f in findings]
     assert "Multi-Factor Authentication (MFA) Not Enabled" in finding_titles
     assert "Encryption at Rest Not Enabled" in finding_titles
+
+
+def test_get_assessment_status(client):
+    """Test assessment status endpoint returns progress details."""
+    org_response = client.post("/api/v1/organizations", json={"name": "Status Org"})
+    org_id = org_response.json()["id"]
+
+    profile_response = client.post(
+        "/api/v1/metadata-profiles",
+        json={
+            "organization_id": org_id,
+            "software_stack": {"openssl": "1.0.1"},
+        },
+    )
+    profile_id = profile_response.json()["id"]
+
+    assessment_response = client.post(
+        "/api/v1/assessments",
+        json={
+            "organization_id": org_id,
+            "metadata_profile_id": profile_id,
+        },
+    )
+    assert assessment_response.status_code == 201
+    assessment_id = assessment_response.json()["id"]
+
+    status_response = client.get(f"/api/v1/assessments/{assessment_id}/status")
+    assert status_response.status_code == 200
+    status_data = status_response.json()
+
+    assert status_data["assessment_id"] == assessment_id
+    assert status_data["status"] == "completed"
+    assert status_data["progress_percent"] == 100
+    assert "current_step" in status_data
+    assert "findings_count" in status_data
