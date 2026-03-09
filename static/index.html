@@ -955,21 +955,35 @@
 
                 showLoading('Creating organization...', 20);
 
-                // Step 1: Create organization
-                const orgRes = await fetch('/api/v1/organizations', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    credentials: 'include',
-                    body: JSON.stringify({name: orgName})
-                });
-
-                if (!orgRes.ok) {
-                    const errData = await orgRes.json();
-                    throw new Error(`Failed to create organization: ${errData.detail || orgRes.statusText}`);
+                // Step 1: Reuse organization by name when available, otherwise create
+                let org = null;
+                let orgReused = false;
+                const lookupRes = await fetch(`/api/v1/organizations?name=${encodeURIComponent(orgName)}`);
+                if (lookupRes.ok) {
+                    const existingOrgs = await lookupRes.json();
+                    if (Array.isArray(existingOrgs) && existingOrgs.length > 0) {
+                        org = existingOrgs[0];
+                        orgReused = true;
+                        console.log('Organization reused:', org.id);
+                    }
                 }
 
-                const org = await orgRes.json();
-                console.log('Organization created:', org.id);
+                if (!org) {
+                    const orgRes = await fetch('/api/v1/organizations', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        credentials: 'include',
+                        body: JSON.stringify({name: orgName})
+                    });
+
+                    if (!orgRes.ok) {
+                        const errData = await orgRes.json();
+                        throw new Error(`Failed to create organization: ${errData.detail || orgRes.statusText}`);
+                    }
+
+                    org = await orgRes.json();
+                    console.log('Organization created:', org.id);
+                }
 
                 // Step 2: Create metadata profile
                 showLoading('Creating metadata profile...', 40);
@@ -1047,7 +1061,7 @@
                 }
 
                 // Display results with notification about auto-selected versions
-                displayResults(stack, findings, org, assess.id, defaultedVersions, runStatus);
+                displayResults(stack, findings, org, assess.id, defaultedVersions, runStatus, orgReused);
 
             } catch (err) {
                 showError(err.message);
@@ -1296,9 +1310,9 @@
             applyFindingsFilters(assessmentId);
         }
 
-        function displayResults(stack, findings, org, assessmentId, defaultedVersions = [], runStatus = null) {
+        function displayResults(stack, findings, org, assessmentId, defaultedVersions = [], runStatus = null, orgReused = false) {
             // Store data for export
-            window.currentAssessment = { stack, findings, org, assessmentId };
+            window.currentAssessment = { stack, findings, org, assessmentId, orgReused };
 
             let html = `
                 <h3>Analysis Complete</h3>`;
@@ -1312,6 +1326,13 @@
                 <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #856404;">
                     <strong>Auto-detected versions:</strong> ${versionsList}
                     <div style="font-size: 12px; margin-top: 6px;">You can re-run the analysis with different versions if needed.</div>
+                </div>`;
+            }
+
+            if (orgReused) {
+                html += `
+                <div style="background: #eef4ff; border: 1px solid #b3c7ff; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #2d4ea3;">
+                    <strong>Using existing organization:</strong> Found a prior record for <strong>${org.name}</strong> and resumed saved evidence progress.
                 </div>`;
             }
 

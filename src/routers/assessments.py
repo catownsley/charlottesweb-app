@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from src.audit import AuditAction, AuditLevel, log_audit_event
@@ -447,6 +448,7 @@ def _build_nvd_findings(
 def _create_evidence_for_findings(
     db: Session,
     assessment_id: str,
+    organization_id: str,
     new_findings: list[Finding],
 ) -> int:
     evidence_created_count = 0
@@ -468,10 +470,15 @@ def _create_evidence_for_findings(
         for evidence_type in evidence_types:
             existing_evidence = (
                 db.query(Evidence)
+                .outerjoin(Assessment, Evidence.assessment_id == Assessment.id)
                 .filter(
-                    Evidence.assessment_id == assessment_id,
                     Evidence.control_id == control_id,
                     Evidence.evidence_type == evidence_type,
+                    or_(
+                        Evidence.assessment_id == assessment_id,
+                        Assessment.organization_id == organization_id,
+                        Evidence.assessment_id.is_(None),
+                    ),
                 )
                 .first()
             )
@@ -510,6 +517,7 @@ def _persist_nvd_findings_and_evidence(
         evidence_created_count = _create_evidence_for_findings(
             db=db,
             assessment_id=assessment_id,
+            organization_id=_to_str(getattr(assessment, "organization_id", None)),
             new_findings=new_findings,
         )
         db.commit()
@@ -1428,31 +1436,44 @@ def generate_evidence_checklist(
         .all()
     )
 
-    # Also get evidence not linked to any assessment but matching controls
-    orphan_evidence: list[Evidence] = (
-        db.query(Evidence)
-        .filter(
-            Evidence.assessment_id.is_(None),
-            Evidence.control_id.in_(control_ids),
+    def _status_rank(status: str) -> int:
+        rank = {
+            "completed": 4,
+            "not_applicable": 3,
+            "in_progress": 2,
+            "not_started": 1,
+        }
+        return rank.get(status, 0)
+
+    def _evidence_rank(evidence: Evidence) -> tuple[int, int, int, int, float]:
+        status_value = _to_str(getattr(evidence, "status", None), default="not_started")
+        notes_value = _to_optional_str(getattr(evidence, "notes", None))
+        owner_value = _to_optional_str(getattr(evidence, "owner", None))
+        updated_at = getattr(evidence, "updated_at", None)
+        updated_at_ts = (
+            updated_at.timestamp() if isinstance(updated_at, datetime) else 0.0
         )
-        .all()
-    )
 
-    # Merge both lists
-    all_evidence = existing_evidence + orphan_evidence
+        return (
+            _status_rank(status_value),
+            1 if getattr(evidence, "collected_at", None) else 0,
+            1 if notes_value else 0,
+            1 if owner_value else 0,
+            updated_at_ts,
+        )
 
-    # Create a map of (control_id, evidence_type) -> evidence
-    # Prefer most recently updated evidence for each (control, type) combo
+    # Create a map of (control_id, evidence_type) -> best evidence for org context
     evidence_map: dict[tuple[str, str], Evidence] = {}
-    for ev in sorted(
-        all_evidence, key=lambda e: getattr(e, "updated_at", datetime.min)
-    ):
-        evidence_map[
-            (
-                _to_str(getattr(ev, "control_id", None)),
-                _to_str(getattr(ev, "evidence_type", None)),
-            )
-        ] = ev
+    for evidence_item in existing_evidence:
+        map_key = (
+            _to_str(getattr(evidence_item, "control_id", None)),
+            _to_str(getattr(evidence_item, "evidence_type", None)),
+        )
+        current_best = evidence_map.get(map_key)
+        if current_best is None or _evidence_rank(evidence_item) > _evidence_rank(
+            current_best
+        ):
+            evidence_map[map_key] = evidence_item
 
     # Generate checklist items
     checklist_items: list[EvidenceChecklistItem] = []
