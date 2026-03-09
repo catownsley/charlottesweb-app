@@ -1635,7 +1635,30 @@
             if (checklistLink) {
                 checklistLink.addEventListener('click', async (event) => {
                     event.preventDefault();
-                    await loadEvidenceChecklist(checklistLink.dataset.assessmentId || '');
+                    const assessmentIdForChecklist = checklistLink.dataset.assessmentId || '';
+                    const checklistPanel = document.getElementById('evidenceChecklistPanel');
+                    if (!checklistPanel || !assessmentIdForChecklist) {
+                        return;
+                    }
+
+                    const panelHidden = checklistPanel.classList.contains('hidden');
+                    const alreadyLoadedForAssessment = checklistPanel.dataset.loadedAssessmentId === assessmentIdForChecklist;
+
+                    if (panelHidden && alreadyLoadedForAssessment) {
+                        checklistPanel.classList.remove('hidden');
+                        checklistLink.setAttribute('aria-expanded', 'true');
+                        checklistLink.textContent = 'Hide Evidence Collection Checklist';
+                        return;
+                    }
+
+                    if (!panelHidden && alreadyLoadedForAssessment) {
+                        checklistPanel.classList.add('hidden');
+                        checklistLink.setAttribute('aria-expanded', 'false');
+                        checklistLink.textContent = 'View Evidence Collection Checklist';
+                        return;
+                    }
+
+                    await loadEvidenceChecklist(assessmentIdForChecklist);
                 });
             }
 
@@ -1744,8 +1767,10 @@
                     </div>
                 `;
 
+                checklistPanel.dataset.loadedAssessmentId = assessmentId;
+
                 checklistLink.setAttribute('aria-expanded', 'true');
-                checklistLink.textContent = 'Evidence Checklist Loaded';
+                checklistLink.textContent = 'Hide Evidence Collection Checklist';
 
                 // Attach event handler for collapse/expand button
                 const toggleBtn = document.getElementById('toggleEvidenceBtn');
