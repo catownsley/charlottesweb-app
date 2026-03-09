@@ -3,10 +3,13 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CERT_DIR="$SCRIPT_DIR/certs"
+
 # Check if certificates exist
-if [ ! -f "certs/cert.pem" ] || [ ! -f "certs/key.pem" ]; then
+if [ ! -f "$CERT_DIR/cert.pem" ] || [ ! -f "$CERT_DIR/key.pem" ]; then
     echo "TLS certificates not found!"
-    echo "   Run ./scripts/generate_dev_certs.sh first to generate certificates."
+    echo "   Run $SCRIPT_DIR/scripts/generate_dev_certs.sh first to generate certificates."
     exit 1
 fi
 
@@ -30,6 +33,6 @@ export PYTHONPATH=/Users/ct/Python/charlottesweb-app
 exec "$PYTHON_BIN" -m uvicorn src.main:app \
     --host 0.0.0.0 \
     --port 8443 \
-    --ssl-keyfile certs/key.pem \
-    --ssl-certfile certs/cert.pem \
+    --ssl-keyfile "$CERT_DIR/key.pem" \
+    --ssl-certfile "$CERT_DIR/cert.pem" \
     --reload

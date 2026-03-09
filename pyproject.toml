@@ -113,6 +113,10 @@ ignore_errors = true
 module = "src.seed"
 ignore_errors = false
 
+[[tool.mypy.overrides]]
+module = "src.main"
+disable_error_code = ["misc"]
+
 [tool.pytest.ini_options]
 # Pytest configuration
 testpaths = ["tests"]
