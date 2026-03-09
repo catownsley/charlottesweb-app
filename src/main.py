@@ -292,18 +292,18 @@ async def favicon_head() -> Response:
 #
 # SECURITY CONSIDERATIONS FOR STATIC FILES:
 # =========================================
-# ✅ Static files inherit all middleware security:
+# Static files inherit all middleware security:
 #    - SecurityHeadersMiddleware: CSP, HSTS, X-Frame-Options headers applied
 #    - RequestIDMiddleware: Requests tracked for audit logging
 #    - RateLimiting: Rate limits apply (60 req/min default)
 #    - CORS: Properly restricted to configured origins
 #
-# ✅ HTML Validation:
+# HTML Validation:
 #    - CSP header prevents inline script injection
 #    - Content-Type: text/html (browser won't execute as script)
 #    - Path traversal protection (FastAPI's StaticFiles prevents ../ attacks)
 #
-# ⚠️ IMPORTANT: Files must be served over HTTPS in production:
+# IMPORTANT: Files must be served over HTTPS in production:
 #    - Ensure TLS/SSL certificates are valid
 #    - Use strict HSTS header (default: 1 year)
 #    - Prevent MITM attacks and eavesdropping
@@ -388,7 +388,11 @@ async def startup_event() -> None:
         for warning in security_warnings:
             log_audit_event(
                 action=AuditAction.SECURITY_ALERT,
-                level=AuditLevel.CRITICAL if "🚨" in warning else AuditLevel.WARNING,
+                level=(
+                    AuditLevel.CRITICAL
+                    if "[CRITICAL]" in warning
+                    else AuditLevel.WARNING
+                ),
                 success=False,
                 details={"alert_type": "MISCONFIGURATION", "warning": warning},
             )

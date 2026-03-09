@@ -134,6 +134,26 @@ class AssessmentStatusResponse(BaseModel):
     updated_at: datetime | None = None
 
 
+class AssessmentReportCreateResponse(BaseModel):
+    """Schema for report generation creation response."""
+
+    report_id: str
+    assessment_id: str
+    status: str
+    generated_at: datetime
+    download_token: str
+
+
+class AssessmentReportStatusResponse(BaseModel):
+    """Schema for report generation status response."""
+
+    report_id: str
+    assessment_id: str
+    status: str
+    generated_at: datetime
+    download_url: str | None = None
+
+
 # Threat Intelligence schemas (MITRE ATT&CK)
 class ThreatTechniqueBreachExample(BaseModel):
     """Schema for real-world breach example."""

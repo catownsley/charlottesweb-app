@@ -281,3 +281,53 @@ def test_get_assessment_findings_filters_and_sort(client):
     assert all(
         "technical" in (f.get("control_domain") or "").lower() for f in domain_findings
     )
+
+
+def test_generate_report_status_and_download(client):
+    """Test report generation lifecycle: create, status, and tokenized download."""
+    org_response = client.post("/api/v1/organizations", json={"name": "Report Org"})
+    org_id = org_response.json()["id"]
+
+    profile_response = client.post(
+        "/api/v1/metadata-profiles",
+        json={
+            "organization_id": org_id,
+            "infrastructure": {"encryption_at_rest": False},
+            "access_controls": {"mfa_enabled": False},
+        },
+    )
+    profile_id = profile_response.json()["id"]
+
+    assessment_response = client.post(
+        "/api/v1/assessments",
+        json={
+            "organization_id": org_id,
+            "metadata_profile_id": profile_id,
+        },
+    )
+    assessment_id = assessment_response.json()["id"]
+
+    create_report_response = client.post(f"/api/v1/assessments/{assessment_id}/reports")
+    assert create_report_response.status_code == 200
+    create_data = create_report_response.json()
+    report_id = create_data["report_id"]
+    token = create_data["download_token"]
+
+    status_response = client.get(
+        f"/api/v1/assessments/{assessment_id}/reports/{report_id}/status"
+    )
+    assert status_response.status_code == 200
+    status_data = status_response.json()
+    assert status_data["status"] == "completed"
+    assert status_data["download_url"] is not None
+
+    forbidden_download = client.get(
+        f"/api/v1/assessments/{assessment_id}/reports/{report_id}/download?token=bad-token"
+    )
+    assert forbidden_download.status_code == 403
+
+    download_response = client.get(
+        f"/api/v1/assessments/{assessment_id}/reports/{report_id}/download?token={token}"
+    )
+    assert download_response.status_code == 200
+    assert "CHARLOTTESWEB ASSESSMENT REPORT" in download_response.text

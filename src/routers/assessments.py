@@ -3,9 +3,12 @@
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, TypeVar, cast
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from src.audit import AuditAction, AuditLevel, log_audit_event
@@ -29,6 +32,8 @@ from src.nvd_service import NVDService
 from src.rules_engine import RulesEngine
 from src.schemas import (
     AssessmentCreate,
+    AssessmentReportCreateResponse,
+    AssessmentReportStatusResponse,
     AssessmentResponse,
     AssessmentStatusResponse,
     ComplianceAsCodeResponse,
@@ -45,6 +50,8 @@ router = APIRouter(prefix="/assessments", tags=["assessments"])
 logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., object])
+REPORT_OUTPUT_DIR = Path("generated_reports")
+REPORT_JOBS: dict[str, dict[str, Any]] = {}
 
 
 def _rate_limited(limit_value: str) -> Callable[[F], F]:
@@ -228,6 +235,98 @@ def _to_str_list(value: object | None) -> list[str]:
     if isinstance(value, set):
         return [str(item) for item in cast(set[Any], value)]
     return []
+
+
+def _report_file_path(report_id: str) -> Path:
+    return REPORT_OUTPUT_DIR / f"assessment-report-{report_id}.txt"
+
+
+def _render_assessment_report(
+    organization: Organization,
+    assessment: Assessment,
+    findings: list[Finding],
+) -> str:
+    now_text = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%SZ")
+    organization_id = _to_str(getattr(organization, "id", None))
+    organization_name = _to_str(getattr(organization, "name", None), default="Unknown")
+    assessment_id = _to_str(getattr(assessment, "id", None))
+
+    lines = [
+        "========================================",
+        "CHARLOTTESWEB ASSESSMENT REPORT",
+        "========================================",
+        "",
+        "Executive Summary",
+        "-----------------",
+        f"Organization: {organization_name}",
+        f"Organization ID: {organization_id}",
+        f"Assessment ID: {assessment_id}",
+        f"Generated At (UTC): {now_text}",
+        f"Total Findings: {len(findings)}",
+        "",
+        "Technical Appendix",
+        "------------------",
+    ]
+
+    if not findings:
+        lines.extend(["No findings were recorded for this assessment.", ""])
+        return "\n".join(lines)
+
+    sorted_findings = sorted(
+        findings,
+        key=lambda finding_item: _severity_rank(
+            _to_str(getattr(finding_item, "severity", None), default="low")
+        ),
+        reverse=True,
+    )
+
+    for index, finding in enumerate(sorted_findings, start=1):
+        lines.extend(
+            [
+                f"[{index}] {_to_str(getattr(finding, 'title', None), default='Untitled finding')}",
+                f"Severity: {_to_str(getattr(finding, 'severity', None), default='unknown')}",
+                f"CVSS: {_to_float(getattr(finding, 'cvss_score', None), default=0.0)}",
+                f"Priority Window: {_to_str(getattr(finding, 'priority_window', None), default='n/a')}",
+                f"Control ID: {_to_str(getattr(finding, 'control_id', None), default='n/a')}",
+                f"External ID: {_to_str(getattr(finding, 'external_id', None), default='n/a')}",
+                "Description:",
+                _to_str(
+                    getattr(finding, "description", None),
+                    default="No description available.",
+                ),
+                "Remediation Guidance:",
+                _to_str(
+                    getattr(finding, "remediation_guidance", None),
+                    default="No remediation guidance provided.",
+                ),
+                "",
+            ]
+        )
+
+    return "\n".join(lines)
+
+
+def _store_report_job(
+    report_id: str,
+    assessment_id: str,
+    generated_at: datetime,
+    download_token: str,
+    report_path: Path,
+) -> None:
+    REPORT_JOBS[report_id] = {
+        "assessment_id": assessment_id,
+        "status": "completed",
+        "generated_at": generated_at,
+        "download_token": download_token,
+        "report_path": str(report_path),
+    }
+
+
+def _get_report_job_or_404(report_id: str, assessment_id: str) -> dict[str, Any]:
+    report_job = REPORT_JOBS.get(report_id)
+    if not report_job or report_job.get("assessment_id") != assessment_id:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report_job
 
 
 def _get_metadata_profile_or_404(
@@ -636,6 +735,129 @@ def get_assessment_status(
         current_step=current_step,
         findings_count=findings_count,
         updated_at=updated_at,
+    )
+
+
+@router.post("/{assessment_id}/reports", response_model=AssessmentReportCreateResponse)
+@_rate_limited(f"{settings.rate_limit_per_minute}/minute")
+def generate_assessment_report(
+    assessment_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+) -> AssessmentReportCreateResponse:
+    """Generate a downloadable plain-text report for an assessment."""
+    assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
+    organization = get_or_404(
+        db,
+        Organization,
+        _to_str(getattr(assessment, "organization_id", None)),
+        "Organization not found",
+    )
+    findings: list[Finding] = (
+        db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
+    )
+
+    report_id = str(uuid4())
+    generated_at = datetime.now(UTC)
+    download_token = str(uuid4())
+    report_text = _render_assessment_report(
+        organization=organization,
+        assessment=assessment,
+        findings=findings,
+    )
+
+    REPORT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    report_path = _report_file_path(report_id)
+    report_path.write_text(report_text, encoding="utf-8")
+
+    _store_report_job(
+        report_id=report_id,
+        assessment_id=assessment_id,
+        generated_at=generated_at,
+        download_token=download_token,
+        report_path=report_path,
+    )
+
+    log_audit_event(
+        action=AuditAction.DATA_CREATED,
+        request=request,
+        api_key=api_key,
+        resource_type="assessment_report",
+        resource_id=report_id,
+        details={"assessment_id": assessment_id, "findings_count": len(findings)},
+    )
+
+    return AssessmentReportCreateResponse(
+        report_id=report_id,
+        assessment_id=assessment_id,
+        status="completed",
+        generated_at=generated_at,
+        download_token=download_token,
+    )
+
+
+@router.get(
+    "/{assessment_id}/reports/{report_id}/status",
+    response_model=AssessmentReportStatusResponse,
+)
+def get_assessment_report_status(
+    assessment_id: str,
+    report_id: str,
+    db: Session = Depends(get_db),
+) -> AssessmentReportStatusResponse:
+    """Get generation status and download URL for a previously generated report."""
+    get_or_404(db, Assessment, assessment_id, "Assessment not found")
+    report_job = _get_report_job_or_404(
+        report_id=report_id, assessment_id=assessment_id
+    )
+
+    token = _to_str(report_job.get("download_token"), default="")
+    download_url = f"/api/v1/assessments/{assessment_id}/reports/{report_id}/download?token={token}"
+
+    return AssessmentReportStatusResponse(
+        report_id=report_id,
+        assessment_id=assessment_id,
+        status=_to_str(report_job.get("status"), default="pending"),
+        generated_at=cast(datetime, report_job.get("generated_at", datetime.now(UTC))),
+        download_url=download_url,
+    )
+
+
+@router.get("/{assessment_id}/reports/{report_id}/download")
+def download_assessment_report(
+    assessment_id: str,
+    report_id: str,
+    request: Request,
+    token: str = Query(..., description="Download token from report status endpoint"),
+    api_key: str = Depends(get_api_key_optional),
+) -> FileResponse:
+    """Download generated assessment report when token access check succeeds."""
+    report_job = _get_report_job_or_404(
+        report_id=report_id, assessment_id=assessment_id
+    )
+
+    expected_token = _to_str(report_job.get("download_token"), default="")
+    if not token or token != expected_token:
+        raise HTTPException(status_code=403, detail="Invalid report download token")
+
+    report_path = Path(_to_str(report_job.get("report_path"), default=""))
+    if not report_path.exists():
+        raise HTTPException(status_code=404, detail="Report file not found")
+
+    log_audit_event(
+        action=AuditAction.DATA_READ,
+        request=request,
+        api_key=api_key,
+        resource_type="assessment_report",
+        resource_id=report_id,
+        details={"assessment_id": assessment_id},
+    )
+
+    return FileResponse(
+        path=str(report_path),
+        media_type="text/plain",
+        filename=f"assessment-report-{assessment_id}.txt",
     )
 
 

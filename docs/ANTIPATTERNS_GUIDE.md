@@ -3,7 +3,7 @@
 
 ---
 
-## 1. Bare Except Clause ❌
+## 1. Bare Except Clause
 
 **What:** Catching all exceptions without specifying type
 ```python
@@ -42,7 +42,7 @@ except Exception as e:
 
 ---
 
-## 2. Overly Broad Exception Catching ⚠️
+## 2. Overly Broad Exception Catching
 
 **What:** Catching `Exception` when you should catch specific types
 
@@ -87,7 +87,7 @@ def process_user_data(data):
 
 ---
 
-## 3. God Function / Long Method 📏
+## 3. God Function / Long Method
 
 **What:** One function doing too much (>50-100 lines)
 
@@ -142,7 +142,7 @@ def _seed_controls(db: Session) -> None:
 
 ---
 
-## 4. Mutable Default Arguments 🐛
+## 4. Mutable Default Arguments
 
 **What:** Using mutable objects (list, dict, set) as default parameters
 
@@ -204,7 +204,7 @@ metadata_payload = {
 
 ---
 
-## 5. Magic Strings / Magic Numbers 🎩
+## 5. Magic Strings / Magic Numbers
 
 **What:** Hardcoded string/number literals repeated throughout code
 
@@ -258,7 +258,7 @@ status: Status = Status.RUNNING
 
 ---
 
-## 6. Duplicated Code / Violation of DRY 🔁
+## 6. Duplicated Code / Violation of DRY
 
 **What:** Same logic repeated with minor variations
 
@@ -335,7 +335,7 @@ def validate_phone(phone: str) -> bool:
 
 ---
 
-## 7. Nested Conditionals (Arrow Anti-Pattern) ➡️
+## 7. Nested Conditionals (Arrow Anti-Pattern)
 
 **What:** Deep nesting of if statements
 
@@ -389,13 +389,13 @@ def process(data):
 
 | Antipattern | Danger Level | Fix |
 |-------------|--------------|-----|
-| Bare `except:` | 🔴 Critical | Catch specific exceptions |
-| Mutable defaults | 🔴 Critical | Use `None` sentinel |
-| God function (>100 lines) | 🟡 Medium | Extract smaller functions |
-| Magic strings/numbers | 🟡 Medium | Use constants/enums |
-| Overly broad `except Exception` | 🟡 Context | OK at API boundaries, bad in business logic |
-| Code duplication | 🟢 Low | Extract if repeated 3+ times AND complex |
-| Deep nesting | 🟡 Medium | Use guard clauses |
+| Bare `except:` | CRITICAL | Catch specific exceptions |
+| Mutable defaults | CRITICAL | Use `None` sentinel |
+| God function (>100 lines) | MEDIUM | Extract smaller functions |
+| Magic strings/numbers | MEDIUM | Use constants/enums |
+| Overly broad `except Exception` | CONTEXT | OK at API boundaries, bad in business logic |
+| Code duplication | LOW | Extract if repeated 3+ times AND complex |
+| Deep nesting | MEDIUM | Use guard clauses |
 
 ---
 
@@ -409,17 +409,17 @@ def process(data):
 5. **Know the tradeoffs**: "Sometimes duplication is better than wrong abstraction"
 
 **Good Interview Answers:**
-- ✅ "I look for functions over 50 lines - extract helpers"
-- ✅ "I avoid bare except because it catches system signals"
-- ✅ "I use constants for repeated strings - makes refactoring safe"
-- ✅ "I catch specific exceptions in business logic, broader at API boundaries"
-- ✅ "I apply the Rule of Three before extracting duplication"
+- "I look for functions over 50 lines - extract helpers"
+- "I avoid bare except because it catches system signals"
+- "I use constants for repeated strings - makes refactoring safe"
+- "I catch specific exceptions in business logic, broader at API boundaries"
+- "I apply the Rule of Three before extracting duplication"
 
 **Red Flags to Avoid:**
-- ❌ "I never use exceptions" (exceptions are Pythonic!)
-- ❌ "All duplication is bad" (nuance matters)
-- ❌ "Lines of code don't matter" (long functions are real issues)
-- ❌ "Magic strings are fine for performance" (not true)
+- "I never use exceptions" (exceptions are Pythonic!)
+- "All duplication is bad" (nuance matters)
+- "Lines of code don't matter" (long functions are real issues)
+- "Magic strings are fine for performance" (not true)
 
 ---
 

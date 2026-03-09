@@ -6,7 +6,7 @@ set -e
 CERT_DIR="./certs"
 DAYS_VALID=365
 
-echo "🔐 Generating self-signed TLS certificates for local development..."
+echo "Generating self-signed TLS certificates for local development..."
 
 # Create certs directory
 mkdir -p "$CERT_DIR"
@@ -26,11 +26,11 @@ openssl x509 -req -days $DAYS_VALID -in "$CERT_DIR/csr.pem" \
 # Clean up CSR
 rm "$CERT_DIR/csr.pem"
 
-echo "✅ Certificates generated successfully!"
-echo "   📁 Certificate: $CERT_DIR/cert.pem"
-echo "   🔑 Private Key: $CERT_DIR/key.pem"
+echo "Certificates generated successfully!"
+echo "   Certificate: $CERT_DIR/cert.pem"
+echo "   Private Key: $CERT_DIR/key.pem"
 echo ""
-echo "⚠️  These are self-signed certificates for DEVELOPMENT ONLY"
+echo "These are self-signed certificates for DEVELOPMENT ONLY"
 echo "   Your browser will show a security warning - this is normal."
 echo ""
 echo "To run the server with HTTPS:"
