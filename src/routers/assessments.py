@@ -75,6 +75,26 @@ def _to_float(value: object | None, default: float = 0.0) -> float:
     return default
 
 
+def _severity_rank(value: str) -> int:
+    severity_order = {
+        Severity.LOW: 1,
+        Severity.MEDIUM: 2,
+        Severity.HIGH: 3,
+        Severity.CRITICAL: 4,
+    }
+    return severity_order.get(value.lower(), 0)
+
+
+def _priority_rank(value: str) -> int:
+    priority_order = {
+        PriorityWindow.ANNUAL: 1,
+        PriorityWindow.QUARTERLY: 2,
+        PriorityWindow.THIRTY_DAYS: 3,
+        PriorityWindow.IMMEDIATE: 4,
+    }
+    return priority_order.get(value.lower(), 0)
+
+
 def _to_str_list(value: object | None) -> list[str]:
     if isinstance(value, list):
         return [str(item) for item in cast(list[Any], value)]
@@ -639,18 +659,80 @@ def evaluate_compliance_as_code(
 
 @router.get("/{assessment_id}/findings", response_model=list[FindingResponse])
 def get_assessment_findings(
-    assessment_id: str, db: Session = Depends(get_db)
+    assessment_id: str,
+    severity: str | None = Query(None, description="Filter by severity"),
+    priority_window: str | None = Query(None, description="Filter by priority window"),
+    control_id: str | None = Query(None, description="Filter by control ID"),
+    control_domain: str | None = Query(
+        None, description="Filter by control category/domain"
+    ),
+    sort_by: str = Query(
+        "severity",
+        description="Sort field: severity, cvss_score, priority_window, created_at",
+    ),
+    sort_order: str = Query("desc", description="Sort order: asc or desc"),
+    db: Session = Depends(get_db),
 ) -> list[FindingResponse]:
     """Get findings for an assessment with threat intelligence context."""
     get_or_404(db, Assessment, assessment_id, "Assessment not found")
-    findings: list[Finding] = (
-        db.query(Finding).filter(Finding.assessment_id == assessment_id).all()
-    )
+
+    valid_sort_by = {"severity", "cvss_score", "priority_window", "created_at"}
+    valid_sort_order = {"asc", "desc"}
+    if sort_by not in valid_sort_by:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid sort_by value. Use one of: "
+                "severity, cvss_score, priority_window, created_at"
+            ),
+        )
+    if sort_order.lower() not in valid_sort_order:
+        raise HTTPException(
+            status_code=400, detail="Invalid sort_order value. Use asc or desc"
+        )
+
+    findings_query = db.query(Finding).filter(Finding.assessment_id == assessment_id)
+    if severity:
+        findings_query = findings_query.filter(Finding.severity == severity.lower())
+    if priority_window:
+        findings_query = findings_query.filter(
+            Finding.priority_window == priority_window.lower()
+        )
+    if control_id:
+        findings_query = findings_query.filter(Finding.control_id == control_id)
+
+    findings: list[Finding] = findings_query.all()
+
+    control_ids = {
+        _to_str(getattr(finding, "control_id", None))
+        for finding in findings
+        if _to_str(getattr(finding, "control_id", None))
+    }
+    control_map: dict[str, str | None] = {}
+    if control_ids:
+        controls = (
+            db.query(Control.id, Control.category)
+            .filter(Control.id.in_(control_ids))
+            .all()
+        )
+        control_map = {
+            _to_str(control_item[0]): _to_optional_str(control_item[1])
+            for control_item in controls
+        }
 
     # Enrich each finding with MITRE ATT&CK threat context
     enriched_findings: list[FindingResponse] = []
+    domain_filter = (control_domain or "").lower().strip()
     for finding in findings:
         control_id = _to_str(getattr(finding, "control_id", None))
+        resolved_control_domain = control_map.get(control_id)
+        if domain_filter:
+            if (
+                not resolved_control_domain
+                or domain_filter not in resolved_control_domain.lower()
+            ):
+                continue
+
         cwe_ids = _to_str_list(getattr(finding, "cwe_ids", None))
         threat_context: ThreatContext | None = None
 
@@ -667,6 +749,7 @@ def get_assessment_findings(
                 id=_to_str(getattr(finding, "id", None)),
                 assessment_id=_to_str(getattr(finding, "assessment_id", None)),
                 control_id=control_id,
+                control_domain=resolved_control_domain,
                 title=_to_str(getattr(finding, "title", None)),
                 description=_to_str(getattr(finding, "description", None)),
                 severity=_to_str(getattr(finding, "severity", None)),
@@ -684,6 +767,28 @@ def get_assessment_findings(
                 created_at=getattr(finding, "created_at", datetime.now(UTC)),
                 threat_context=threat_context,
             )
+        )
+
+    reverse_sort = sort_order.lower() == "desc"
+    if sort_by == "severity":
+        enriched_findings.sort(
+            key=lambda finding_item: _severity_rank(finding_item.severity),
+            reverse=reverse_sort,
+        )
+    elif sort_by == "cvss_score":
+        enriched_findings.sort(
+            key=lambda finding_item: finding_item.cvss_score or 0.0,
+            reverse=reverse_sort,
+        )
+    elif sort_by == "priority_window":
+        enriched_findings.sort(
+            key=lambda finding_item: _priority_rank(finding_item.priority_window or ""),
+            reverse=reverse_sort,
+        )
+    elif sort_by == "created_at":
+        enriched_findings.sort(
+            key=lambda finding_item: finding_item.created_at,
+            reverse=reverse_sort,
         )
 
     return enriched_findings

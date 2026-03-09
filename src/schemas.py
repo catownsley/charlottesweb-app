@@ -179,6 +179,7 @@ class FindingResponse(BaseModel):
     id: str
     assessment_id: str
     control_id: str | None = None
+    control_domain: str | None = None
     title: str
     description: str
     severity: str
