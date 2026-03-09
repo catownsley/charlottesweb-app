@@ -1,4 +1,5 @@
 """Metadata profile management endpoints."""
+
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -15,8 +16,29 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/metadata-profiles", tags=["metadata-profiles"])
 
 
-@router.post("", response_model=MetadataProfileResponse, status_code=201)
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+@router.get("/latest", response_model=MetadataProfileResponse)  # type: ignore[misc]
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")  # type: ignore[misc]
+def get_latest_metadata_profile_for_org(
+    request: Request,
+    organization_id: str,
+    db: Session = Depends(get_db),
+) -> MetadataProfile:
+    """Get the most recent metadata profile for an organization."""
+    profile = (
+        db.query(MetadataProfile)
+        .filter(MetadataProfile.organization_id == organization_id)
+        .order_by(MetadataProfile.created_at.desc())
+        .first()
+    )
+
+    if not profile:
+        raise HTTPException(status_code=404, detail="Metadata profile not found")
+
+    return profile
+
+
+@router.post("", response_model=MetadataProfileResponse, status_code=201)  # type: ignore[misc]
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")  # type: ignore[misc]
 def create_metadata_profile(
     request: Request,
     profile_data: MetadataProfileCreate,
@@ -46,7 +68,7 @@ def create_metadata_profile(
         logger.error(f"Failed to create metadata profile: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail="Failed to create metadata profile. Please try again."
+            detail="Failed to create metadata profile. Please try again.",
         ) from e
 
     # Audit log
@@ -55,16 +77,18 @@ def create_metadata_profile(
         request=request,
         api_key=api_key,
         resource_type="metadata_profile",
-        resource_id=profile.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+        resource_id=profile.id,
         details={"organization_id": profile.organization_id},
     )
 
     return profile
 
 
-@router.get("/{profile_id}", response_model=MetadataProfileResponse)
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
-def get_metadata_profile(request: Request, profile_id: str, db: Session = Depends(get_db)) -> MetadataProfile:
+@router.get("/{profile_id}", response_model=MetadataProfileResponse)  # type: ignore[misc]
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")  # type: ignore[misc]
+def get_metadata_profile(
+    request: Request, profile_id: str, db: Session = Depends(get_db)
+) -> MetadataProfile:
     """Get metadata profile by ID."""
     profile = get_or_404(db, MetadataProfile, profile_id, "Metadata profile not found")
     return profile
