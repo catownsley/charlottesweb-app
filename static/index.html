@@ -617,6 +617,14 @@
                     Add Component
                 </button>
 
+                <div style="margin-top: 14px; padding: 12px; border: 1px solid #e3e6f0; border-radius: 6px; background: #f8faff;">
+                    <div style="font-weight: 600; margin-bottom: 8px;">Import Manifest (MVP: pom.xml)</div>
+                    <input type="file" id="manifestFile" accept=".xml,.pom" style="margin-bottom: 8px; width: 100%;">
+                    <textarea id="manifestContent" rows="6" placeholder="Paste pom.xml content here (optional if file selected)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+                    <button type="button" id="importManifestBtn" class="btn-secondary" style="margin-top: 8px;">Import Manifest</button>
+                    <div class="help-text" style="margin-top: 6px;">Imports dependencies from pom.xml and auto-fills component/version rows.</div>
+                </div>
+
                 <div class="help-text" style="margin-top: 15px;">
                     Add each software component and its version. Examples: postgres 13.2, nodejs 14.0.0, nginx 1.19.0
                 </div>
@@ -650,6 +658,9 @@
         const addComponentBtn = document.getElementById('addComponentBtn');
         const componentsContainer = document.getElementById('componentsContainer');
         const tryDemoBtn = document.getElementById('tryDemoBtn');
+        const manifestFileInput = document.getElementById('manifestFile');
+        const manifestContentInput = document.getElementById('manifestContent');
+        const importManifestBtn = document.getElementById('importManifestBtn');
 
         console.log('Form elements loaded:', {
             form: !!form,
@@ -673,11 +684,7 @@
         /**
          * Add a new component input row
          */
-        addComponentBtn.addEventListener('click', function(e) {
-            console.log('Add Component button clicked');
-            e.preventDefault();
-            e.stopPropagation();
-
+        function addComponentRow(initialName = '', initialVersion = '') {
             componentCounter++;
 
             const row = document.createElement('div');
@@ -693,6 +700,7 @@
                         placeholder="e.g., postgres"
                         maxlength="50"
                         title="Letters, numbers, underscores, dashes only (no dots)"
+                        value="${initialName.replace(/"/g, '&quot;')}"
                     >
                     <div class="version-suggestions"></div>
                 </div>
@@ -704,6 +712,7 @@
                         placeholder="e.g., 13.2"
                         maxlength="20"
                         title="Version string"
+                        value="${initialVersion.replace(/"/g, '&quot;')}"
                     >
                 </div>
                 <button type="button" class="delete-component">
@@ -802,10 +811,70 @@
 
             // Focus on the new component name field
             componentNameInput.focus();
+        }
+
+        addComponentBtn.addEventListener('click', function(e) {
+            console.log('Add Component button clicked');
+            e.preventDefault();
+            e.stopPropagation();
+            addComponentRow();
         });
 
         // Add initial component field
         addComponentBtn.click();
+
+        importManifestBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            let manifestContent = manifestContentInput.value.trim();
+            const selectedFile = manifestFileInput.files && manifestFileInput.files.length > 0
+                ? manifestFileInput.files[0]
+                : null;
+
+            if (!manifestContent && selectedFile) {
+                manifestContent = await selectedFile.text();
+            }
+
+            if (!manifestContent) {
+                alert('Please paste pom.xml content or select a pom.xml file first.');
+                return;
+            }
+
+            importManifestBtn.disabled = true;
+            importManifestBtn.textContent = 'Importing...';
+
+            try {
+                const response = await fetch('/api/v1/components/ingest-manifest', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        format: 'pom_xml',
+                        content: manifestContent
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to import manifest');
+                }
+
+                componentsContainer.innerHTML = '';
+                data.components.forEach((component) => {
+                    addComponentRow(component.name, component.version);
+                });
+
+                if (data.total_components === 0) {
+                    addComponentRow();
+                }
+
+                alert(`Imported ${data.total_components} components from pom.xml`);
+            } catch (error) {
+                alert(`❌ Manifest import failed: ${error.message}`);
+            } finally {
+                importManifestBtn.disabled = false;
+                importManifestBtn.textContent = 'Import Manifest';
+            }
+        });
 
         /**
          * Form submission handler

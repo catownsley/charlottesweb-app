@@ -88,6 +88,28 @@ class MetadataProfileResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ManifestIngestRequest(BaseModel):
+    """Schema for manifest ingestion requests."""
+
+    format: Literal["pom_xml"]
+    content: str = Field(..., min_length=1)
+
+
+class ManifestComponent(BaseModel):
+    """Schema for a parsed component/version pair."""
+
+    name: str
+    version: str
+
+
+class ManifestIngestResponse(BaseModel):
+    """Schema for manifest ingestion response."""
+
+    format: str
+    components: list[ManifestComponent]
+    total_components: int
+
+
 # Control schemas
 class ControlResponse(BaseModel):
     """Schema for control response."""

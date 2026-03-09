@@ -753,6 +753,57 @@ class TestComponents:
         data = response.json()
         assert data["versions"] == []
 
+    def test_ingest_manifest_pom_xml(self, client):
+        """Test parsing pom.xml into normalized components."""
+        pom_xml = """
+        <project>
+          <properties>
+            <spring.version>6.1.12</spring.version>
+          </properties>
+          <dependencyManagement>
+            <dependencies>
+              <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>42.7.4</version>
+              </dependency>
+            </dependencies>
+          </dependencyManagement>
+          <dependencies>
+            <dependency>
+              <groupId>org.springframework</groupId>
+              <artifactId>spring-core</artifactId>
+              <version>${spring.version}</version>
+            </dependency>
+            <dependency>
+              <groupId>org.postgresql</groupId>
+              <artifactId>postgresql</artifactId>
+            </dependency>
+          </dependencies>
+        </project>
+        """
+
+        response = client.post(
+            "/api/v1/components/ingest-manifest",
+            json={"format": "pom_xml", "content": pom_xml},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["format"] == "pom_xml"
+        assert data["total_components"] == 2
+
+        components = {item["name"]: item["version"] for item in data["components"]}
+        assert components["spring-core"] == "6.1.12"
+        assert components["postgresql"] == "42.7.4"
+
+    def test_ingest_manifest_invalid_xml(self, client):
+        """Test manifest ingestion rejects invalid XML payloads."""
+        response = client.post(
+            "/api/v1/components/ingest-manifest",
+            json={"format": "pom_xml", "content": "<project><dependencies>"},
+        )
+        assert response.status_code == 400
+
 
 # ========== Health Check Tests ==========
 

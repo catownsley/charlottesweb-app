@@ -1,9 +1,12 @@
 """Component version discovery endpoints."""
-from fastapi import APIRouter, Request
+
+from fastapi import APIRouter, HTTPException, Request
 
 from src.config import settings
+from src.manifest_parser import parse_pom_xml
 from src.middleware import limiter
 from src.nvd_service import NVDService
+from src.schemas import ManifestIngestRequest, ManifestIngestResponse
 
 router = APIRouter(prefix="/components", tags=["components"])
 nvd_service = NVDService(api_key=settings.nvd_api_key)
@@ -37,3 +40,24 @@ def get_component_versions(request: Request, component_name: str) -> dict:
     versions = nvd_service.get_known_versions(component_lower, max_versions=10)
 
     return {"versions": versions}
+
+
+@router.post("/ingest-manifest", response_model=ManifestIngestResponse)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def ingest_manifest(
+    request: Request, payload: ManifestIngestRequest
+) -> ManifestIngestResponse:
+    """Parse a supported manifest and return normalized components."""
+    if payload.format != "pom_xml":
+        raise HTTPException(status_code=400, detail="Unsupported manifest format")
+
+    try:
+        components = parse_pom_xml(payload.content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return ManifestIngestResponse(
+        format=payload.format,
+        components=components,
+        total_components=len(components),
+    )
