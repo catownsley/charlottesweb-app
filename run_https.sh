@@ -5,16 +5,16 @@ set -e
 
 # Check if certificates exist
 if [ ! -f "certs/cert.pem" ] || [ ! -f "certs/key.pem" ]; then
-    echo "❌ TLS certificates not found!"
+    echo "TLS certificates not found!"
     echo "   Run ./scripts/generate_dev_certs.sh first to generate certificates."
     exit 1
 fi
 
-echo "🚀 Starting CharlottesWeb with HTTPS..."
-echo "   📍 https://localhost:8443"
-echo "   📖 API Docs: https://localhost:8443/docs"
+echo "Starting CharlottesWeb with HTTPS..."
+echo "   https://localhost:8443"
+echo "   API Docs: https://localhost:8443/docs"
 echo ""
-echo "⚠️  Your browser will show a security warning (self-signed cert)"
+echo "Your browser will show a security warning (self-signed cert)"
 echo "   Click 'Advanced' -> 'Proceed to localhost' to continue"
 echo ""
 

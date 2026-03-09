@@ -41,7 +41,9 @@ def derive_key_from_password(password: str, salt: bytes = b"charlottesweb") -> b
         Encryption key suitable for Fernet
     """
     if not CRYPTO_AVAILABLE:
-        raise ImportError("cryptography library required for encryption. Install with: pip install cryptography")
+        raise ImportError(
+            "cryptography library required for encryption. Install with: pip install cryptography"
+        )
 
     kdf = PBKDF2(
         algorithm=hashes.SHA256(),
@@ -70,7 +72,9 @@ def encrypt_env_file(
         encrypt_env_file('.env', '.env.encrypted', password='my-master-password')
     """
     if not CRYPTO_AVAILABLE:
-        raise ImportError("cryptography library required. Install with: pip install cryptography")
+        raise ImportError(
+            "cryptography library required. Install with: pip install cryptography"
+        )
 
     # Read plaintext file
     input_file = Path(input_path)
@@ -90,8 +94,8 @@ def encrypt_env_file(
     output_file = Path(output_path)
     output_file.write_bytes(encrypted)
 
-    print(f"✓ Encrypted {input_path} → {output_path}")
-    print("⚠ Keep your master password safe - you'll need it to decrypt this file")
+    print(f"Encrypted {input_path} -> {output_path}")
+    print("Keep your master password safe - you'll need it to decrypt this file")
 
 
 def decrypt_env_file(
@@ -111,7 +115,9 @@ def decrypt_env_file(
         env_content = decrypt_env_file('.env.encrypted', password='my-master-password')
     """
     if not CRYPTO_AVAILABLE:
-        raise ImportError("cryptography library required. Install with: pip install cryptography")
+        raise ImportError(
+            "cryptography library required. Install with: pip install cryptography"
+        )
 
     # Read encrypted file
     input_file = Path(input_path)
@@ -129,7 +135,9 @@ def decrypt_env_file(
         plaintext = cipher.decrypt(encrypted).decode()
         return plaintext
     except Exception as e:
-        raise ValueError(f"Failed to decrypt file - wrong password? Error: {str(e)}") from e
+        raise ValueError(
+            f"Failed to decrypt file - wrong password? Error: {str(e)}"
+        ) from e
 
 
 def load_encrypted_env(
@@ -194,7 +202,7 @@ if __name__ == "__main__":
             print("Decrypted content:")
             print(content)
         except ValueError as e:
-            print(f"✗ Decryption failed: {e}")
+            print(f"Decryption failed: {e}")
             sys.exit(1)
 
     else:

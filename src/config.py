@@ -34,7 +34,7 @@ Secrets are managed as follows:
 KEY PRINCIPLES
 ==============
 
-✓ DO:
+DO:
   - Use environment variables
   - Generate strong secrets (32+ characters)
   - Rotate secrets quarterly or after compromise
@@ -45,7 +45,7 @@ KEY PRINCIPLES
   - Log authentication failures
   - Use strong database passwords
 
-✗ DON'T:
+DON'T:
   - Commit .env files to git
   - Hardcode secrets in Python
   - Use weak/default secrets
@@ -114,6 +114,7 @@ Example values (for testing - replace with your own!):
   SECRET_KEY=mXpF_nJk9Q2wL5v7r3t8Y6u1s4d2gH0K
   VALID_API_KEYS=ck_liveA1b2c3d4e5f6g7h8i9j0,ck_testX9y8z7w6v5u4t3s2r1q0p
 """
+
 import secrets
 from pathlib import Path
 
@@ -160,7 +161,9 @@ class Settings(BaseSettings):
     # DATABASE SETTINGS
     # ========================================================================
 
-    database_url: str = DEFAULT_SQLITE_DATABASE_URL  # SQLite for dev, PostgreSQL for prod
+    database_url: str = (
+        DEFAULT_SQLITE_DATABASE_URL  # SQLite for dev, PostgreSQL for prod
+    )
     # Production example: "postgresql://user:pass@localhost/charlottesweb"
 
     # Development convenience flag. When true, startup drops and recreates all tables.
@@ -350,7 +353,7 @@ def validate_security_config() -> list[str]:
         # Check 1: Debug mode should be disabled in production
         if settings.debug:
             warnings.append(
-                "🚨 SECURITY: DEBUG=True in production! "
+                "[CRITICAL] SECURITY: DEBUG=True in production! "
                 "Exposes API docs, detailed errors, and internal state. "
                 "Set DEBUG=false"
             )
@@ -359,28 +362,28 @@ def validate_security_config() -> list[str]:
         # Auto-generated keys change on restart, invalidating all JWT tokens
         if len(settings.secret_key) < 32:
             warnings.append(
-                "🚨 SECURITY: SECRET_KEY is weak (< 32 chars). "
+                "[CRITICAL] SECURITY: SECRET_KEY is weak (< 32 chars). "
                 "Generate strong key: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
             )
 
         # Check 3: CORS should have explicit origin whitelist (not *)
         if "*" in settings.cors_allowed_origins:
             warnings.append(
-                "🚨 SECURITY: CORS allows all origins (*) in production! "
+                "[CRITICAL] SECURITY: CORS allows all origins (*) in production! "
                 "Set CORS_ORIGINS=https://yourdomain.com"
             )
 
         # Check 4: API key authentication should be required
         if not settings.api_key_required and not settings.valid_api_keys:
             warnings.append(
-                "⚠️  SECURITY: API authentication disabled in production. "
+                "[WARNING] SECURITY: API authentication disabled in production. "
                 "Set API_KEY_REQUIRED=true and VALID_API_KEYS"
             )
 
         # Check 5: SQLite not recommended for production
         if "sqlite" in settings.database_url.lower():
             warnings.append(
-                "⚠️  PRODUCTION: SQLite not recommended for production. "
+                "[WARNING] PRODUCTION: SQLite not recommended for production. "
                 "Use PostgreSQL for better concurrency and reliability. "
                 "Set DATABASE_URL=postgresql://..."
             )
@@ -388,7 +391,7 @@ def validate_security_config() -> list[str]:
         # Check 6: Rate limiting should be enabled
         if not settings.rate_limit_enabled:
             warnings.append(
-                "⚠️  SECURITY: Rate limiting disabled in production. "
+                "[WARNING] SECURITY: Rate limiting disabled in production. "
                 "Set RATE_LIMIT_ENABLED=true to prevent abuse"
             )
 
