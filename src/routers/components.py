@@ -16,6 +16,32 @@ router = APIRouter(prefix="/components", tags=["components"])
 nvd_service = NVDService(api_key=settings.nvd_api_key)
 
 
+@router.get("/suggest")  # type: ignore[misc]
+@limiter.limit(f"{settings.rate_limit_per_minute * 3}/minute")  # type: ignore[misc]
+def suggest_component_names(
+    request: Request, prefix: str, limit: int = 10
+) -> dict[str, list[str]]:
+    """Suggest likely component names for autocomplete by prefix.
+
+    Args:
+        prefix: Component name prefix typed by the user
+        limit: Maximum suggestions to return (1-20)
+
+    Returns:
+        Dictionary with a list of suggested component names
+    """
+    prefix_normalized = prefix.lower().strip()
+    if len(prefix_normalized) < 2:
+        return {"components": []}
+
+    bounded_limit = max(1, min(limit, 20))
+    suggestions = nvd_service.get_component_suggestions(
+        prefix=prefix_normalized,
+        max_components=bounded_limit,
+    )
+    return {"components": suggestions}
+
+
 @router.get("/{component_name}/versions")  # type: ignore[misc]
 @limiter.limit(f"{settings.rate_limit_per_minute * 3}/minute")  # type: ignore[misc]
 def get_component_versions(
