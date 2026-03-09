@@ -1,6 +1,7 @@
 """Pydantic schemas for API request/response validation."""
+
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -24,6 +25,37 @@ class OrganizationResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class OrganizationMemberResponse(BaseModel):
+    """Schema for organization member response."""
+
+    id: str
+    organization_id: str
+    email: str
+    full_name: str | None = None
+    role: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class OrganizationOnboardingCreate(BaseModel):
+    """Schema for onboarding a new organization with first member."""
+
+    name: str = Field(..., min_length=1, max_length=255)
+    industry: str | None = None
+    stage: str | None = None
+    admin_email: str = Field(..., min_length=3, max_length=255)
+    admin_name: str | None = Field(default=None, max_length=255)
+    admin_role: Literal["admin", "member"] = "admin"
+
+
+class OrganizationOnboardingResponse(BaseModel):
+    """Schema for onboarding response."""
+
+    organization: OrganizationResponse
+    member: OrganizationMemberResponse
 
 
 # Metadata Profile schemas
@@ -123,7 +155,9 @@ class ThreatTechnique(BaseModel):
 class ThreatContext(BaseModel):
     """Schema for threat intelligence context added to findings."""
 
-    techniques: list[ThreatTechnique] = Field(description="Attack techniques that exploit this gap")
+    techniques: list[ThreatTechnique] = Field(
+        description="Attack techniques that exploit this gap"
+    )
     summary: str = Field(description="Executive summary of threat")
 
 

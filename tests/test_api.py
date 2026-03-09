@@ -1,4 +1,5 @@
 """Tests for CharlottesWeb API."""
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -25,6 +26,7 @@ def test_db(tmp_path):
     # Seed controls
     db = testing_session_local()
     from src.models import Control
+
     controls = [
         Control(
             id="HIPAA.164.312(a)(1)",
@@ -82,12 +84,36 @@ def test_create_organization(client):
     """Test creating an organization."""
     response = client.post(
         "/api/v1/organizations",
-        json={"name": "Test Health Startup", "industry": "digital_health", "stage": "seed"},
+        json={
+            "name": "Test Health Startup",
+            "industry": "digital_health",
+            "stage": "seed",
+        },
     )
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "Test Health Startup"
     assert "id" in data
+
+
+def test_onboard_organization(client):
+    """Test onboarding organization with initial admin member."""
+    response = client.post(
+        "/api/v1/organizations/onboard",
+        json={
+            "name": "Onboarded Health Startup",
+            "industry": "digital_health",
+            "stage": "seed",
+            "admin_email": "founder@example.com",
+            "admin_name": "Founder",
+            "admin_role": "admin",
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["organization"]["name"] == "Onboarded Health Startup"
+    assert data["member"]["email"] == "founder@example.com"
+    assert data["member"]["role"] == "admin"
 
 
 def test_create_metadata_profile(client):

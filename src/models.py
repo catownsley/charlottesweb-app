@@ -1,4 +1,5 @@
 """Database models for CharlottesWeb."""
+
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -36,6 +37,30 @@ class Organization(Base):
     # Relationships
     metadata_profiles = relationship("MetadataProfile", back_populates="organization")
     assessments = relationship("Assessment", back_populates="organization")
+    members = relationship("OrganizationMember", back_populates="organization")
+
+
+class OrganizationMember(Base):
+    """Organization member used for onboarding and role assignment."""
+
+    __tablename__ = "organization_members"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(
+        String, ForeignKey("organizations.id"), nullable=False, index=True
+    )
+    email = Column(String, nullable=False)
+    full_name = Column(String, nullable=True)
+    role = Column(String, nullable=False, default="member", index=True)  # admin, member
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+
+    # Relationships
+    organization = relationship("Organization", back_populates="members")
+
+    __table_args__ = (
+        Index("idx_org_members_org_id", "organization_id"),
+        Index("idx_org_members_role", "role"),
+    )
 
 
 class MetadataProfile(Base):
@@ -44,7 +69,9 @@ class MetadataProfile(Base):
     __tablename__ = "metadata_profiles"
 
     id = Column(String, primary_key=True, default=generate_uuid)
-    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    organization_id = Column(
+        String, ForeignKey("organizations.id"), nullable=False, index=True
+    )
 
     # Metadata fields (stored as JSON for flexibility)
     phi_types = Column(JSON, nullable=True)  # list of PHI categories
@@ -92,10 +119,16 @@ class Assessment(Base):
     __tablename__ = "assessments"
 
     id = Column(String, primary_key=True, default=generate_uuid)
-    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
-    metadata_profile_id = Column(String, ForeignKey("metadata_profiles.id"), nullable=False, index=True)
+    organization_id = Column(
+        String, ForeignKey("organizations.id"), nullable=False, index=True
+    )
+    metadata_profile_id = Column(
+        String, ForeignKey("metadata_profiles.id"), nullable=False, index=True
+    )
 
-    status = Column(String, default="pending", nullable=False, index=True)  # pending, running, completed, failed
+    status = Column(
+        String, default="pending", nullable=False, index=True
+    )  # pending, running, completed, failed
     initiated_at = Column(DateTime, default=utcnow, nullable=False)
     completed_at = Column(DateTime, nullable=True)
 
@@ -119,19 +152,27 @@ class Finding(Base):
     __tablename__ = "findings"
 
     id = Column(String, primary_key=True, default=generate_uuid)
-    assessment_id = Column(String, ForeignKey("assessments.id"), nullable=False, index=True)
-    control_id = Column(String, ForeignKey("controls.id"), nullable=True, index=True)  # nullable for NVD findings
+    assessment_id = Column(
+        String, ForeignKey("assessments.id"), nullable=False, index=True
+    )
+    control_id = Column(
+        String, ForeignKey("controls.id"), nullable=True, index=True
+    )  # nullable for NVD findings
 
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
-    severity = Column(String, nullable=False, index=True)  # immediate, high, medium, low
+    severity = Column(
+        String, nullable=False, index=True
+    )  # immediate, high, medium, low
     cvss_score = Column(Float, nullable=True)
     external_id = Column(String, nullable=True)  # CVE ID for NVD findings
     cve_ids = Column(JSON, nullable=True)  # list of CVE IDs
     cwe_ids = Column(JSON, nullable=True)  # list of CWE IDs
 
     remediation_guidance = Column(Text, nullable=True)
-    priority_window = Column(String, nullable=True)  # immediate, 30_days, quarterly, annual
+    priority_window = Column(
+        String, nullable=True
+    )  # immediate, 30_days, quarterly, annual
     owner = Column(String, nullable=True)  # DevOps, Engineering, Security
 
     created_at = Column(DateTime, default=utcnow, nullable=False)
@@ -156,15 +197,21 @@ class Evidence(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid)
     control_id = Column(String, ForeignKey("controls.id"), nullable=False, index=True)
-    assessment_id = Column(String, ForeignKey("assessments.id"), nullable=True, index=True)
+    assessment_id = Column(
+        String, ForeignKey("assessments.id"), nullable=True, index=True
+    )
 
     # Evidence classification
-    evidence_type = Column(String, nullable=False)  # policy, config, screenshot, logs, etc.
+    evidence_type = Column(
+        String, nullable=False
+    )  # policy, config, screenshot, logs, etc.
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
 
     # Status tracking
-    status = Column(String, default="not_started", nullable=False, index=True)  # not_started, in_progress, completed, not_applicable
+    status = Column(
+        String, default="not_started", nullable=False, index=True
+    )  # not_started, in_progress, completed, not_applicable
     owner = Column(String, nullable=True)  # responsible party
     due_date = Column(DateTime, nullable=True)
 
@@ -173,7 +220,9 @@ class Evidence(Base):
     artifact_url = Column(String, nullable=True)  # external URL if applicable
     artifact_hash = Column(String, nullable=True)  # SHA256 for integrity
     uploaded_at = Column(DateTime, nullable=True)
-    collected_at = Column(DateTime, nullable=True)  # when evidence was actually collected
+    collected_at = Column(
+        DateTime, nullable=True
+    )  # when evidence was actually collected
 
     # Versioning
     version = Column(String, default="1", nullable=False)

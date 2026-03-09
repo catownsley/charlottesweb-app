@@ -1,4 +1,5 @@
 """Organization management endpoints."""
+
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -8,8 +9,13 @@ from src.audit import AuditAction, log_audit_event
 from src.config import settings
 from src.database import get_db, get_or_404
 from src.middleware import get_api_key_optional, limiter
-from src.models import Organization
-from src.schemas import OrganizationCreate, OrganizationResponse
+from src.models import Organization, OrganizationMember
+from src.schemas import (
+    OrganizationCreate,
+    OrganizationOnboardingCreate,
+    OrganizationOnboardingResponse,
+    OrganizationResponse,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/organizations", tags=["organizations"])
@@ -40,7 +46,7 @@ def create_organization(
         # Return safe error message to client
         raise HTTPException(
             status_code=500,
-            detail="Failed to create organization. Please ensure the application has write access and try again."
+            detail="Failed to create organization. Please ensure the application has write access and try again.",
         ) from e
 
     # Audit log
@@ -54,6 +60,60 @@ def create_organization(
     )
 
     return org
+
+
+@router.post("/onboard", response_model=OrganizationOnboardingResponse, status_code=201)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def onboard_organization(
+    request: Request,
+    onboarding_data: OrganizationOnboardingCreate,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+) -> OrganizationOnboardingResponse:
+    """Create a new organization and first member in a single onboarding flow."""
+    try:
+        org = Organization(
+            name=onboarding_data.name,
+            industry=onboarding_data.industry,
+            stage=onboarding_data.stage,
+        )
+        db.add(org)
+        db.flush()
+
+        member = OrganizationMember(
+            organization_id=org.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+            email=onboarding_data.admin_email,
+            full_name=onboarding_data.admin_name,
+            role=onboarding_data.admin_role,
+        )
+        db.add(member)
+        db.commit()
+        db.refresh(org)
+        db.refresh(member)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to onboard organization: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to onboard organization. Please ensure the application has write access and try again.",
+        ) from e
+
+    log_audit_event(
+        action=AuditAction.ORG_CREATED,
+        request=request,
+        api_key=api_key,
+        resource_type="organization",
+        resource_id=org.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+        details={
+            "name": org.name,
+            "industry": org.industry,
+            "onboarding": True,
+            "member_email": member.email,
+            "member_role": member.role,
+        },
+    )
+
+    return OrganizationOnboardingResponse(organization=org, member=member)
 
 
 @router.get("/{org_id}", response_model=OrganizationResponse)
