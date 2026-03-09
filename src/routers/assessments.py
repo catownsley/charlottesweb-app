@@ -30,6 +30,7 @@ from src.rules_engine import RulesEngine
 from src.schemas import (
     AssessmentCreate,
     AssessmentResponse,
+    AssessmentStatusResponse,
     ComplianceAsCodeResponse,
     EvidenceChecklistItem,
     EvidenceChecklistResponse,
@@ -446,6 +447,51 @@ def get_assessment(assessment_id: str, db: Session = Depends(get_db)) -> Assessm
     """Get assessment by ID."""
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
     return assessment
+
+
+@router.get("/{assessment_id}/status", response_model=AssessmentStatusResponse)
+def get_assessment_status(
+    assessment_id: str,
+    db: Session = Depends(get_db),
+) -> AssessmentStatusResponse:
+    """Get assessment run status with coarse-grained progress for UI workflows."""
+    assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
+
+    findings_count = (
+        db.query(Finding)
+        .filter(Finding.assessment_id == assessment_id)  # type: ignore[attr-defined]
+        .count()
+    )
+
+    status = _to_str(getattr(assessment, "status", None), default="pending")
+    completed_at = getattr(assessment, "completed_at", None)
+    initiated_at = getattr(assessment, "initiated_at", None)
+
+    if status == AssessmentStatus.COMPLETED:
+        progress_percent = 100
+        current_step = "Assessment complete"
+        updated_at = completed_at
+    elif status == AssessmentStatus.FAILED:
+        progress_percent = 100
+        current_step = "Assessment failed"
+        updated_at = completed_at or initiated_at
+    elif status == AssessmentStatus.RUNNING:
+        progress_percent = 60
+        current_step = "Assessment running"
+        updated_at = initiated_at
+    else:
+        progress_percent = 20
+        current_step = "Assessment queued"
+        updated_at = initiated_at
+
+    return AssessmentStatusResponse(
+        assessment_id=assessment_id,
+        status=status,
+        progress_percent=progress_percent,
+        current_step=current_step,
+        findings_count=findings_count,
+        updated_at=updated_at,
+    )
 
 
 @router.get(

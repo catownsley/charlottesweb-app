@@ -123,6 +123,17 @@ class AssessmentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AssessmentStatusResponse(BaseModel):
+    """Schema for assessment run status and progress."""
+
+    assessment_id: str
+    status: str
+    progress_percent: int
+    current_step: str
+    findings_count: int
+    updated_at: datetime | None = None
+
+
 # Threat Intelligence schemas (MITRE ATT&CK)
 class ThreatTechniqueBreachExample(BaseModel):
     """Schema for real-world breach example."""
