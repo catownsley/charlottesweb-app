@@ -1,4 +1,5 @@
 """Comprehensive tests for CharlottesWeb API - Phase 3 test coverage expansion."""
+
 from unittest.mock import patch
 
 import pytest
@@ -171,6 +172,36 @@ class TestOrganizations:
         """Test 404 when organization does not exist."""
         response = client.get("/api/v1/organizations/nonexistent-id")
         assert response.status_code == 404
+
+    def test_onboard_organization_with_member_role(self, client):
+        """Test onboarding endpoint supports valid role values."""
+        response = client.post(
+            "/api/v1/organizations/onboard",
+            json={
+                "name": "Role Test Org",
+                "industry": "healthcare",
+                "stage": "growth",
+                "admin_email": "member@example.com",
+                "admin_name": "Member User",
+                "admin_role": "member",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["organization"]["name"] == "Role Test Org"
+        assert data["member"]["role"] == "member"
+
+    def test_onboard_organization_invalid_role(self, client):
+        """Test onboarding rejects invalid role values."""
+        response = client.post(
+            "/api/v1/organizations/onboard",
+            json={
+                "name": "Invalid Role Org",
+                "admin_email": "admin@example.com",
+                "admin_role": "owner",
+            },
+        )
+        assert response.status_code == 422
 
 
 # ========== Metadata Profile Tests ==========
@@ -421,7 +452,9 @@ class TestEvidence:
         assert data["control_id"] == "HIPAA.164.312(a)(1)"
         assert data["title"] == "Access Control Policy"
 
-    def test_create_evidence_with_assessment(self, client, org_data, metadata_profile_data):
+    def test_create_evidence_with_assessment(
+        self, client, org_data, metadata_profile_data
+    ):
         """Test creating evidence linked to assessment."""
         # Create assessment
         assess_response = client.post(
@@ -545,9 +578,7 @@ class TestEvidence:
         assessment_id = assess_response.json()["id"]
 
         # Generate checklist
-        response = client.get(
-            f"/api/v1/assessments/{assessment_id}/evidence-checklist"
-        )
+        response = client.get(f"/api/v1/assessments/{assessment_id}/evidence-checklist")
         assert response.status_code == 200
         data = response.json()
         assert "items" in data
