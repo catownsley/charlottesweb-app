@@ -623,6 +623,97 @@ class TestEvidence:
         assert "total_items" in data
         assert "completed" in data
 
+    def test_evidence_checklist_persists_progress_across_assessments(
+        self, client, org_data, metadata_profile_data
+    ):
+        """Evidence updates persist for same org across subsequent assessments."""
+        first_assessment_response = client.post(
+            "/api/v1/assessments",
+            json={
+                "organization_id": org_data["id"],
+                "metadata_profile_id": metadata_profile_data["id"],
+            },
+        )
+        assert first_assessment_response.status_code == 201
+        first_assessment_id = first_assessment_response.json()["id"]
+
+        first_checklist_response = client.get(
+            f"/api/v1/assessments/{first_assessment_id}/evidence-checklist"
+        )
+        assert first_checklist_response.status_code == 200
+        first_items = first_checklist_response.json()["items"]
+        assert len(first_items) > 0
+
+        target_item = next(
+            (item for item in first_items if item.get("evidence_id")),
+            None,
+        )
+        if target_item is None:
+            seed_item = first_items[0]
+            create_evidence_response = client.post(
+                "/api/v1/evidence",
+                json={
+                    "control_id": seed_item["control_id"],
+                    "assessment_id": first_assessment_id,
+                    "evidence_type": seed_item["evidence_type"],
+                    "title": f"{seed_item['control_id']}: {seed_item['evidence_type']}",
+                },
+            )
+            assert create_evidence_response.status_code == 201
+
+            refreshed_checklist_response = client.get(
+                f"/api/v1/assessments/{first_assessment_id}/evidence-checklist"
+            )
+            assert refreshed_checklist_response.status_code == 200
+            refreshed_items = refreshed_checklist_response.json()["items"]
+            target_item = next(
+                (
+                    item
+                    for item in refreshed_items
+                    if item["control_id"] == seed_item["control_id"]
+                    and item["evidence_type"] == seed_item["evidence_type"]
+                    and item.get("evidence_id")
+                ),
+                None,
+            )
+
+        assert target_item is not None
+
+        update_response = client.patch(
+            f"/api/v1/evidence/{target_item['evidence_id']}",
+            json={"status": "completed", "notes": "Persisted progress"},
+        )
+        assert update_response.status_code == 200
+
+        second_assessment_response = client.post(
+            "/api/v1/assessments",
+            json={
+                "organization_id": org_data["id"],
+                "metadata_profile_id": metadata_profile_data["id"],
+            },
+        )
+        assert second_assessment_response.status_code == 201
+        second_assessment_id = second_assessment_response.json()["id"]
+
+        second_checklist_response = client.get(
+            f"/api/v1/assessments/{second_assessment_id}/evidence-checklist"
+        )
+        assert second_checklist_response.status_code == 200
+        second_items = second_checklist_response.json()["items"]
+
+        matching_item = next(
+            (
+                item
+                for item in second_items
+                if item["control_id"] == target_item["control_id"]
+                and item["evidence_type"] == target_item["evidence_type"]
+            ),
+            None,
+        )
+        assert matching_item is not None
+        assert matching_item["status"] == "completed"
+        assert matching_item["notes"] == "Persisted progress"
+
 
 # ========== Component Tests ==========
 
@@ -661,6 +752,57 @@ class TestComponents:
         assert response.status_code == 200
         data = response.json()
         assert data["versions"] == []
+
+    def test_ingest_manifest_pom_xml(self, client):
+        """Test parsing pom.xml into normalized components."""
+        pom_xml = """
+        <project>
+          <properties>
+            <spring.version>6.1.12</spring.version>
+          </properties>
+          <dependencyManagement>
+            <dependencies>
+              <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>42.7.4</version>
+              </dependency>
+            </dependencies>
+          </dependencyManagement>
+          <dependencies>
+            <dependency>
+              <groupId>org.springframework</groupId>
+              <artifactId>spring-core</artifactId>
+              <version>${spring.version}</version>
+            </dependency>
+            <dependency>
+              <groupId>org.postgresql</groupId>
+              <artifactId>postgresql</artifactId>
+            </dependency>
+          </dependencies>
+        </project>
+        """
+
+        response = client.post(
+            "/api/v1/components/ingest-manifest",
+            json={"format": "pom_xml", "content": pom_xml},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["format"] == "pom_xml"
+        assert data["total_components"] == 2
+
+        components = {item["name"]: item["version"] for item in data["components"]}
+        assert components["spring-core"] == "6.1.12"
+        assert components["postgresql"] == "42.7.4"
+
+    def test_ingest_manifest_invalid_xml(self, client):
+        """Test manifest ingestion rejects invalid XML payloads."""
+        response = client.post(
+            "/api/v1/components/ingest-manifest",
+            json={"format": "pom_xml", "content": "<project><dependencies>"},
+        )
+        assert response.status_code == 400
 
 
 # ========== Health Check Tests ==========

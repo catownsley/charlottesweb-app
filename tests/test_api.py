@@ -96,6 +96,19 @@ def test_create_organization(client):
     assert "id" in data
 
 
+def test_list_organizations_by_name_filter(client):
+    """Test listing organizations with case-insensitive exact name filtering."""
+    client.post("/api/v1/organizations", json={"name": "Demo Org"})
+    client.post("/api/v1/organizations", json={"name": "Another Org"})
+
+    response = client.get("/api/v1/organizations?name=demo%20org")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["name"] == "Demo Org"
+
+
 def test_onboard_organization(client):
     """Test onboarding organization with initial admin member."""
     response = client.post(

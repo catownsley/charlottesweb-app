@@ -2,7 +2,8 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.audit import AuditAction, log_audit_event
@@ -19,6 +20,33 @@ from src.schemas import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/organizations", tags=["organizations"])
+
+
+@router.get("", response_model=list[OrganizationResponse])
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def list_organizations(
+    request: Request,
+    name: str | None = Query(default=None, min_length=1),
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+) -> list[Organization]:
+    """List organizations, optionally filtering by exact name (case-insensitive)."""
+    query = db.query(Organization)
+    if name:
+        normalized_name = name.strip().lower()
+        query = query.filter(func.lower(Organization.name) == normalized_name)
+
+    orgs: list[Organization] = query.order_by(Organization.created_at.desc()).all()
+
+    log_audit_event(
+        action=AuditAction.DATA_READ,
+        request=request,
+        api_key=api_key,
+        resource_type="organization",
+        details={"count": len(orgs), "filtered_by_name": bool(name)},
+    )
+
+    return orgs
 
 
 @router.post("", response_model=OrganizationResponse, status_code=201)
