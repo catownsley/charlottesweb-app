@@ -96,6 +96,41 @@ Prioritization Buckets:
 - Priority window
 - Responsible team (DevOps, Engineering, Security)
 
+#### 4.1 Compliance + Threat Convergence Layer (HIPAA-first v1)
+**Purpose:** Produce an engineering backlog that reflects both regulatory posture and exploitability pressure.
+
+**Implemented Pattern (v1):**
+- Reuse existing `Assessment`, `Finding`, `Evidence`, and `Control` records.
+- Compute per-control:
+	- `control_confidence` from evidence status + freshness
+	- `threat_pressure` from severity/CVSS + signal volume
+	- `residual_risk` as the risk remaining after control confidence
+- Return a deterministic prioritized backlog for execution sequencing.
+
+**Why this matters:**
+- Compliance state directly influences technical prioritization.
+- Threat signal volume directly influences control hardening urgency.
+- Reduces the traditional gap where compliance and AppSec operate independently.
+
+**v1 Formula:**
+```
+residual_risk = threat_pressure × (1 - control_confidence/100) × blast_radius
+```
+
+#### 4.2 Future Dynamic Regulatory Feed (Planned)
+**Purpose:** Move from static regulation catalogs to versioned, machine-readable, continuously updated regulatory mappings.
+
+**Target capabilities:**
+- Dynamic HIPAA feed ingestion (rule updates, interpretations, mapping changes)
+- Additional frameworks (SOC 2, PCI DSS, GDPR, state privacy laws) via provider adapters
+- Versioned control catalog with effective dates and migration diffs
+- Policy impact notifications when regulatory mappings change
+
+**Long-term Product Direction:**
+- Customer describes data sourcing, processing, storage, destruction, and geolocation.
+- System infers applicable regulations and required controls automatically.
+- HIPAA remains the default and most mature path in current releases.
+
 #### 5. Evidence Automation Layer
 **Purpose:** Generate audit-ready documentation.
 

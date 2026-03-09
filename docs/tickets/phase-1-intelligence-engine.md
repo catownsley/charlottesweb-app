@@ -47,3 +47,13 @@
 - Acceptance:
 - Endpoint returns grouped actions with owner and due window
 - Includes executive summary fields
+
+## CW-107 Add compliance-threat fused prioritized backlog endpoint
+- Type: Backend/Security/Compliance
+- Priority: P0
+- Outcome: Residual-risk prioritized engineering backlog that combines control posture and threat pressure.
+- Acceptance:
+- Endpoint `GET /api/v1/risk/prioritized-backlog` supports assessment and organization scope
+- Output includes `control_confidence`, `threat_pressure`, `residual_risk`, and execution bucket
+- Scoring is deterministic and bounded (0-100) with documented formulas
+- Reuses existing domain entities without breaking schema migrations

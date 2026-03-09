@@ -1,4 +1,5 @@
 """API routers for the Charlotte's Web application."""
+
 from src.routers import (
     assessments,
     components,
@@ -7,6 +8,7 @@ from src.routers import (
     health,
     metadata_profiles,
     organizations,
+    risk,
 )
 
 __all__ = [
@@ -17,4 +19,5 @@ __all__ = [
     "health",
     "metadata_profiles",
     "organizations",
+    "risk",
 ]

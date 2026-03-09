@@ -207,6 +207,83 @@ def test_run_assessment(client):
     findings = findings_response.json()
     assert len(findings) > 0
 
+
+def test_get_prioritized_risk_backlog(client):
+    """Test risk backlog endpoint fuses findings and evidence into sorted risk output."""
+    # Create organization + metadata profile + completed assessment
+    org_response = client.post("/api/v1/organizations", json={"name": "Risk Org"})
+    org_id = org_response.json()["id"]
+
+    profile_response = client.post(
+        "/api/v1/metadata-profiles",
+        json={
+            "organization_id": org_id,
+            "software_stack": {"openssl": "1.0.1", "apache-tomcat": "9.0.62"},
+            "infrastructure": {
+                "encryption_at_rest": False,
+                "tls_enabled": False,
+            },
+            "access_controls": {"mfa_enabled": False},
+        },
+    )
+    profile_id = profile_response.json()["id"]
+
+    assessment_response = client.post(
+        "/api/v1/assessments",
+        json={"organization_id": org_id, "metadata_profile_id": profile_id},
+    )
+    assessment_id = assessment_response.json()["id"]
+
+    # Create and complete one evidence record to influence control confidence.
+    findings_response = client.get(f"/api/v1/assessments/{assessment_id}/findings")
+    findings = findings_response.json()
+    finding_with_control = next(
+        (item for item in findings if item.get("control_id")), None
+    )
+    assert finding_with_control is not None
+
+    control_id = finding_with_control["control_id"]
+    create_evidence_response = client.post(
+        "/api/v1/evidence",
+        json={
+            "control_id": control_id,
+            "assessment_id": assessment_id,
+            "evidence_type": "policy_document",
+            "title": "Integration test evidence",
+            "description": "Evidence created by integration test",
+        },
+    )
+    assert create_evidence_response.status_code == 201
+    evidence_id = create_evidence_response.json()["id"]
+
+    update_response = client.patch(
+        f"/api/v1/evidence/{evidence_id}",
+        json={"status": "completed", "notes": "Validated in integration test"},
+    )
+    assert update_response.status_code == 200
+
+    # Request prioritized risk backlog for the assessment.
+    risk_response = client.get(
+        f"/api/v1/risk/prioritized-backlog?assessment_id={assessment_id}&top=10"
+    )
+    assert risk_response.status_code == 200
+
+    data = risk_response.json()
+    assert data["assessment_id"] == assessment_id
+    assert data["organization_id"] == org_id
+    assert data["total_items"] > 0
+    assert len(data["items"]) > 0
+
+    # Ensure residual risk is sorted descending for stable backlog execution order.
+    residuals = [item["residual_risk"] for item in data["items"]]
+    assert residuals == sorted(residuals, reverse=True)
+
+    # Verify key scoring fields are present and bounded.
+    first_item = data["items"][0]
+    assert 0 <= first_item["control_confidence"] <= 100
+    assert 0 <= first_item["threat_pressure"] <= 100
+    assert 0 <= first_item["residual_risk"] <= 100
+
     # Verify we got expected findings
     finding_titles = [f["title"] for f in findings]
     assert "Multi-Factor Authentication (MFA) Not Enabled" in finding_titles
