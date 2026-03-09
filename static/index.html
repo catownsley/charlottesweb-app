@@ -901,11 +901,6 @@
             e.preventDefault();
             e.stopPropagation();
 
-            // Clear manifest upload state for fresh start
-            // (prevents pom.xml content from persisting across different orgs)
-            manifestContentInput.value = '';
-            manifestFileInput.value = '';
-
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Analyzing...';
 
@@ -915,6 +910,23 @@
 
                 if (!orgName) {
                     throw new Error('Organization name is required');
+                }
+
+                // Handle manifest persistence per org
+                const lastOrgName = sessionStorage.getItem('lastOrgName');
+                const savedManifest = sessionStorage.getItem('manifestContent');
+
+                // If switching to a different org, clear old manifest unless user has new content
+                if (lastOrgName && lastOrgName !== orgName && !manifestContentInput.value.trim()) {
+                    // Different org and no new manifest entered - clear it
+                    manifestFileInput.value = '';
+                } else if (manifestContentInput.value.trim()) {
+                    // Save current manifest for this org
+                    sessionStorage.setItem('lastOrgName', orgName);
+                    sessionStorage.setItem('manifestContent', manifestContentInput.value);
+                } else if (savedManifest && lastOrgName === orgName) {
+                    // Same org - restore saved manifest if available
+                    manifestContentInput.value = savedManifest;
                 }
 
                 // Build software stack from component inputs
@@ -1197,12 +1209,15 @@
                 componentsContainer.innerHTML = '';
                 componentCounter = 0;
 
-                // Clear manifest upload state
-                manifestContentInput.value = '';
-                manifestFileInput.value = '';
-
                 // Fill organization name
                 document.getElementById('orgName').value = 'Healthcare Corp Demo';
+
+                // Clear manifest for demo (different org)
+                const lastOrgName = sessionStorage.getItem('lastOrgName');
+                if (lastOrgName !== 'Healthcare Corp Demo') {
+                    manifestContentInput.value = '';
+                    manifestFileInput.value = '';
+                }
 
                 // Add real vulnerable software sequentially
                 const demoComponents = [
@@ -1625,7 +1640,11 @@
                 }).join('');
 
                 checklistPanel.innerHTML = `
-                    <h4 style="margin: 0;">Evidence Collection Checklist</h4>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="margin: 0;">Evidence Collection Checklist</h4>
+                        <button id="toggleEvidenceBtn" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Collapse</button>
+                    </div>
+                    <div id="evidenceContent">
                     <p class="evidence-summary">
                         Total: <strong>${checklist.total_items}</strong> •
                         Completed: <strong>${checklist.completed}</strong> •
@@ -1634,6 +1653,7 @@
                     </p>
                     <ul class="evidence-list">${itemsHtml || '<li class="evidence-item">No checklist items yet for this assessment.</li>'}</ul>
                     ${checklist.items.length > 15 ? `<p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">Showing first 15 of ${checklist.items.length} items.</p>` : ''}
+                    </div>
                     <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; flex-direction: column; justify-content: center; align-items: center;">
                         <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                             <h4 style="margin: 0 0 16px 0;">Update Evidence Item</h4>
@@ -1664,6 +1684,17 @@
 
                 checklistLink.setAttribute('aria-expanded', 'true');
                 checklistLink.textContent = 'Evidence Checklist Loaded';
+
+                // Attach event handler for collapse/expand button
+                const toggleBtn = document.getElementById('toggleEvidenceBtn');
+                const evidenceContent = document.getElementById('evidenceContent');
+                if (toggleBtn && evidenceContent) {
+                    toggleBtn.addEventListener('click', () => {
+                        const isHidden = evidenceContent.style.display === 'none';
+                        evidenceContent.style.display = isHidden ? 'block' : 'none';
+                        toggleBtn.textContent = isHidden ? 'Collapse' : 'Expand';
+                    });
+                }
 
                 // Attach event listeners to Edit buttons
                 document.querySelectorAll('.edit-evidence-btn').forEach(btn => {
