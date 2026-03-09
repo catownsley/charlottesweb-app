@@ -1464,7 +1464,7 @@ def generate_evidence_checklist(
             evidence_map[map_key] = evidence_item
 
     # Generate checklist items and auto-create missing evidence records
-    checklist_items: list[EvidenceChecklistItem] = []
+    # First pass: identify and create missing evidence records
     new_evidence_records: list[Evidence] = []
 
     for control in controls:
@@ -1492,8 +1492,33 @@ def generate_evidence_checklist(
                 )
                 db.add(new_evidence)
                 new_evidence_records.append(new_evidence)
-                evidence = new_evidence
                 evidence_map[(control_id, evidence_type)] = new_evidence
+
+    # Commit any new evidence records that were created BEFORE building items
+    # This ensures IDs are assigned before we access them
+    if new_evidence_records:
+        try:
+            db.commit()
+            # Refresh to get IDs assigned
+            for new_ev in new_evidence_records:
+                db.refresh(new_ev)
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to create evidence records: {str(e)}", exc_info=True)
+            # Continue anyway - worst case some items won't have IDs yet
+
+    # Second pass: build checklist items (now all evidence has IDs)
+    checklist_items: list[EvidenceChecklistItem] = []
+    for control in controls:
+        evidence_types = _to_str_list(getattr(control, "evidence_types", None))
+        if not evidence_types:
+            continue
+
+        control_id = _to_str(getattr(control, "id", None))
+        control_title = _to_str(getattr(control, "title", None))
+
+        for evidence_type in evidence_types:
+            evidence = evidence_map.get((control_id, evidence_type))
 
             item = EvidenceChecklistItem(
                 control_id=control_id,
@@ -1510,18 +1535,6 @@ def generate_evidence_checklist(
                 evidence_id=_to_optional_str(getattr(evidence, "id", None)),
             )
             checklist_items.append(item)
-
-    # Commit any new evidence records that were created
-    if new_evidence_records:
-        try:
-            db.commit()
-            # Refresh to get IDs assigned
-            for new_ev in new_evidence_records:
-                db.refresh(new_ev)
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Failed to create evidence records: {str(e)}", exc_info=True)
-            # Continue anyway - worst case some items won't have IDs yet
 
     # Calculate statistics
     total_items = len(checklist_items)
