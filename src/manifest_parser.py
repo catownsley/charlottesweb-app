@@ -33,19 +33,8 @@ def _resolve_property(value: str | None, properties: dict[str, str]) -> str | No
     return candidate
 
 
-def parse_pom_xml(content: str) -> list[dict[str, str]]:  # noqa: C901
-    """Parse Maven pom.xml content into component/version pairs.
-
-    Returns a deterministic, de-duplicated list sorted by component name.
-    """
-    try:
-        root = ET.fromstring(content)
-    except ET.ParseError as exc:
-        raise ValueError("Invalid XML format for pom.xml") from exc
-
+def _extract_properties(root: ET.Element) -> dict[str, str]:
     properties: dict[str, str] = {}
-    managed_versions: dict[tuple[str, str], str] = {}
-
     for node in root.iter():
         if _local_name(node.tag) != "properties":
             continue
@@ -55,31 +44,54 @@ def parse_pom_xml(content: str) -> list[dict[str, str]]:  # noqa: C901
                 value = prop.text.strip()
                 if key and value:
                     properties[key] = value
+    return properties
 
+
+def _iter_dependencies(root: ET.Element) -> list[ET.Element]:
+    return [node for node in root.iter() if _local_name(node.tag) == "dependency"]
+
+
+def _parse_dependency_coords(
+    dep: ET.Element, properties: dict[str, str]
+) -> tuple[str | None, str | None, str | None]:
+    group_id = _resolve_property(_find_child_text(dep, "groupId"), properties)
+    artifact_id = _resolve_property(_find_child_text(dep, "artifactId"), properties)
+    version = _resolve_property(_find_child_text(dep, "version"), properties)
+    return group_id, artifact_id, version
+
+
+def _collect_managed_versions(
+    root: ET.Element, properties: dict[str, str]
+) -> dict[tuple[str, str], str]:
+    managed_versions: dict[tuple[str, str], str] = {}
     for node in root.iter():
         if _local_name(node.tag) != "dependencyManagement":
             continue
-        for dep in node.iter():
-            if _local_name(dep.tag) != "dependency":
-                continue
-            group_id = _resolve_property(_find_child_text(dep, "groupId"), properties)
-            artifact_id = _resolve_property(
-                _find_child_text(dep, "artifactId"), properties
-            )
-            version = _resolve_property(_find_child_text(dep, "version"), properties)
+        for dep in _iter_dependencies(node):
+            group_id, artifact_id, version = _parse_dependency_coords(dep, properties)
             if group_id and artifact_id and version:
                 managed_versions[(group_id, artifact_id)] = version
+    return managed_versions
+
+
+def parse_pom_xml(content: str) -> list[dict[str, str]]:
+    """Parse Maven pom.xml content into component/version pairs.
+
+    Returns a deterministic, de-duplicated list sorted by component name.
+    """
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError as exc:
+        raise ValueError("Invalid XML format for pom.xml") from exc
+
+    properties = _extract_properties(root)
+    managed_versions = _collect_managed_versions(root, properties)
 
     by_name: dict[str, str] = {}
     duplicates: dict[str, int] = defaultdict(int)
 
-    for dep in root.iter():
-        if _local_name(dep.tag) != "dependency":
-            continue
-
-        artifact_id = _resolve_property(_find_child_text(dep, "artifactId"), properties)
-        group_id = _resolve_property(_find_child_text(dep, "groupId"), properties)
-        version = _resolve_property(_find_child_text(dep, "version"), properties)
+    for dep in _iter_dependencies(root):
+        group_id, artifact_id, version = _parse_dependency_coords(dep, properties)
 
         if not version and group_id and artifact_id:
             version = managed_versions.get((group_id, artifact_id))
