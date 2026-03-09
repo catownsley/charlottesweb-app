@@ -901,6 +901,11 @@
             e.preventDefault();
             e.stopPropagation();
 
+            // Clear manifest upload state for fresh start
+            // (prevents pom.xml content from persisting across different orgs)
+            manifestContentInput.value = '';
+            manifestFileInput.value = '';
+
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Analyzing...';
 
@@ -1191,6 +1196,10 @@
                 // Clear existing components
                 componentsContainer.innerHTML = '';
                 componentCounter = 0;
+
+                // Clear manifest upload state
+                manifestContentInput.value = '';
+                manifestFileInput.value = '';
 
                 // Fill organization name
                 document.getElementById('orgName').value = 'Healthcare Corp Demo';
