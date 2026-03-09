@@ -233,3 +233,51 @@ def test_get_assessment_status(client):
     assert status_data["progress_percent"] == 100
     assert "current_step" in status_data
     assert "findings_count" in status_data
+
+
+def test_get_assessment_findings_filters_and_sort(client):
+    """Test findings endpoint filtering and sorting options."""
+    org_response = client.post("/api/v1/organizations", json={"name": "Filter Org"})
+    org_id = org_response.json()["id"]
+
+    profile_response = client.post(
+        "/api/v1/metadata-profiles",
+        json={
+            "organization_id": org_id,
+            "infrastructure": {
+                "encryption_at_rest": False,
+                "tls_enabled": False,
+            },
+            "access_controls": {"mfa_enabled": False},
+        },
+    )
+    profile_id = profile_response.json()["id"]
+
+    assessment_response = client.post(
+        "/api/v1/assessments",
+        json={
+            "organization_id": org_id,
+            "metadata_profile_id": profile_id,
+        },
+    )
+    assert assessment_response.status_code == 201
+    assessment_id = assessment_response.json()["id"]
+
+    filtered_response = client.get(
+        f"/api/v1/assessments/{assessment_id}/findings"
+        "?priority_window=immediate&sort_by=severity&sort_order=desc"
+    )
+    assert filtered_response.status_code == 200
+    filtered_findings = filtered_response.json()
+    assert isinstance(filtered_findings, list)
+    assert all(f["priority_window"] == "immediate" for f in filtered_findings)
+
+    domain_response = client.get(
+        f"/api/v1/assessments/{assessment_id}/findings?control_domain=technical"
+    )
+    assert domain_response.status_code == 200
+    domain_findings = domain_response.json()
+    assert isinstance(domain_findings, list)
+    assert all(
+        "technical" in (f.get("control_domain") or "").lower() for f in domain_findings
+    )
