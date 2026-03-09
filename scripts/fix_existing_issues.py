@@ -1,4 +1,5 @@
 """Update existing GitHub issues to remove local path references."""
+
 import json
 import re
 import subprocess
@@ -13,13 +14,21 @@ def run(cmd: list[str]) -> str:
 
 def main() -> None:
     # Fetch all issues with their bodies
-    issues_json = run([
-        GH, "issue", "list",
-        "--repo", REPO,
-        "--state", "all",
-        "--limit", "300",
-        "--json", "number,title,body"
-    ])
+    issues_json = run(
+        [
+            GH,
+            "issue",
+            "list",
+            "--repo",
+            REPO,
+            "--state",
+            "all",
+            "--limit",
+            "300",
+            "--json",
+            "number,title,body",
+        ]
+    )
     issues = json.loads(issues_json)
 
     updated = []
@@ -30,7 +39,10 @@ def main() -> None:
         body = issue["body"]
 
         # Check if body contains local path reference
-        if "/Users/ct/Python/charlottesweb-app/" in body or "Source: docs/tickets/" in body:
+        if (
+            "/Users/ct/Python/charlottesweb-app/" in body
+            or "Source: docs/tickets/" in body
+        ):
             # Remove lines starting with "Source:"
             lines = body.split("\n")
             clean_lines = []
@@ -41,22 +53,31 @@ def main() -> None:
 
             # Also convert "Phase: X" to "**Phase:** X" for consistency
             clean_body = "\n".join(clean_lines)
-            clean_body = re.sub(r'^Phase:\s+', '**Phase:** ', clean_body, flags=re.MULTILINE)
+            clean_body = re.sub(
+                r"^Phase:\s+", "**Phase:** ", clean_body, flags=re.MULTILINE
+            )
 
             # Remove any extra blank lines
-            clean_body = re.sub(r'\n{3,}', '\n\n', clean_body).strip()
+            clean_body = re.sub(r"\n{3,}", "\n\n", clean_body).strip()
 
             # Update the issue
             try:
-                run([
-                    GH, "issue", "edit", str(number),
-                    "--repo", REPO,
-                    "--body", clean_body
-                ])
+                run(
+                    [
+                        GH,
+                        "issue",
+                        "edit",
+                        str(number),
+                        "--repo",
+                        REPO,
+                        "--body",
+                        clean_body,
+                    ]
+                )
                 updated.append((number, title))
-                print(f"✓ Updated #{number}: {title}")
+                print(f"Updated #{number}: {title}")
             except Exception as e:
-                print(f"✗ Failed #{number}: {e}")
+                print(f"Failed #{number}: {e}")
 
     print(f"\n{len(updated)} issues updated successfully")
 

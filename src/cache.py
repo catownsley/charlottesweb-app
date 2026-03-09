@@ -15,9 +15,10 @@ Typical Use Case:
 - Not suitable for: User-specific data, frequently changing entities
 
 Tradeoffs:
-✓ No external service dependency, instant hits on cache match
-✗ Lost on server restart, not shared across instances
++ No external service dependency, instant hits on cache match
+- Lost on server restart, not shared across instances
 """
+
 import logging
 import time
 from collections.abc import Callable
@@ -105,7 +106,9 @@ class TTLCache:
         self.invalidate()
 
 
-def cached(cache: TTLCache, key: str, ttl: int | None = None) -> Callable[[Callable[..., T]], Callable[..., T]]:
+def cached(
+    cache: TTLCache, key: str, ttl: int | None = None
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator for caching function results.
 
     Args:

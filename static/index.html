@@ -614,7 +614,7 @@
 
                 <!-- Add Component Button -->
                 <button type="button" id="addComponentBtn" style="margin-top: 10px; background: #28a745;">
-                    ➕ Add Component
+                    Add Component
                 </button>
 
                 <div class="help-text" style="margin-top: 15px;">
@@ -624,14 +624,14 @@
                 <!-- Submit Button -->
                 <div style="display: flex; align-items: center; margin-top: 20px;">
                     <button type="submit" id="submitBtn">
-                        🔍 Analyze for Vulnerabilities
+                        Analyze for Vulnerabilities
                     </button>
                     <button type="button" id="tryDemoBtn" class="btn-secondary">
-                        🎬 Try Demo
+                        Try Demo
                     </button>
                 </div>
                 <div class="help-text" style="margin-top: 8px;">
-                    💡 Try Demo loads real vulnerable software to showcase threat intelligence
+                    Try Demo loads real vulnerable software to showcase threat intelligence
                 </div>
             </form>
         </div>
@@ -707,7 +707,7 @@
                     >
                 </div>
                 <button type="button" class="delete-component">
-                    ✕
+                    ×
                 </button>
             `;
 
@@ -941,7 +941,7 @@
                     stack[name] = version;
                 }
 
-                console.log('📦 Final stack:', stack);
+                console.log('Final stack:', stack);
 
                 // Require at least one component
                 if (Object.keys(stack).length === 0) {
@@ -969,7 +969,7 @@
                 }
 
                 const org = await orgRes.json();
-                console.log('✅ Organization created:', org.id);
+                console.log('Organization created:', org.id);
 
                 // Step 2: Create metadata profile
                 showLoading('Creating metadata profile...', 40);
@@ -990,7 +990,7 @@
                 }
 
                 const profile = await profileRes.json();
-                console.log('✅ Metadata profile created:', profile.id);
+                console.log('Metadata profile created:', profile.id);
 
                 // Step 3: Create assessment
                 showLoading('Creating assessment...', 60);
@@ -1010,7 +1010,7 @@
                 }
 
                 const assess = await assessRes.json();
-                console.log('✅ Assessment created:', assess.id);
+                console.log('Assessment created:', assess.id);
 
                 const statusRes = await fetch(`/api/v1/assessments/${assess.id}/status`);
                 let runStatus = null;
@@ -1039,7 +1039,7 @@
                 }
 
                 const findings = await nvdRes.json();
-                console.log('✅ NVD analysis complete:', findings.length, 'findings');
+                console.log('NVD analysis complete:', findings.length, 'findings');
 
                 const finalStatusRes = await fetch(`/api/v1/assessments/${assess.id}/status`);
                 if (finalStatusRes.ok) {
@@ -1054,7 +1054,7 @@
                 console.error('Analysis failed:', err);
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.textContent = '🔍 Analyze for Vulnerabilities';
+                submitBtn.textContent = 'Analyze for Vulnerabilities';
             }
             })(); // End of async IIFE
         });
@@ -1080,7 +1080,7 @@
         function showError(message) {
             resultDiv.classList.remove('hidden', 'loading', 'success');
             resultDiv.classList.add('error');
-            resultDiv.innerHTML = `<h3>❌ Analysis Failed</h3><p>${message}</p>`;
+            resultDiv.innerHTML = `<h3>Analysis Failed</h3><p>${message}</p>`;
         }
 
         // Try Demo button - loads real vulnerable software
@@ -1149,10 +1149,10 @@
 
         function buildFindingsListMarkup(findings) {
             if (!findings || findings.length === 0) {
-                return '<p style="color: #28a745; font-weight: 600;">✅ No findings match the selected filters.</p>';
+                return '<p style="color: #28a745; font-weight: 600;">No findings match the selected filters.</p>';
             }
 
-            let findingsHtml = '<h4>🔍 Vulnerabilities Found:</h4><ul class="findings-list">';
+            let findingsHtml = '<h4>Vulnerabilities Found:</h4><ul class="findings-list">';
 
             findings.slice(0, 10).forEach((finding, index) => {
                 const severityClass = getFindingSeverityClass(finding);
@@ -1187,7 +1187,7 @@
                     findingsHtml += `<div class="threat-context">`;
 
                     if (finding.threat_context.summary) {
-                        findingsHtml += `<div class="threat-summary">💡 ${finding.threat_context.summary}</div>`;
+                        findingsHtml += `<div class="threat-summary">${finding.threat_context.summary}</div>`;
                     }
 
                     finding.threat_context.techniques.forEach(technique => {
@@ -1196,7 +1196,7 @@
                                target="_blank"
                                class="mitre-technique"
                                rel="noopener noreferrer">
-                                🎯 ${technique.id}: ${technique.name}
+                                ${technique.id}: ${technique.name}
                             </a>
                         `;
 
@@ -1204,7 +1204,7 @@
                             const breach = technique.breach_example;
                             findingsHtml += `
                                 <div class="breach-example">
-                                    🚨 <strong>Real-World Impact:</strong> ${breach.breach}
+                                    <strong>Real-World Impact:</strong> ${breach.breach}
                                     <div class="breach-impact">
                                         ${breach.impact} (${breach.date})
                                     </div>
@@ -1216,7 +1216,7 @@
                             const mitigation = technique.primary_mitigation;
                             findingsHtml += `
                                 <div class="mitigation-hint">
-                                    ✅ <strong>Recommended Action:</strong> ${mitigation.name}
+                                    <strong>Recommended Action:</strong> ${mitigation.name}
                                 </div>
                             `;
                         }
@@ -1230,7 +1230,7 @@
                             <strong>Remediation:</strong> ${guidanceText}
                         </div>
                         ${finding.external_id ? `<p style="margin: 8px 0 0 0; font-size: 12px; color: #007bff;">
-                            📚 <a href="https://nvd.nist.gov/vuln/detail/${finding.external_id}" target="_blank" rel="noopener noreferrer">
+                            <a href="https://nvd.nist.gov/vuln/detail/${finding.external_id}" target="_blank" rel="noopener noreferrer">
                                 View full details on NVD
                             </a>
                         </p>` : ''}
@@ -1255,7 +1255,7 @@
 
             if (!assessmentId || !container) return;
 
-            container.innerHTML = '<p>⏳ Applying filters...</p>';
+            container.innerHTML = '<p>Applying filters...</p>';
 
             const params = new URLSearchParams();
             if (severity) params.set('severity', severity);
@@ -1275,7 +1275,7 @@
                     window.currentAssessment.filteredFindings = filteredFindings;
                 }
             } catch (error) {
-                container.innerHTML = '<p style="color:#b00020;">❌ Failed to apply filters. Please try again.</p>';
+                container.innerHTML = '<p style="color:#b00020;">Failed to apply filters. Please try again.</p>';
             }
         }
 
@@ -1301,7 +1301,7 @@
             window.currentAssessment = { stack, findings, org, assessmentId };
 
             let html = `
-                <h3>✅ Analysis Complete</h3>`;
+                <h3>Analysis Complete</h3>`;
 
             // Show notification if versions were auto-selected
             if (defaultedVersions && defaultedVersions.length > 0) {
@@ -1310,15 +1310,15 @@
                     .join(', ');
                 html += `
                 <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #856404;">
-                    <strong>ℹ️ Auto-detected versions:</strong> ${versionsList}
+                    <strong>Auto-detected versions:</strong> ${versionsList}
                     <div style="font-size: 12px; margin-top: 6px;">You can re-run the analysis with different versions if needed.</div>
                 </div>`;
             }
 
             html += `
                 <div class="export-buttons">
-                    <button onclick="exportJSON()" title="Download findings as JSON">📥 Export JSON</button>
-                    <button onclick="exportReport()" title="Download human-readable report">📄 Export Report</button>
+                    <button onclick="exportJSON()" title="Download findings as JSON">Export JSON</button>
+                    <button onclick="exportReport()" title="Download human-readable report">Export Report</button>
                 </div>
                 ${runStatus ? `
                 <div style="background: #eef4ff; border-left: 4px solid #667eea; padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 14px;">
@@ -1343,7 +1343,7 @@
                 <p><strong>Components:</strong> ${Object.keys(stack).map(k => `${k} ${stack[k]}`).join(', ')}</p>
 
                 <div style="background: #e8f5e9; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #28a745;">
-                    <h4 style="margin-top: 0; color: #2e7d32;">🎯 Evidence Automation Ready</h4>
+                    <h4 style="margin-top: 0; color: #2e7d32;">Evidence Automation Ready</h4>
                     <p style="margin-bottom: 0; font-size: 14px;">
                         Evidence checklists are now available for this organization's assessments.
                         Use the API endpoints to track audit evidence collection and generate compliance reports.
@@ -1363,12 +1363,12 @@
             `;
 
             if (findings.length === 0) {
-                html += '<p style="color: #28a745; font-weight: 600;">✅ No known vulnerabilities found!</p>';
+                html += '<p style="color: #28a745; font-weight: 600;">No known vulnerabilities found!</p>';
             } else {
                 // Add guidance section
                 html += `
                     <div class="guidance-box">
-                        <h4>📋 Next Steps & Remediation Guidance</h4>
+                        <h4>Next Steps & Remediation Guidance</h4>
                         <ul>
                             <li><strong>Priority Windows:</strong> Address CRITICAL/HIGH findings within immediate/30-day timeframes</li>
                             <li><strong>Threat Intelligence:</strong> Purple cards show MITRE ATT&CK techniques with real breach examples</li>
@@ -1682,107 +1682,74 @@
             URL.revokeObjectURL(url);
         }
 
-        function exportReport() {
+        async function exportReport() {
             if (!window.currentAssessment) return;
 
-            const { org, stack, findings, assessmentId } = window.currentAssessment;
-            const date = new Date().toLocaleDateString();
+            const { assessmentId } = window.currentAssessment;
 
-            let report = `========================================
-VULNERABILITY ASSESSMENT REPORT
-========================================
+            try {
+                showLoading('Generating report...', 85);
 
-Organization: ${org.name}
-Organization ID: ${org.id}
-Assessment ID: ${assessmentId}
-Report Date: ${date}
-Generated by: CharlottesWeb Vulnerability Analyzer
+                const createResponse = await fetch(`/api/v1/assessments/${encodeURIComponent(assessmentId)}/reports`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
 
-========================================
-SOFTWARE STACK ANALYZED
-========================================
-
-${Object.entries(stack).map(([name, version]) => `  • ${name} ${version}`).join('\n')}
-
-========================================
-EXECUTIVE SUMMARY
-========================================
-
-Total Vulnerabilities: ${findings.length}
-  • Critical (CVSS 9.0+): ${findings.filter(f => f.cvss_score >= 9).length}
-  • High (CVSS 7.0-8.9): ${findings.filter(f => f.cvss_score >= 7 && f.cvss_score < 9).length}
-  • Medium (CVSS 4.0-6.9): ${findings.filter(f => f.cvss_score >= 4 && f.cvss_score < 7).length}
-  • Low (CVSS 0.0-3.9): ${findings.filter(f => f.cvss_score < 4).length}
-
-========================================
-DETAILED FINDINGS
-========================================
-\n`;
-
-            findings.forEach((finding, index) => {
-                const severity = finding.cvss_score >= 9 ? 'CRITICAL'
-                              : finding.cvss_score >= 7 ? 'HIGH'
-                              : finding.cvss_score >= 4 ? 'MEDIUM'
-                              : 'LOW';
-
-                report += `\n[${index + 1}] ${finding.external_id} - ${severity}\n`;
-                report += `${'='.repeat(80)}\n`;
-                report += `Title: ${finding.title}\n`;
-                report += `CVSS Score: ${finding.cvss_score || 'N/A'}\n`;
-                report += `Priority: ${finding.priority_window}\n`;
-                report += `\nDescription:\n${finding.description}\n`;
-
-                if (finding.threat_context && finding.threat_context.techniques) {
-                    report += `\n--- THREAT INTELLIGENCE ---\n`;
-                    report += `${finding.threat_context.summary}\n\n`;
-
-                    finding.threat_context.techniques.forEach(tech => {
-                        report += `MITRE ATT&CK Technique: ${tech.id} - ${tech.name}\n`;
-                        report += `Tactics: ${tech.tactics ? tech.tactics.join(', ') : 'N/A'}\n`;
-
-                        if (tech.breach_example) {
-                            report += `\nReal-World Breach:\n`;
-                            report += `  ${tech.breach_example.breach}\n`;
-                            report += `  Impact: ${tech.breach_example.impact}\n`;
-                            report += `  Date: ${tech.breach_example.date}\n`;
-                        }
-
-                        if (tech.primary_mitigation) {
-                            report += `\nRecommended Mitigation:\n`;
-                            report += `  ${tech.primary_mitigation.name}\n`;
-                            if (tech.primary_mitigation.description) {
-                                report += `  ${tech.primary_mitigation.description}\n`;
-                            }
-                        }
-                        report += `\nMITRE Reference: https://attack.mitre.org/techniques/${tech.id}/\n`;
-                    });
+                if (!createResponse.ok) {
+                    const errData = await createResponse.json().catch(() => ({}));
+                    throw new Error(errData.detail || 'Failed to generate report');
                 }
 
-                report += `\nNVD Reference: https://nvd.nist.gov/vuln/detail/${finding.external_id}\n`;
-                report += `\n`;
-            });
+                const reportJob = await createResponse.json();
+                let statusData = null;
 
-            report += `\n========================================
-NEXT STEPS
-========================================
+                for (let attempt = 0; attempt < 8; attempt++) {
+                    showLoading(`Generating report... (${attempt + 1}/8)`, 88 + attempt);
 
-1. IMMEDIATE (Critical/High): Address within priority windows
-2. THREAT CONTEXT: Review MITRE ATT&CK techniques and breach examples
-3. MITIGATIONS: Implement recommended countermeasures
-4. COMPLIANCE: Document remediation for HIPAA audit evidence
-5. MONITORING: Regularly re-scan stack for new vulnerabilities
+                    const statusResponse = await fetch(
+                        `/api/v1/assessments/${encodeURIComponent(assessmentId)}/reports/${encodeURIComponent(reportJob.report_id)}/status`
+                    );
 
-========================================
-END OF REPORT
-========================================\n`;
+                    if (!statusResponse.ok) {
+                        throw new Error('Failed to fetch report status');
+                    }
 
-            const blob = new Blob([report], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `vulnerability-report-${org.id}-${new Date().toISOString().split('T')[0]}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
+                    statusData = await statusResponse.json();
+                    if (statusData.status === 'completed' && statusData.download_url) {
+                        break;
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                if (!statusData || !statusData.download_url) {
+                    throw new Error('Report generation did not complete in time');
+                }
+
+                const downloadResponse = await fetch(statusData.download_url);
+                if (!downloadResponse.ok) {
+                    const errData = await downloadResponse.json().catch(() => ({}));
+                    throw new Error(errData.detail || 'Failed to download report');
+                }
+
+                const reportText = await downloadResponse.text();
+                const blob = new Blob([reportText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `assessment-report-${assessmentId}-${new Date().toISOString().split('T')[0]}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                showLoading('Report downloaded successfully.', 100);
+                setTimeout(() => {
+                    if (resultDiv.classList.contains('loading')) {
+                        resultDiv.classList.remove('loading');
+                    }
+                }, 900);
+            } catch (error) {
+                showError(`Report export failed: ${error.message}`);
+            }
         }
     </script>
 </body>

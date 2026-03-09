@@ -417,6 +417,22 @@ class TestAssessments:
         )
         assert response.status_code == 400
 
+    def test_get_report_status_not_found(self, client, org_data, metadata_profile_data):
+        """Test report status returns 404 for unknown report id."""
+        create_response = client.post(
+            "/api/v1/assessments",
+            json={
+                "organization_id": org_data["id"],
+                "metadata_profile_id": metadata_profile_data["id"],
+            },
+        )
+        assessment_id = create_response.json()["id"]
+
+        response = client.get(
+            f"/api/v1/assessments/{assessment_id}/reports/missing-report/status"
+        )
+        assert response.status_code == 404
+
     def test_get_remediation_roadmap(self, client, org_data, metadata_profile_data):
         """Test remediation roadmap generation."""
         # Create assessment with gaps

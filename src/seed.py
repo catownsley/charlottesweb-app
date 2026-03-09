@@ -1,4 +1,5 @@
 """Seed database with initial HIPAA controls and healthcare-specific evidence requirements."""
+
 from datetime import datetime, timedelta
 
 from src.database import Base, SessionLocal, engine
@@ -51,7 +52,10 @@ def seed_controls():
                 "Implement a mechanism to encrypt and decrypt electronic protected health information."
             ),
             category="Technical Safeguards",
-            evidence_types=["encryption_at_rest_configuration", "encryption_key_management"],
+            evidence_types=[
+                "encryption_at_rest_configuration",
+                "encryption_key_management",
+            ],
         ),
         Control(
             id="HIPAA.164.312(e)(1)",
@@ -109,7 +113,11 @@ def seed_controls():
                 "and their outcomes."
             ),
             category="Administrative Safeguards",
-            evidence_types=["incident_response_plan", "incident_logs", "breach_notification_procedures"],
+            evidence_types=[
+                "incident_response_plan",
+                "incident_logs",
+                "breach_notification_procedures",
+            ],
         ),
         Control(
             id="HIPAA.164.310(a)(1)",
@@ -133,7 +141,10 @@ def seed_controls():
                 "where it might be accessed."
             ),
             category="Administrative Safeguards",
-            evidence_types=["workforce_authorization_records", "access_review_documentation"],
+            evidence_types=[
+                "workforce_authorization_records",
+                "access_review_documentation",
+            ],
         ),
         # Healthcare-specific controls (real-time medical AI translation)
         Control(
@@ -353,7 +364,9 @@ def seed_controls():
         db.add(control)
 
     db.commit()
-    print(f"✓ Successfully seeded {len(controls)} controls (10 HIPAA + 11 healthcare-specific).")
+    print(
+        f"Successfully seeded {len(controls)} controls (10 HIPAA + 11 healthcare-specific)."
+    )
 
     # First, create an organization and metadata profile for the sample assessment
     org = Organization(
@@ -396,7 +409,7 @@ def seed_controls():
     )
     db.add(assessment)
     db.commit()
-    print(f"✓ Created sample assessment: {assessment.id}")
+    print(f"Created sample assessment: {assessment.id}")
 
     # Create sample findings (vulnerabilities from analysis)
     sample_findings = [
@@ -471,7 +484,7 @@ def seed_controls():
     for finding in sample_findings:
         db.add(finding)
     db.commit()
-    print(f"✓ Created {len(sample_findings)} sample findings for assessment")
+    print(f"Created {len(sample_findings)} sample findings for assessment")
 
     # Create sample evidence records (what auditor would collect)
     sample_evidence = [
@@ -594,11 +607,11 @@ def seed_controls():
     for evidence in sample_evidence:
         db.add(evidence)
     db.commit()
-    print(f"✓ Created {len(sample_evidence)} sample evidence records")
+    print(f"Created {len(sample_evidence)} sample evidence records")
 
     db.close()
     print(
-        "\n✅ Seed complete! Assessment 'org-sample-q1-2026' ready for testing."
+        "\nSeed complete! Assessment 'org-sample-q1-2026' ready for testing."
         "\nAccess the evidence checklist at /api/v1/assessments/org-sample-q1-2026/evidence-checklist"
     )
 
