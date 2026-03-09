@@ -1,4 +1,5 @@
 """API routes for CharlottesWeb."""
+
 from fastapi import APIRouter
 
 from src.routers import (
@@ -9,6 +10,7 @@ from src.routers import (
     health,
     metadata_profiles,
     organizations,
+    risk,
 )
 
 router = APIRouter()
@@ -21,3 +23,4 @@ router.include_router(metadata_profiles.router)
 router.include_router(controls.router)
 router.include_router(assessments.router)
 router.include_router(evidence.router)
+router.include_router(risk.router)

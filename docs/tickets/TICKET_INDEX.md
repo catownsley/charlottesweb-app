@@ -13,6 +13,9 @@
 - CW-105: Add risk scoring and prioritization
 - CW-106: Generate remediation roadmap output
 
+## Phase 1.5 – Compliance + Threat Convergence ✅ **COMPLETE (v1)**
+- CW-107: Prioritized risk backlog endpoint (HIPAA-first)
+
 ## Phase 2 – Audit Evidence Automation 🚧 **IN PROGRESS** (50%)
 - CW-201: Control-to-evidence mapping model
 - CW-202: Evidence checklist generation
@@ -34,3 +37,8 @@
 - CW-501: Scheduled re-assessment jobs
 - CW-502: Delta risk detection and alerts
 - CW-503: Posture timeline and trend reporting
+
+## Phase 5.5 – Dynamic Regulatory Intelligence ⏸️ **PLANNED**
+- CW-504: Dynamic HIPAA feed ingestion and versioning
+- CW-505: Regulation adapter framework (SOC 2, PCI DSS, GDPR, etc.)
+- CW-506: Data-lifecycle based regulation applicability inference

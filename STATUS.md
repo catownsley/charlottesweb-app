@@ -36,6 +36,19 @@ All core compliance intelligence features working.
 
 **Status**: Fully operational. Core intelligence working end-to-end.
 
+### Phase 1.5: Compliance + Threat Convergence (NEW)
+
+- **CW-107**: Prioritized risk backlog endpoint (HIPAA-first) DONE
+
+**Completed**:
+- New endpoint: `GET /api/v1/risk/prioritized-backlog`
+- Reuses existing assessment/finding/evidence/control data (no breaking migrations)
+- Computes control confidence, threat pressure, and residual risk per control
+- Returns deterministic prioritized engineering backlog
+- Includes secure scoring bounds and scope validation
+
+**Status**: Operational and ready for product workflow integration.
+
 ---
 
 ## Phase 2: Audit Evidence (40-50% Complete)
@@ -137,6 +150,17 @@ Not started. Requires job scheduler implementation.
 - No export of trend reports
 
 **Status**: Not started. Requires architectural decisions on job queue selection.
+
+### Phase 5.5: Dynamic Regulatory Intelligence (Planned)
+
+- **CW-504**: Dynamic HIPAA regulatory feed ingestion
+- **CW-505**: Multi-regulation adapter framework (HIPAA-first, extensible)
+- **CW-506**: Data-lifecycle driven regulation applicability inference
+
+**Vision**:
+- Replace static requirement catalogs with versioned regulatory feeds.
+- Infer applicable controls from customer data lifecycle metadata:
+	sourcing, processing, storage, destruction, and geolocation.
 
 ---
 
