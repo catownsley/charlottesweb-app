@@ -46,6 +46,7 @@ from src.models import (
     Finding,
     MetadataProfile,
     Organization,
+    OrganizationMember,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,7 @@ logger = logging.getLogger(__name__)
 # Import model classes so SQLAlchemy registers all tables before create_all()
 REGISTERED_MODEL_CLASSES = (
     Organization,
+    OrganizationMember,
     MetadataProfile,
     Control,
     Assessment,
