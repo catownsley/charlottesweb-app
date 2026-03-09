@@ -823,6 +823,23 @@
         // Add initial component field
         addComponentBtn.click();
 
+        // When file is uploaded, display its contents in the textarea
+        manifestFileInput.addEventListener('change', async (e) => {
+            const selectedFile = e.target.files && e.target.files.length > 0
+                ? e.target.files[0]
+                : null;
+
+            if (selectedFile) {
+                try {
+                    const fileContent = await selectedFile.text();
+                    manifestContentInput.value = fileContent;
+                } catch (error) {
+                    console.error('Failed to read file:', error);
+                    alert('Failed to read file content');
+                }
+            }
+        });
+
         importManifestBtn.addEventListener('click', async (e) => {
             e.preventDefault();
 
