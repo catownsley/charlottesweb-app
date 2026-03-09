@@ -3,6 +3,7 @@
 ## CW-301 Auth and organization onboarding
 - Type: Fullstack
 - Priority: P0
+- Status: ✅ Complete (PR #31)
 - Outcome: User auth and organization setup flow.
 - Acceptance:
 - New org can register and create profile
@@ -11,6 +12,7 @@
 ## CW-302 Assessment run workflow UI
 - Type: Frontend
 - Priority: P0
+- Status: ✅ Complete (PR #32)
 - Outcome: Guided form to submit metadata and run assessment.
 - Acceptance:
 - Validation mirrors backend schema
@@ -19,6 +21,7 @@
 ## CW-303 Findings dashboard and filters
 - Type: Frontend
 - Priority: P0
+- Status: 🎯 Next Focus
 - Outcome: Display findings by severity/control/domain.
 - Acceptance:
 - Supports sorting/filtering by priority window
@@ -27,6 +30,7 @@
 ## CW-304 Report download and share flow
 - Type: Frontend/Backend
 - Priority: P1
+- Status: Backlog
 - Outcome: Download executive report and technical appendix.
 - Acceptance:
 - Report generation status visible
