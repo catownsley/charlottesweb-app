@@ -722,16 +722,182 @@
             setManifestStore(store);
         }
 
-        function syncManifestForSelectedOrg() {
+        function populateComponentsFromSoftwareStack(softwareStack) {
+            const entries = Object.entries(softwareStack || {});
+
+            componentsContainer.innerHTML = '';
+
+            entries.forEach(([name, version]) => {
+                const componentName = String(name || '').trim();
+                const componentVersion = String(version || '').trim();
+                if (!componentName || !componentVersion) {
+                    return;
+                }
+                addComponentRow(componentName, componentVersion);
+            });
+
+            if (document.querySelectorAll('.component-row').length === 0) {
+                addComponentRow();
+            }
+        }
+
+        async function loadLatestSoftwareStackForOrgName(orgName) {
+            const normalizedOrgName = String(orgName || '').trim();
+            if (!normalizedOrgName) {
+                return null;
+            }
+
+            const orgLookupResponse = await fetch(`/api/v1/organizations?name=${encodeURIComponent(normalizedOrgName)}`);
+            if (!orgLookupResponse.ok) {
+                return null;
+            }
+
+            const organizations = await orgLookupResponse.json();
+            if (!Array.isArray(organizations) || organizations.length === 0) {
+                return null;
+            }
+
+            const organizationId = organizations[0]?.id;
+            if (!organizationId) {
+                return null;
+            }
+
+            const profileResponse = await fetch(
+                `/api/v1/metadata-profiles/latest?organization_id=${encodeURIComponent(organizationId)}`
+            );
+            if (!profileResponse.ok) {
+                return null;
+            }
+
+            const profile = await profileResponse.json();
+            return profile.software_stack && typeof profile.software_stack === 'object'
+                ? profile.software_stack
+                : null;
+        }
+
+        async function populateComponentsFromManifest(manifestContent, { replaceExisting = true, showAlert = false } = {}) {
+            const content = String(manifestContent || '').trim();
+            if (!content) {
+                return;
+            }
+
+            const response = await fetch('/api/v1/components/ingest-manifest', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    format: 'pom_xml',
+                    content: content
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || 'Failed to import manifest');
+            }
+
+            if (replaceExisting) {
+                componentsContainer.innerHTML = '';
+                data.components.forEach((component) => {
+                    const name = String(component.name || '').trim();
+                    const version = String(component.version || '').trim();
+                    if (!name || !version) {
+                        return;
+                    }
+                    addComponentRow(name, version);
+                });
+
+                if (document.querySelectorAll('.component-row').length === 0) {
+                    addComponentRow();
+                }
+
+                if (showAlert) {
+                    alert(`Imported ${data.total_components} components from pom.xml (replaced existing list)`);
+                }
+                return;
+            }
+
+            const existingRows = Array.from(document.querySelectorAll('.component-row'));
+            const existingByName = new Map();
+
+            existingRows.forEach((row) => {
+                const nameInput = row.querySelector('.component-name');
+                const versionInput = row.querySelector('.component-version');
+                const name = nameInput && nameInput.value ? nameInput.value.trim().toLowerCase() : '';
+                const version = versionInput && versionInput.value ? versionInput.value.trim() : '';
+
+                if (!name && !version) {
+                    row.remove();
+                    return;
+                }
+
+                if (name && !existingByName.has(name)) {
+                    existingByName.set(name, { nameInput, versionInput });
+                }
+            });
+
+            let mergedCount = 0;
+            let addedCount = 0;
+
+            data.components.forEach((component) => {
+                const name = String(component.name || '').trim();
+                const version = String(component.version || '').trim();
+                const key = name.toLowerCase();
+
+                if (!name || !version) {
+                    return;
+                }
+
+                const existing = existingByName.get(key);
+                if (existing && existing.versionInput) {
+                    existing.versionInput.value = version;
+                    mergedCount += 1;
+                } else {
+                    addComponentRow(name, version);
+                    addedCount += 1;
+                }
+            });
+
+            if (document.querySelectorAll('.component-row').length === 0) {
+                addComponentRow();
+            }
+
+            if (showAlert) {
+                alert(`Imported ${data.total_components} components from pom.xml (${mergedCount} updated, ${addedCount} added)`);
+            }
+        }
+
+        async function syncManifestForSelectedOrg() {
             if (!orgNameInput) {
                 return;
             }
-            const savedManifest = getSavedManifestForOrg(orgNameInput.value);
+            const currentOrgName = orgNameInput.value;
+            const savedManifest = getSavedManifestForOrg(currentOrgName);
             if (savedManifest) {
                 manifestContentInput.value = savedManifest;
+                manifestFileInput.value = '';
+                try {
+                    await populateComponentsFromManifest(savedManifest, {
+                        replaceExisting: true,
+                        showAlert: false
+                    });
+                } catch (error) {
+                    console.warn('Failed to restore dependencies from saved manifest:', error);
+                }
             } else {
                 manifestContentInput.value = '';
                 manifestFileInput.value = '';
+
+                try {
+                    const savedSoftwareStack = await loadLatestSoftwareStackForOrgName(currentOrgName);
+                    if (savedSoftwareStack) {
+                        populateComponentsFromSoftwareStack(savedSoftwareStack);
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('Failed to restore dependencies from latest profile:', error);
+                }
+
+                populateComponentsFromSoftwareStack({});
             }
         }
 
@@ -996,11 +1162,11 @@
         });
 
         if (orgNameInput) {
-            orgNameInput.addEventListener('change', () => {
-                syncManifestForSelectedOrg();
+            orgNameInput.addEventListener('change', async () => {
+                await syncManifestForSelectedOrg();
             });
-            orgNameInput.addEventListener('blur', () => {
-                syncManifestForSelectedOrg();
+            orgNameInput.addEventListener('blur', async () => {
+                await syncManifestForSelectedOrg();
             });
         }
 
@@ -1025,87 +1191,11 @@
             importManifestBtn.textContent = 'Importing...';
 
             try {
-                const response = await fetch('/api/v1/components/ingest-manifest', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        format: 'pom_xml',
-                        content: manifestContent
-                    })
-                });
-
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.detail || 'Failed to import manifest');
-                }
-
                 const replaceMode = !!(replaceManifestModeInput && replaceManifestModeInput.checked);
-
-                if (replaceMode) {
-                    componentsContainer.innerHTML = '';
-                    data.components.forEach((component) => {
-                        const name = String(component.name || '').trim();
-                        const version = String(component.version || '').trim();
-                        if (!name || !version) {
-                            return;
-                        }
-                        addComponentRow(name, version);
-                    });
-
-                    if (document.querySelectorAll('.component-row').length === 0) {
-                        addComponentRow();
-                    }
-
-                    alert(`Imported ${data.total_components} components from pom.xml (replaced existing list)`);
-                    return;
-                }
-
-                const existingRows = Array.from(document.querySelectorAll('.component-row'));
-                const existingByName = new Map();
-
-                existingRows.forEach((row) => {
-                    const nameInput = row.querySelector('.component-name');
-                    const versionInput = row.querySelector('.component-version');
-                    const name = nameInput && nameInput.value ? nameInput.value.trim().toLowerCase() : '';
-                    const version = versionInput && versionInput.value ? versionInput.value.trim() : '';
-
-                    if (!name && !version) {
-                        row.remove();
-                        return;
-                    }
-
-                    if (name && !existingByName.has(name)) {
-                        existingByName.set(name, { nameInput, versionInput });
-                    }
+                await populateComponentsFromManifest(manifestContent, {
+                    replaceExisting: replaceMode,
+                    showAlert: true
                 });
-
-                let mergedCount = 0;
-                let addedCount = 0;
-
-                data.components.forEach((component) => {
-                    const name = String(component.name || '').trim();
-                    const version = String(component.version || '').trim();
-                    const key = name.toLowerCase();
-
-                    if (!name || !version) {
-                        return;
-                    }
-
-                    const existing = existingByName.get(key);
-                    if (existing && existing.versionInput) {
-                        existing.versionInput.value = version;
-                        mergedCount += 1;
-                    } else {
-                        addComponentRow(name, version);
-                        addedCount += 1;
-                    }
-                });
-
-                if (document.querySelectorAll('.component-row').length === 0) {
-                    addComponentRow();
-                }
-
-                alert(`Imported ${data.total_components} components from pom.xml (${mergedCount} updated, ${addedCount} added)`);
             } catch (error) {
                 alert(`❌ Manifest import failed: ${error.message}`);
             } finally {
