@@ -2,7 +2,7 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import TypedDict
+from typing import Any, TypedDict, cast
 
 import requests
 
@@ -321,6 +321,125 @@ class NVDService:
         except Exception as e:
             logger.error(f"Error extracting versions from NVD: {e}")
             return []
+
+    def get_component_suggestions(
+        self, prefix: str, max_components: int = DEFAULT_MAX_RESULTS
+    ) -> list[str]:
+        """Get component name suggestions from NVD CVE CPE metadata.
+
+        Args:
+            prefix: Starting characters typed by user
+            max_components: Maximum number of component names to return
+
+        Returns:
+            Sorted component names matching the provided prefix
+        """
+        normalized_prefix = prefix.lower().strip()
+        if len(normalized_prefix) < 2:
+            return []
+
+        cache_key = f"component_suggestions:{normalized_prefix}:{max_components}"
+
+        if cache_key in self._cache:
+            cached_data, cached_time = self._cache[cache_key]
+            if datetime.now(UTC) - cached_time < self._cache_ttl:
+                logger.info(f"Cache hit for component suggestions: {normalized_prefix}")
+                return cached_data  # type: ignore[return-value]
+
+        try:
+            params: dict[str, str | int] = {
+                "keywordSearch": normalized_prefix,
+                "resultsPerPage": VERSION_SEARCH_MAX_RESULTS,
+            }
+            response = requests.get(
+                self.BASE_URL,
+                params=params,
+                headers=self.headers,
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+
+            data = response.json()
+            vulnerabilities = data.get("vulnerabilities", [])
+
+            components: set[str] = set()
+            for vuln in vulnerabilities:
+                cve = vuln.get("cve", {})
+                configurations = cve.get("configurations", [])
+
+                for config in configurations:
+                    nodes_raw = config.get("nodes", [])
+                    if not isinstance(nodes_raw, list):
+                        continue
+
+                    nodes_raw_list = cast(list[object], nodes_raw)
+                    nodes: list[dict[str, Any]] = []
+                    for node_item in nodes_raw_list:
+                        if isinstance(node_item, dict):
+                            nodes.append(cast(dict[str, Any], node_item))
+
+                    self._collect_component_names_from_nodes(
+                        nodes=nodes,
+                        prefix=normalized_prefix,
+                        components=components,
+                    )
+
+            sorted_components = sorted(components, key=lambda name: (len(name), name))
+            top_components = sorted_components[:max_components]
+
+            self._cache[cache_key] = (top_components, datetime.now(UTC))
+            logger.info(
+                f"Extracted {len(top_components)} component suggestions for prefix: {normalized_prefix}"
+            )
+            return top_components
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"NVD API request failed for component suggestions: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Error extracting component suggestions from NVD: {e}")
+            return []
+
+    def _collect_component_names_from_nodes(
+        self, nodes: list[dict[str, Any]], prefix: str, components: set[str]
+    ) -> None:
+        """Recursively collect matching component names from NVD configuration nodes."""
+        for node in nodes:
+            cpe_match = node.get("cpeMatch", [])
+            if not isinstance(cpe_match, list):
+                cpe_match = []
+
+            cpe_match_list = cast(list[object], cpe_match)
+            for match_item in cpe_match_list:
+                if not isinstance(match_item, dict):
+                    continue
+
+                match = cast(dict[str, Any], match_item)
+                cpe23uri = str(match.get("criteria", ""))
+                if not cpe23uri:
+                    continue
+
+                # CPE format: cpe:2.3:part:vendor:product:version:...
+                parts = cpe23uri.split(":")
+                if len(parts) < 6:
+                    continue
+
+                product = str(parts[4]).strip().lower()
+                if product and product not in {"*", "-"} and product.startswith(prefix):
+                    components.add(product)
+
+            child_nodes_raw = node.get("children", [])
+            if isinstance(child_nodes_raw, list) and child_nodes_raw:
+                child_nodes_raw_list = cast(list[object], child_nodes_raw)
+                child_nodes: list[dict[str, Any]] = []
+                for child_item in child_nodes_raw_list:
+                    if isinstance(child_item, dict):
+                        child_nodes.append(cast(dict[str, Any], child_item))
+                self._collect_component_names_from_nodes(
+                    nodes=child_nodes,
+                    prefix=prefix,
+                    components=components,
+                )
 
     @staticmethod
     def _parse_version(version_str: str) -> tuple[int, ...]:
