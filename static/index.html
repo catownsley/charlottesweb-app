@@ -875,16 +875,52 @@
                     throw new Error(data.detail || 'Failed to import manifest');
                 }
 
-                componentsContainer.innerHTML = '';
-                data.components.forEach((component) => {
-                    addComponentRow(component.name, component.version);
+                const existingRows = Array.from(document.querySelectorAll('.component-row'));
+                const existingByName = new Map();
+
+                existingRows.forEach((row) => {
+                    const nameInput = row.querySelector('.component-name');
+                    const versionInput = row.querySelector('.component-version');
+                    const name = nameInput && nameInput.value ? nameInput.value.trim().toLowerCase() : '';
+                    const version = versionInput && versionInput.value ? versionInput.value.trim() : '';
+
+                    if (!name && !version) {
+                        row.remove();
+                        return;
+                    }
+
+                    if (name && !existingByName.has(name)) {
+                        existingByName.set(name, { nameInput, versionInput });
+                    }
                 });
 
-                if (data.total_components === 0) {
+                let mergedCount = 0;
+                let addedCount = 0;
+
+                data.components.forEach((component) => {
+                    const name = String(component.name || '').trim();
+                    const version = String(component.version || '').trim();
+                    const key = name.toLowerCase();
+
+                    if (!name || !version) {
+                        return;
+                    }
+
+                    const existing = existingByName.get(key);
+                    if (existing && existing.versionInput) {
+                        existing.versionInput.value = version;
+                        mergedCount += 1;
+                    } else {
+                        addComponentRow(name, version);
+                        addedCount += 1;
+                    }
+                });
+
+                if (document.querySelectorAll('.component-row').length === 0) {
                     addComponentRow();
                 }
 
-                alert(`Imported ${data.total_components} components from pom.xml`);
+                alert(`Imported ${data.total_components} components from pom.xml (${mergedCount} updated, ${addedCount} added)`);
             } catch (error) {
                 alert(`❌ Manifest import failed: ${error.message}`);
             } finally {
