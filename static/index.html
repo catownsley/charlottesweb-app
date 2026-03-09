@@ -662,6 +662,7 @@
         const addComponentBtn = document.getElementById('addComponentBtn');
         const componentsContainer = document.getElementById('componentsContainer');
         const tryDemoBtn = document.getElementById('tryDemoBtn');
+        const orgNameInput = document.getElementById('orgName');
         const manifestFileInput = document.getElementById('manifestFile');
         const manifestContentInput = document.getElementById('manifestContent');
         const replaceManifestModeInput = document.getElementById('replaceManifestMode');
@@ -675,6 +676,54 @@
 
         // Counter for unique component IDs
         let componentCounter = 0;
+
+        function normalizeOrgKey(orgName) {
+            return String(orgName || '').trim().toLowerCase();
+        }
+
+        function getManifestStore() {
+            try {
+                return JSON.parse(sessionStorage.getItem('manifestContentByOrg') || '{}');
+            } catch {
+                return {};
+            }
+        }
+
+        function setManifestStore(store) {
+            sessionStorage.setItem('manifestContentByOrg', JSON.stringify(store));
+        }
+
+        function getSavedManifestForOrg(orgName) {
+            const orgKey = normalizeOrgKey(orgName);
+            if (!orgKey) {
+                return '';
+            }
+            const store = getManifestStore();
+            return store[orgKey] || '';
+        }
+
+        function saveManifestForOrg(orgName, manifestContent) {
+            const orgKey = normalizeOrgKey(orgName);
+            if (!orgKey) {
+                return;
+            }
+            const store = getManifestStore();
+            store[orgKey] = manifestContent;
+            setManifestStore(store);
+        }
+
+        function syncManifestForSelectedOrg() {
+            if (!orgNameInput) {
+                return;
+            }
+            const savedManifest = getSavedManifestForOrg(orgNameInput.value);
+            if (savedManifest) {
+                manifestContentInput.value = savedManifest;
+            } else {
+                manifestContentInput.value = '';
+                manifestFileInput.value = '';
+            }
+        }
 
         // Prevent Enter key from submitting form on input fields (only submit button should trigger submission)
         form.addEventListener('keydown', function(e) {
@@ -838,12 +887,34 @@
                 try {
                     const fileContent = await selectedFile.text();
                     manifestContentInput.value = fileContent;
+                    if (orgNameInput && orgNameInput.value.trim()) {
+                        saveManifestForOrg(orgNameInput.value, fileContent);
+                    }
                 } catch (error) {
                     console.error('Failed to read file:', error);
                     alert('Failed to read file content');
                 }
             }
         });
+
+        manifestContentInput.addEventListener('input', () => {
+            if (!orgNameInput || !orgNameInput.value.trim()) {
+                return;
+            }
+            const content = manifestContentInput.value.trim();
+            if (content) {
+                saveManifestForOrg(orgNameInput.value, content);
+            }
+        });
+
+        if (orgNameInput) {
+            orgNameInput.addEventListener('change', () => {
+                syncManifestForSelectedOrg();
+            });
+            orgNameInput.addEventListener('blur', () => {
+                syncManifestForSelectedOrg();
+            });
+        }
 
         importManifestBtn.addEventListener('click', async (e) => {
             e.preventDefault();
@@ -975,20 +1046,16 @@
                 }
 
                 // Handle manifest persistence per org
-                const lastOrgName = sessionStorage.getItem('lastOrgName');
-                const savedManifest = sessionStorage.getItem('manifestContent');
+                const savedManifest = getSavedManifestForOrg(orgName);
+                const currentManifest = manifestContentInput.value.trim();
 
-                // If switching to a different org, clear old manifest unless user has new content
-                if (lastOrgName && lastOrgName !== orgName && !manifestContentInput.value.trim()) {
-                    // Different org and no new manifest entered - clear it
-                    manifestFileInput.value = '';
-                } else if (manifestContentInput.value.trim()) {
-                    // Save current manifest for this org
-                    sessionStorage.setItem('lastOrgName', orgName);
-                    sessionStorage.setItem('manifestContent', manifestContentInput.value);
-                } else if (savedManifest && lastOrgName === orgName) {
-                    // Same org - restore saved manifest if available
+                if (currentManifest) {
+                    saveManifestForOrg(orgName, currentManifest);
+                } else if (savedManifest) {
                     manifestContentInput.value = savedManifest;
+                } else {
+                    manifestContentInput.value = '';
+                    manifestFileInput.value = '';
                 }
 
                 // Build software stack from component inputs
@@ -1275,8 +1342,10 @@
                 document.getElementById('orgName').value = 'Healthcare Corp Demo';
 
                 // Clear manifest for demo (different org)
-                const lastOrgName = sessionStorage.getItem('lastOrgName');
-                if (lastOrgName !== 'Healthcare Corp Demo') {
+                const savedDemoManifest = getSavedManifestForOrg('Healthcare Corp Demo');
+                if (savedDemoManifest) {
+                    manifestContentInput.value = savedDemoManifest;
+                } else {
                     manifestContentInput.value = '';
                     manifestFileInput.value = '';
                 }
