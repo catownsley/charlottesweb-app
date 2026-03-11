@@ -1,4 +1,4 @@
-"""Comprehensive tests for CharlottesWeb API - Phase 3 test coverage expansion."""
+"""Tests for CharlottesWeb API - Phase 3 test coverage expansion."""
 
 from unittest.mock import patch
 
@@ -16,7 +16,7 @@ from src.models import (
 
 @pytest.fixture(scope="function")
 def test_db(tmp_path):
-    """Create a test database with comprehensive seeding."""
+    """Create a test database with seed data."""
     db_file = tmp_path / "test.db"
     test_db_url = f"sqlite:///{db_file}"
 
@@ -25,7 +25,7 @@ def test_db(tmp_path):
 
     Base.metadata.create_all(bind=engine)
 
-    # Seed controls comprehensively
+    # Seed all controls
     db = testing_session_local()
     controls = [
         Control(

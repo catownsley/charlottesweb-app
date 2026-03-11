@@ -9,7 +9,7 @@ CharlottesWeb automates regulatory mapping by correlating HIPAA requirements wit
 **Production-ready security controls:**
 - API key authentication
 - Rate limiting (60 req/min default)
-- Comprehensive audit logging
+- Audit logging
 - Security headers (HSTS, CSP, etc.)
 - Request tracing
 - Environment-based secrets management
@@ -62,7 +62,7 @@ charlottesweb-app/
 
 ## Getting Started
 
-### For New Contributors or AI Agents
+### For New Contributors
 
 1. **Read the context:**
 - [BUSINESS_PLAN.md](BUSINESS_PLAN.md) - Understand the market, problem, and business model

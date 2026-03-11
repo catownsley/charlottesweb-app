@@ -1,6 +1,6 @@
 """Audit logging service for security and compliance tracking.
 
-This module provides comprehensive audit logging for:
+This module provides audit logging for:
 - HIPAA compliance evidence
 - SOC 2 control evidence (CC6.1, CC7.1, etc.)
 - Security incident investigation
@@ -145,7 +145,7 @@ def log_audit_event(
     level: AuditLevel = AuditLevel.INFO,
     success: bool = True,
 ) -> None:
-    """Log an auditable event with comprehensive context.
+    """Log an auditable event.
 
     This is the primary audit logging function. Call it for any security-relevant
     event that should be tracked for compliance, forensics, or monitoring.
@@ -208,7 +208,7 @@ def log_audit_event(
         )
     """
     # Build base log entry
-    log_entry = {
+    log_entry: dict[str, Any] = {
         "action": action.value,
         "success": success,
         "timestamp": datetime.now(UTC).isoformat(),

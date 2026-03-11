@@ -1,6 +1,6 @@
 # Security Guide
 
-CharlottesWeb implements comprehensive security controls appropriate for a HIPAA compliance platform. This guide covers all security features, configuration, testing, and incident response procedures.
+This guide covers the security controls built into CharlottesWeb, including configuration, testing, and incident response.
 
 ---
 
@@ -12,7 +12,7 @@ CharlottesWeb implements comprehensive security controls appropriate for a HIPAA
 | **JWT Token Auth** | Secure session handling with HS256 signing (PyJWT) | Active |
 | **Rate Limiting** | Prevent abuse with per-IP throttling (60 req/min) | Active |
 | **Security Headers** | 7 HTTP headers protecting against common attacks | Active |
-| **Audit Logging** | JSON structured logs with comprehensive event tracking | Active |
+| **Audit Logging** | JSON structured logs with structured event tracking | Active |
 | **Request Tracing** | UUID per request for incident investigation | Active |
 | **Password Hashing** | Automatic bcrypt with dynamic salt | Active |
 | **Secrets Management** | Environment-based configuration, zero secrets in code | Active |
@@ -92,7 +92,7 @@ X-RateLimit-Reset: 1709582400
 
 ### 4. Audit Logging
 
-#### Comprehensive Event Tracking
+#### Event Tracking
 - **Location:** [`src/audit.py`](src/audit.py)
 - **Log File:** `audit.log` (JSON format)
 - **Retention:** Configure external log rotation
@@ -331,7 +331,7 @@ SECURITY: CORS allows all origins (*) in production!
 ## Compliance Mapping
 
 ### HIPAA 164.312(b) - Audit Controls
-**Met by**: Audit logging with comprehensive event tracking, JSON structured logs, request tracing
+**Met by**: Audit logging with structured event tracking, JSON structured logs, request tracing
 
 **Evidence:**
 - All authentication events logged
@@ -553,11 +553,11 @@ For security issues or questions:
 - 80% reduction in dependency attack surface for HS256 algorithm
 - Zero known vulnerabilities
 
-**v0.2.0 (2026-03-04)** - Comprehensive security hardening
+**v0.2.0 (2026-03-04)** - Security hardening
 - API key authentication with configurable enforcement
 - Per-IP rate limiting with slowapi
 - 7 security headers (including CSP, HSTS, X-Frame-Options)
-- Comprehensive audit logging with 22+ event types
+- Audit logging with 22+ event types
 - Request ID tracing for incident investigation
 - Secure error handling (environment-aware)
 - Environment-based secrets management
