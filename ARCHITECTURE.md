@@ -374,7 +374,7 @@ GET /api/v1/controls/{control_id}
 1. Tenant isolation enforcement
 2. Structured logging and error tracking
 3. Performance optimization
-4. Demo data and pilot scripts
+4. Sample data and pilot scripts
 
 ### Phase 5: Continuous Monitoring
 1. Scheduled background assessment jobs
