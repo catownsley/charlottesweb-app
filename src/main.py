@@ -1,11 +1,11 @@
-"""Main FastAPI application with comprehensive security hardening.
+"""Main FastAPI application.
 
 Security Features:
 - API key authentication (configurable)
 - Per-IP rate limiting (60 req/min default)
 - Security headers (HSTS, CSP, X-Frame-Options, etc.)
 - Request ID tracking for audit correlation
-- Comprehensive audit logging
+- Audit logging
 - Environment-aware CORS
 - Secure error handling (no info leakage in prod)
 
