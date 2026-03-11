@@ -21,6 +21,7 @@ See [SECURITY.md](SECURITY.md) for complete security documentation.
 - **[Business Plan](BUSINESS_PLAN.md)** - Market strategy, competitive landscape, go-to-market, team hiring
 - ️ **[Architecture & Product Vision](ARCHITECTURE.md)** - Technical design, domain model, system architecture, API design
 - **[Security Documentation](SECURITY.md)** - Security features, configuration, and best practices
+- **[Operations Guide](OPERATIONS.md)** - Delivery status, performance strategy, operational priorities
 - **[Ticket Index](docs/tickets/TICKET_INDEX.md)** - Phased execution roadmap with detailed tickets
 - **[GitHub Issues](https://github.com/catownsley/charlottesweb-app/issues)** - Active implementation backlog
 
@@ -44,16 +45,12 @@ Most tools tell you what controls you need. We tell you which vulnerabilities in
 charlottesweb-app/
 ├── BUSINESS_PLAN.md # Complete business strategy and market analysis
 ├── ARCHITECTURE.md # Technical design and implementation guide
+├── OPERATIONS.md # Consolidated status + performance + runbook notes
 ├── README.md # This file
 ├── docs/
 │ └── tickets/ # Phased execution backlog
 │ ├── TICKET_INDEX.md
-│ ├── phase-0-foundation.md
-│ ├── phase-1-intelligence-engine.md
-│ ├── phase-2-audit-evidence.md
-│ ├── phase-3-web-app-workflows.md
-│ ├── phase-4-pilot-readiness.md
-│ └── phase-5-continuous-monitoring.md
+│ └── README.md
 ├── src/ # Application code (to be implemented)
 ├── scripts/ # Automation scripts
 └── .github/
