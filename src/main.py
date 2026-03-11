@@ -19,7 +19,7 @@ Architecture:
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, cast
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -154,9 +154,16 @@ app = FastAPI(
 # Required by slowapi for decorator-based rate limiting
 app.state.limiter = limiter
 
+
+# Custom rate limit exception handler with correct type signature
+async def rate_limit_exceeded_handler(request: Request, exc: Exception) -> Response:
+    """Wrapper for slowapi's rate limit handler with correct type signature."""
+    return _rate_limit_exceeded_handler(request, cast(RateLimitExceeded, exc))
+
+
 # Register rate limit exceeded exception handler
 # Returns 429 Too Many Requests with appropriate headers
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # ============================================================================
 # MIDDLEWARE STACK (Order is critical!)

@@ -34,3 +34,4 @@ app.db
 
 # TLS certificates
 certs/
+generated_reports/

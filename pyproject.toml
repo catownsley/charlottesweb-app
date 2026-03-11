@@ -8,6 +8,9 @@ version = "0.3.0"
 description = "HIPAA Compliance-as-Code Platform with Evidence Automation"
 requires-python = ">=3.14"
 
+[tool.setuptools.packages.find]
+include = ["src*"]
+
 [tool.black]
 # Code formatter configuration
 # - Line length: 88 chars (Black standard, conventional in Python community)
