@@ -512,6 +512,40 @@ if not member:
 - **Quarterly:** Full threat model refresh (new features, architecture changes)
 - **Post-Incident:** Immediate update if any issue exploits a gap
 
+## ASCII Diagram Fallback
+
+Use this if your Markdown viewer cannot render Mermaid.
+
+[User]
+    |
+    v
+[Browser UI: static/index.html + JS]
+    |
+    | HTTPS requests
+    v
+[FastAPI App: main.py]
+    |
+    +--> [Middleware: Security headers, request-id, rate-limit, CORS, gzip]
+    |
+    v
+[API Router /api/v1]
+    |
+    +--> organizations
+    +--> metadata_profiles
+    +--> components --> [Manifest Parser] --> [NVD]
+    +--> assessments --> [Rules Engine] --> [Compliance/CWE Mapping]
+    |                    |                    |
+    |                    +--> [NVD]           +--> [MITRE]
+    |                    +--> [Findings/Assessment writes]
+    +--> evidence
+    +--> risk --> [Risk Scoring Engine]
+    |
+    v
+[Database: orgs, profiles, assessments, findings, evidence, controls]
+
+[Audit Logs] <- App + middleware events
+[Dev TLS certs] <- local HTTPS startup path
+
 ## Detailed DFD: Assessment Execution Workflow
 
 Use this when you want to threat model a single high-value path in depth.
