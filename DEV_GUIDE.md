@@ -511,9 +511,9 @@ scripts/
 
 ---
 
-## What the Vertical Slice Demonstrates
+## End-to-End Data Flow (MVP)
 
-This MVP proves the entire data flow:
+This MVP covers the full request cycle:
 
 1. **Metadata Intake** → Organization + MetadataProfile models
 2. **Control Mapping** → 10 seeded HIPAA controls
