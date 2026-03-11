@@ -1,5 +1,5 @@
 # Python Antipatterns Guide
-**Prepared for Technical Interviews**
+**Practical code review and engineering reference**
 
 ---
 
@@ -34,7 +34,7 @@ except Exception as e:
     raise  # Re-raise if truly unexpected
 ```
 
-**Interview Talking Points:**
+**Key Review Notes:**
 - "Always catch specific exceptions you expect"
 - "At minimum, use `except Exception` to allow system signals"
 - "Bare except is only acceptable for logging-then-reraise patterns"
@@ -79,7 +79,7 @@ def process_user_data(data):
         return 0
 ```
 
-**Interview Talking Points:**
+**Key Review Notes:**
 - "Catch specific exceptions in business logic"
 - "Broad catching OK at API/system boundaries for converting to responses"
 - "Always log full traceback with `exc_info=True`"
@@ -133,7 +133,7 @@ def _seed_controls(db: Session) -> None:
     # 30 focused lines
 ```
 
-**Interview Talking Points:**
+**Key Review Notes:**
 - "Functions should do ONE thing well (Single Responsibility Principle)"
 - "Rule of thumb: functions over 50 lines are code smells"
 - "Extract helpers with descriptive names"
@@ -195,7 +195,7 @@ metadata_payload = {
 }
 ```
 
-**Interview Talking Points:**
+**Key Review Notes:**
 - "Mutable defaults create shared state bugs"
 - "Use `None` as sentinel, create new object in function body"
 - "Only immutable defaults are safe: integers, strings, None, tuples"
@@ -249,7 +249,7 @@ class Status(str, Enum):
 status: Status = Status.RUNNING
 ```
 
-**Interview Talking Points:**
+**Key Review Notes:**
 - "Magic values = no autocomplete, no type safety, no compile-time checks"
 - "Typos caught at import time vs runtime"
 - "Single source of truth for refactoring"
@@ -326,7 +326,7 @@ def validate_phone(phone: str) -> bool:
     return len(phone) == 10 and phone.isdigit()
 ```
 
-**Interview Talking Points:**
+**Key Review Notes:**
 - "DRY (Don't Repeat Yourself) - but clarity matters more"
 - "Extract when: logic complex, repeated 3+ times, likely to change together"
 - "Keep duplication when: extraction makes code harder to read"
@@ -377,7 +377,7 @@ def process(data):
     return process_user(data.user)
 ```
 
-**Interview Talking Points:**
+**Key Review Notes:**
 - "Use guard clauses - return early"
 - "Fail fast principle"
 - "Reduces cognitive load - flat is better than nested"
@@ -399,23 +399,23 @@ def process(data):
 
 ---
 
-## Interview Strategy
+## Applying This Guide in Reviews
 
-**When Asked About Code Quality:**
+**When Reviewing Code Quality:**
 1. **Mention testability**: "This antipattern makes unit testing difficult because..."
 2. **Reference principles**: "Violates Single Responsibility / DRY / SOLID"
 3. **Show impact**: "This causes bugs when..." or "Makes refactoring dangerous"
 4. **Provide example**: "For instance, bare except catches SystemExit..."
 5. **Know the tradeoffs**: "Sometimes duplication is better than wrong abstraction"
 
-**Good Interview Answers:**
+**Useful Review Heuristics:**
 - "I look for functions over 50 lines - extract helpers"
 - "I avoid bare except because it catches system signals"
 - "I use constants for repeated strings - makes refactoring safe"
 - "I catch specific exceptions in business logic, broader at API boundaries"
 - "I apply the Rule of Three before extracting duplication"
 
-**Red Flags to Avoid:**
+**Common Misconceptions to Avoid:**
 - "I never use exceptions" (exceptions are Pythonic!)
 - "All duplication is bad" (nuance matters)
 - "Lines of code don't matter" (long functions are real issues)
@@ -438,4 +438,4 @@ def process(data):
 **Practice:**
 - Code review your old projects
 - Refactor antipatterns you find
-- Explain WHY to yourself - interview practice!
+- Explain why the change improves correctness, readability, or maintainability.

@@ -99,7 +99,7 @@ Assessment workflows partially working; **critical gap: no user authentication**
 - UI filtering basic (no advanced filter UI yet)
 
 - **CW-304**: Report download/share PARTIAL
-- Basic export functionality exists (demo mode)
+- Basic export functionality exists (reference mode)
 - Formal report generation incomplete
 - Share mechanism not implemented
 
@@ -124,7 +124,7 @@ Security controls exist; pilot automation minimal.
 - **CW-403**: Pilot onboarding scripts PARTIAL
 - Seed data generation exists
 - Automated pilot setup scripts not created
-- Demo data packs not packaged
+- Sample data packs not packaged
 
 **Status**: Security foundations in place. Pilot automation not started.
 

@@ -16,10 +16,10 @@
 - All critical actions emit audit events
 - Error and latency dashboards available
 
-## CW-403 Pilot onboarding scripts and demo data
+## CW-403 Pilot onboarding scripts and sample data
 - Type: Platform/Operations
 - Priority: P1
 - Outcome: Repeatable setup for pilot customers.
 - Acceptance:
 - Scripted org bootstrap
-- Demo data pack available for live demos
+- Sample data pack available for reference scenarios
