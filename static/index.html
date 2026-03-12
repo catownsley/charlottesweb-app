@@ -1519,7 +1519,9 @@
                 const defaultedVersions = [];  // Track versions we auto-selected
 
                 // Validation patterns (match backend)
-                const componentPattern = /^[a-zA-Z0-9_-]+$/;
+                // Allow dots for names like "node.js", "vue.js", "ASP.NET"
+                // encodeURIComponent() is used before any URL/API usage
+                const componentPattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
                 const versionPattern = /^[a-zA-Z0-9._-]+$/;
 
                 // Collect all components
@@ -1612,7 +1614,7 @@
                     if (name && !componentPattern.test(name)) {
                         throw new Error(
                             `Invalid component name: "${name}". ` +
-                            `Use letters, numbers, underscores, and hyphens only (no dots).`
+                            `Use letters, numbers, dots, underscores, and hyphens only. Must start with a letter or number.`
                         );
                     }
 
@@ -2087,7 +2089,7 @@
                         <h4>Next Steps & Remediation Guidance</h4>
                         <ul>
                             <li><strong>Priority Windows:</strong> Address CRITICAL/HIGH findings within immediate/30-day timeframes</li>
-                            <li><strong>Threat Intelligence:</strong> Purple cards show MITRE ATT&CK techniques with real breach examples</li>
+                            <li><strong>Threat Context:</strong> Purple cards show MITRE ATT&CK techniques that translate technical gaps into real-world attack scenarios with breach examples</li>
                             <li><strong>MITRE Mitigations:</strong> Follow recommended actions to implement defense-in-depth</li>
                             <li><strong>Compliance:</strong> Document remediation efforts for regulatory audit evidence</li>
                             <li><strong>Export:</strong> Use JSON export for ticketing systems or Report for stakeholders</li>

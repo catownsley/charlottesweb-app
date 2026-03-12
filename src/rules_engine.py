@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from src.models import Assessment, Control, Finding, MetadataProfile
-from src.nvd_service import NVDService
+from src.nvd_service import NVDApiError, NVDService
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,9 @@ class RulesEngine:
             nvd_api_key: Optional NVD API key for higher rate limits
         """
         self.db = db
-        self.nvd_service = NVDService(api_key=nvd_api_key)
+        # Use max_retries=1 during assessment creation to avoid blocking.
+        # The dedicated analyze-nvd endpoint uses full retries.
+        self.nvd_service = NVDService(api_key=nvd_api_key, max_retries=1)
 
     def run_assessment(self, assessment_id: str) -> list[Finding]:
         """
@@ -286,7 +288,11 @@ class RulesEngine:
         logger.info(f"Analyzing software stack: {software_stack}")
 
         # Analyze stack for vulnerabilities
-        vulnerabilities = self.nvd_service.analyze_software_stack(software_stack)
+        try:
+            vulnerabilities = self.nvd_service.analyze_software_stack(software_stack)
+        except NVDApiError as e:
+            logger.error(f"NVD API unavailable during assessment: {e}")
+            return findings
 
         # Look up relevant control for software vulnerabilities
         # We'll map to "Malware Protection" control as a proxy for vuln management

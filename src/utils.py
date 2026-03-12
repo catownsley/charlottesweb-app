@@ -96,7 +96,7 @@ def sanitize_filename(filename: str, *, max_length: int = 255) -> str:
     if not filename:
         raise ValueError("Filename must not be empty")
 
-    # Take only the final path component — defeats ../../../ traversal.
+    # Take only the final path component to defeat ../../../ traversal.
     import os
 
     filename = os.path.basename(filename)

@@ -1,9 +1,10 @@
 """Pydantic schemas for API request/response validation."""
 
+import re
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # Organization schemas
@@ -59,6 +60,9 @@ class OrganizationOnboardingResponse(BaseModel):
 
 
 # Metadata Profile schemas
+_COMPONENT_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
+
+
 class MetadataProfileCreate(BaseModel):
     """Schema for creating a metadata profile."""
 
@@ -69,6 +73,22 @@ class MetadataProfileCreate(BaseModel):
     applications: dict[str, Any] | None = None
     access_controls: dict[str, Any] | None = None
     software_stack: dict[str, Any] | None = None
+
+    @field_validator("software_stack")
+    @classmethod
+    def validate_component_names(
+        cls, v: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        if v is None:
+            return v
+        for name in v:
+            if not _COMPONENT_NAME_RE.match(name):
+                raise ValueError(
+                    f'Invalid component name: "{name}". '
+                    "Use letters, numbers, dots, underscores, and hyphens only. "
+                    "Must start with a letter or number."
+                )
+        return v
 
 
 class MetadataProfileResponse(BaseModel):
@@ -202,7 +222,7 @@ class AssessmentReportStatusResponse(BaseModel):
     download_url: str | None = None
 
 
-# Threat Intelligence schemas (MITRE ATT&CK)
+# MITRE ATT&CK threat context schemas
 class ThreatTechniqueBreachExample(BaseModel):
     """Schema for real-world breach example."""
 
@@ -232,7 +252,7 @@ class ThreatTechnique(BaseModel):
 
 
 class ThreatContext(BaseModel):
-    """Schema for threat intelligence context added to findings."""
+    """Schema for MITRE ATT&CK threat context added to findings."""
 
     techniques: list[ThreatTechnique] = Field(
         description="Attack techniques that exploit this gap"
@@ -260,7 +280,7 @@ class FindingResponse(BaseModel):
     owner: str | None = None
     created_at: datetime
     threat_context: ThreatContext | None = Field(
-        None, description="Real-world threat intelligence (MITRE ATT&CK)"
+        None, description="MITRE ATT&CK threat context with real-world breach examples"
     )
 
     model_config = {"from_attributes": True}

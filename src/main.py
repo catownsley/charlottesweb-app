@@ -199,7 +199,7 @@ app.add_middleware(ResponseTimeMiddleware)
 # Security considerations:
 #   - Development: Allows localhost origins only
 #   - Production: Explicit whitelist required (set CORS_ORIGINS env var)
-#   - Never uses wildcard (*) — explicit origins only
+#   - Never uses wildcard (*), explicit origins only
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allowed_origins,  # Explicit origins, never '*'

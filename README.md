@@ -99,7 +99,7 @@ Digital health startups face a compliance paradox:
 - Existing tools lack exploitability-aware action plans
 - Audit preparation is manual and chaotic
 
-CharlottesWeb automates the hard parts: vulnerability correlation, risk prioritization, and evidence generation—turning compliance from a manual burden into automated intelligence.
+CharlottesWeb automates the hard parts: vulnerability correlation, risk prioritization, and evidence generation, turning compliance from a manual burden into automated intelligence.
 
 ## License
 

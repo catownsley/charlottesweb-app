@@ -476,7 +476,7 @@ def _migrate_evidence_org_column() -> None:
                 "WHERE assessment_id IS NOT NULL"
             )
         )
-        # Delete orphaned evidence with no org — these are the tenant leak vectors
+        # Delete orphaned evidence with no org (these are the tenant leak vectors)
         result = conn.execute(
             text("DELETE FROM evidence WHERE organization_id IS NULL")
         )
