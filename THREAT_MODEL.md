@@ -481,7 +481,7 @@ if not member:
 | Component | Current Risk | Mitigation |
 |-----------|-------------|-----------|
 | Middleware stack properly layered (SecurityHeaders → RequestID → ResponseTime) | **LOW** | Good architecture |
-| CORS allows all origins `["*"]` in dev | **MEDIUM** | Production must whitelist |
+| CORS restricted to explicit TLS origins (no wildcard) | **LOW** | TLS-only origins in dev and prod |
 | All routes go through middleware | **LOW** | No bypass paths |
 
 **Recommended Hardening:**

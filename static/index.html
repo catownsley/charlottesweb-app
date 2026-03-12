@@ -582,6 +582,49 @@
             background: #f0f0f0;
             color: #555;
         }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            background: white;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            font-size: 15px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: #667eea;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Threat model styles removed — see THREAT_MODEL.md in repo root */
+        .unused-placeholder-for-removed-styles {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -593,8 +636,16 @@
             <div class="subtitle">Vulnerability Analysis + Audit Evidence Automation</div>
         </header>
 
+        <!-- TAB NAVIGATION -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="analyzer" type="button">Vulnerability Analyzer</button>
+        </div>
+
+        <!-- TAB: Analyzer (existing content) -->
+        <div id="tab-analyzer" class="tab-panel active">
+
         <!-- MAIN FORM: User input for analysis -->
-        <div class="form-wrapper">
+        <div class="form-wrapper" style="border-radius: 0 0 8px 8px;">
             <form id="stackForm">
                 <!-- Organization Name Input -->
                 <label for="orgName">
@@ -628,15 +679,25 @@
                 </button>
 
                 <div style="margin-top: 14px; padding: 12px; border: 1px solid #e3e6f0; border-radius: 6px; background: #f8faff;">
-                    <div style="font-weight: 600; margin-bottom: 8px;">Import Manifest (MVP: pom.xml)</div>
+                    <div style="font-weight: 600; margin-bottom: 8px;">Import Manifest (pom.xml)</div>
+
+                    <label style="font-size: 13px; color: #444; margin-bottom: 4px; display: block;">Load a sample pom.xml:</label>
+                    <select id="sampleManifestSelect" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px; background: #fff;">
+                        <option value="">-- Select a sample manifest --</option>
+                        <option value="spring-legacy">Spring Legacy App (Log4j, Jackson, PostgreSQL)</option>
+                        <option value="healthcare-api">Healthcare API (Spring Boot, Hibernate, MySQL)</option>
+                        <option value="microservices">Microservices Stack (Netty, gRPC, Redis, Kafka)</option>
+                    </select>
+
+                    <label style="font-size: 13px; color: #444; margin-bottom: 4px; display: block;">Or upload / paste your own:</label>
                     <input type="file" id="manifestFile" accept=".xml,.pom" style="margin-bottom: 8px; width: 100%;">
-                    <textarea id="manifestContent" rows="6" placeholder="Paste pom.xml content here (optional if file selected)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
-                    <label style="display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: #444;">
-                        <input type="checkbox" id="replaceManifestMode">
-                        Replace existing component list
-                    </label>
-                    <button type="button" id="importManifestBtn" class="btn-secondary" style="margin-top: 8px;">Import Manifest</button>
-                    <div class="help-text" style="margin-top: 6px;">Imports dependencies from pom.xml and auto-fills component/version rows.</div>
+                    <textarea id="manifestContent" rows="6" placeholder="Paste pom.xml content here (optional if file or sample selected)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button type="button" id="mergeManifestBtn" style="flex: 1; background: #28a745; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">Merge into List</button>
+                        <button type="button" id="replaceManifestBtn" style="flex: 1; background: #dc3545; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">Replace List</button>
+                    </div>
+                    <div class="help-text" style="margin-top: 6px;"><strong>Merge</strong> adds new components and updates versions of existing ones. <strong>Replace</strong> clears the list first.</div>
                 </div>
 
                 <div class="help-text" style="margin-top: 15px;">
@@ -662,9 +723,24 @@
         <div id="result" class="result hidden" role="status" aria-live="polite">
             <!-- Results content will be inserted here by JavaScript -->
         </div>
+
+        </div><!-- /tab-analyzer -->
+
+        <!-- Threat model documentation: see THREAT_MODEL.md in repo root -->
+
     </div>
 
     <script>
+        // Tab switching logic
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+                document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+                btn.classList.add('active');
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            });
+        });
+
         // Get form elements
         const form = document.getElementById('stackForm');
         const resultDiv = document.getElementById('result');
@@ -675,8 +751,9 @@
         const orgNameInput = document.getElementById('orgName');
         const manifestFileInput = document.getElementById('manifestFile');
         const manifestContentInput = document.getElementById('manifestContent');
-        const replaceManifestModeInput = document.getElementById('replaceManifestMode');
-        const importManifestBtn = document.getElementById('importManifestBtn');
+        const sampleManifestSelect = document.getElementById('sampleManifestSelect');
+        const mergeManifestBtn = document.getElementById('mergeManifestBtn');
+        const replaceManifestBtn = document.getElementById('replaceManifestBtn');
 
         console.log('Form elements loaded:', {
             form: !!form,
@@ -971,7 +1048,7 @@
                     return;
                 }
 
-                versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default;">Loading versions...</div>';
+                versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">Fetching versions from NVD...</div>';
                 versionSuggestionsBox.classList.add('show');
 
                 try {
@@ -980,7 +1057,7 @@
                     );
 
                     if (!response.ok) {
-                        versionSuggestionsBox.classList.remove('show');
+                        versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">No versions found \u2014 enter manually</div>';
                         return;
                     }
 
@@ -988,7 +1065,7 @@
                     const versions = data.versions || [];
 
                     if (versions.length === 0) {
-                        versionSuggestionsBox.classList.remove('show');
+                        versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">No versions found \u2014 enter manually</div>';
                         return;
                     }
 
@@ -997,13 +1074,12 @@
                         const suggestionEl = document.createElement('div');
                         suggestionEl.className = 'suggestion';
                         suggestionEl.textContent = version;
-                        suggestionEl.addEventListener('click', (e) => {
+                        suggestionEl.addEventListener('mousedown', (e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             versionInput.value = version;
-                            versionInput.dispatchEvent(new Event('change', { bubbles: true }));
                             versionSuggestionsBox.classList.remove('show');
-                            versionInput.focus();
+                            versionInput.dispatchEvent(new Event('change', { bubbles: true }));
                         });
                         suggestionEl.addEventListener('mouseenter', () => {
                             versionSuggestionsBox.querySelectorAll('.suggestion').forEach(el => {
@@ -1017,7 +1093,7 @@
                     versionSuggestionsBox.classList.add('show');
                 } catch (err) {
                     console.warn('Failed to fetch version suggestions:', err);
-                    versionSuggestionsBox.classList.remove('show');
+                    versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">Could not reach NVD \u2014 enter version manually</div>';
                 }
             }
 
@@ -1095,7 +1171,7 @@
 
             versionInput.addEventListener('focus', async () => {
                 const componentName = componentNameInput.value.trim();
-                if (componentName.length >= 2) {
+                if (componentName.length >= 2 && !versionInput.value.trim()) {
                     await loadVersionSuggestions(componentName);
                 }
             });
@@ -1131,7 +1207,7 @@
         // Add initial component field
         addComponentBtn.click();
 
-        // When file is uploaded, display its contents in the textarea
+        // When file is uploaded, display contents in textarea and auto-populate component list
         manifestFileInput.addEventListener('change', async (e) => {
             const selectedFile = e.target.files && e.target.files.length > 0
                 ? e.target.files[0]
@@ -1141,6 +1217,7 @@
                 try {
                     const fileContent = await selectedFile.text();
                     manifestContentInput.value = fileContent;
+                    sampleManifestSelect.value = '';
                     if (orgNameInput && orgNameInput.value.trim()) {
                         saveManifestForOrg(orgNameInput.value, fileContent);
                     }
@@ -1170,37 +1247,206 @@
             });
         }
 
-        importManifestBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
+        // Sample pom.xml manifests
+        const SAMPLE_MANIFESTS = {
+            'spring-legacy': `<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.demo</groupId>
+    <artifactId>spring-legacy-app</artifactId>
+    <version>1.0.0</version>
+    <properties>
+        <java.version>11</java.version>
+        <spring.version>5.3.27</spring.version>
+        <jackson.version>2.13.5</jackson.version>
+        <log4j.version>2.14.1</log4j.version>
+    </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>42.5.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+            <version>\${spring.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>\${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>\${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+    </dependencies>
+</project>`,
+            'healthcare-api': `<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.healthcare</groupId>
+    <artifactId>patient-records-api</artifactId>
+    <version>2.1.0</version>
+    <properties>
+        <spring-boot.version>2.7.14</spring-boot.version>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <version>\${spring-boot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>5.6.15</version>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.30</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>1.9</version>
+        </dependency>
+        <dependency>
+            <groupId>com.auth0</groupId>
+            <artifactId>java-jwt</artifactId>
+            <version>3.19.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
+            <version>9.0.65</version>
+        </dependency>
+    </dependencies>
+</project>`,
+            'microservices': `<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.platform</groupId>
+    <artifactId>data-pipeline-service</artifactId>
+    <version>3.0.0</version>
+    <dependencies>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.86.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty</artifactId>
+            <version>1.51.0</version>
+        </dependency>
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>4.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>3.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.21.7</version>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>elasticsearch-rest-high-level-client</artifactId>
+            <version>7.17.7</version>
+        </dependency>
+    </dependencies>
+</project>`
+        };
 
-            let manifestContent = manifestContentInput.value.trim();
-            const selectedFile = manifestFileInput.files && manifestFileInput.files.length > 0
-                ? manifestFileInput.files[0]
-                : null;
-
-            if (!manifestContent && selectedFile) {
-                manifestContent = await selectedFile.text();
-            }
-
-            if (!manifestContent) {
-                alert('Please paste pom.xml content or select a pom.xml file first.');
+        // Load sample manifest into textarea when dropdown changes (does not auto-populate list)
+        sampleManifestSelect.addEventListener('change', () => {
+            const selectedKey = sampleManifestSelect.value;
+            if (!selectedKey || !SAMPLE_MANIFESTS[selectedKey]) {
                 return;
             }
 
-            importManifestBtn.disabled = true;
-            importManifestBtn.textContent = 'Importing...';
+            manifestContentInput.value = SAMPLE_MANIFESTS[selectedKey];
+            manifestFileInput.value = '';
+        });
 
+        // Resolve manifest content from textarea, file upload, or sample select
+        async function getManifestContent() {
+            let content = manifestContentInput.value.trim();
+
+            if (!content) {
+                const selectedFile = manifestFileInput.files && manifestFileInput.files.length > 0
+                    ? manifestFileInput.files[0]
+                    : null;
+                if (selectedFile) {
+                    content = await selectedFile.text();
+                }
+            }
+
+            return content;
+        }
+
+        // Merge button: add manifest components into existing list
+        mergeManifestBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const content = await getManifestContent();
+            if (!content) {
+                alert('Please select a sample, upload a pom.xml, or paste content first.');
+                return;
+            }
+
+            mergeManifestBtn.disabled = true;
+            mergeManifestBtn.textContent = 'Merging...';
             try {
-                const replaceMode = !!(replaceManifestModeInput && replaceManifestModeInput.checked);
-                await populateComponentsFromManifest(manifestContent, {
-                    replaceExisting: replaceMode,
+                await populateComponentsFromManifest(content, {
+                    replaceExisting: false,
                     showAlert: true
                 });
             } catch (error) {
-                alert(`❌ Manifest import failed: ${error.message}`);
+                alert(`Manifest import failed: ${error.message}`);
             } finally {
-                importManifestBtn.disabled = false;
-                importManifestBtn.textContent = 'Import Manifest';
+                mergeManifestBtn.disabled = false;
+                mergeManifestBtn.textContent = 'Merge into List';
+            }
+        });
+
+        // Replace button: clear list and populate from manifest
+        replaceManifestBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const content = await getManifestContent();
+            if (!content) {
+                alert('Please select a sample, upload a pom.xml, or paste content first.');
+                return;
+            }
+
+            replaceManifestBtn.disabled = true;
+            replaceManifestBtn.textContent = 'Replacing...';
+            try {
+                await populateComponentsFromManifest(content, {
+                    replaceExisting: true,
+                    showAlert: true
+                });
+            } catch (error) {
+                alert(`Manifest import failed: ${error.message}`);
+            } finally {
+                replaceManifestBtn.disabled = false;
+                replaceManifestBtn.textContent = 'Replace List';
             }
         });
 
@@ -1382,7 +1628,6 @@
                     const orgRes = await fetch('/api/v1/organizations', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        credentials: 'include',
                         body: JSON.stringify({name: orgName})
                     });
 
@@ -1785,20 +2030,20 @@
                 <div style="background: #e8f5e9; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #28a745;">
                     <h4 style="margin-top: 0; color: #2e7d32;">Evidence Automation Ready</h4>
                     <p style="margin-bottom: 0; font-size: 14px;">
-                        Evidence checklists are now available for this organization's assessments.
+                        Action plans are now available for this organization's assessments.
                         Use the API endpoints to track audit evidence collection and generate compliance reports.
                     </p>
                     <a
                         href="#"
-                        id="viewEvidenceChecklistLink"
+                        id="viewActionPlanLink"
                         class="evidence-link"
                         data-assessment-id="${assessmentId}"
-                        aria-controls="evidenceChecklistPanel"
+                        aria-controls="actionPlanPanel"
                         aria-expanded="false"
                     >
-                        View Evidence Collection Checklist
+                        View Action Plan
                     </a>
-                    <div id="evidenceChecklistPanel" class="evidence-panel hidden" aria-live="polite"></div>
+                    <div id="actionPlanPanel" class="evidence-panel hidden" aria-live="polite"></div>
                 </div>
             `;
 
@@ -1878,34 +2123,34 @@
             resultDiv.classList.add('success');
             resultDiv.innerHTML = html;
 
-            const checklistLink = document.getElementById('viewEvidenceChecklistLink');
-            if (checklistLink) {
-                checklistLink.addEventListener('click', async (event) => {
+            const actionPlanLink = document.getElementById('viewActionPlanLink');
+            if (actionPlanLink) {
+                actionPlanLink.addEventListener('click', async (event) => {
                     event.preventDefault();
-                    const assessmentIdForChecklist = checklistLink.dataset.assessmentId || '';
-                    const checklistPanel = document.getElementById('evidenceChecklistPanel');
-                    if (!checklistPanel || !assessmentIdForChecklist) {
+                    const assessmentIdForPlan = actionPlanLink.dataset.assessmentId || '';
+                    const actionPlanPanel = document.getElementById('actionPlanPanel');
+                    if (!actionPlanPanel || !assessmentIdForPlan) {
                         return;
                     }
 
-                    const panelHidden = checklistPanel.classList.contains('hidden');
-                    const alreadyLoadedForAssessment = checklistPanel.dataset.loadedAssessmentId === assessmentIdForChecklist;
+                    const panelHidden = actionPlanPanel.classList.contains('hidden');
+                    const alreadyLoadedForAssessment = actionPlanPanel.dataset.loadedAssessmentId === assessmentIdForPlan;
 
                     if (panelHidden && alreadyLoadedForAssessment) {
-                        checklistPanel.classList.remove('hidden');
-                        checklistLink.setAttribute('aria-expanded', 'true');
-                        checklistLink.textContent = 'Hide Evidence Collection Checklist';
+                        actionPlanPanel.classList.remove('hidden');
+                        actionPlanLink.setAttribute('aria-expanded', 'true');
+                        actionPlanLink.textContent = 'Hide Action Plan';
                         return;
                     }
 
                     if (!panelHidden && alreadyLoadedForAssessment) {
-                        checklistPanel.classList.add('hidden');
-                        checklistLink.setAttribute('aria-expanded', 'false');
-                        checklistLink.textContent = 'View Evidence Collection Checklist';
+                        actionPlanPanel.classList.add('hidden');
+                        actionPlanLink.setAttribute('aria-expanded', 'false');
+                        actionPlanLink.textContent = 'View Action Plan';
                         return;
                     }
 
-                    await loadEvidenceChecklist(assessmentIdForChecklist);
+                    await loadActionPlan(assessmentIdForPlan);
                 });
             }
 
@@ -1924,21 +2169,21 @@
             }
         }
 
-        async function loadEvidenceChecklist(assessmentId) {
-            const checklistPanel = document.getElementById('evidenceChecklistPanel');
-            const checklistLink = document.getElementById('viewEvidenceChecklistLink');
+        async function loadActionPlan(assessmentId) {
+            const actionPlanPanel = document.getElementById('actionPlanPanel');
+            const actionPlanLink = document.getElementById('viewActionPlanLink');
 
-            if (!checklistPanel || !checklistLink || !assessmentId) {
+            if (!actionPlanPanel || !actionPlanLink || !assessmentId) {
                 return;
             }
 
-            checklistPanel.classList.remove('hidden');
-            checklistPanel.innerHTML = '<p>⏳ Loading evidence checklist...</p>';
+            actionPlanPanel.classList.remove('hidden');
+            actionPlanPanel.innerHTML = '<p>⏳ Loading action plan...</p>';
 
             try {
-                const response = await fetch(`/api/v1/assessments/${encodeURIComponent(assessmentId)}/evidence-checklist`);
+                const response = await fetch(`/api/v1/assessments/${encodeURIComponent(assessmentId)}/action-plan`);
                 if (!response.ok) {
-                    throw new Error('Unable to load checklist');
+                    throw new Error('Unable to load action plan');
                 }
 
                 const checklist = await response.json();
@@ -1948,6 +2193,9 @@
                     const collectedAtText = item.collected_at ? new Date(item.collected_at).toLocaleDateString() : 'Not collected';
                     const notesDisplay = item.notes ? `<div style="font-size: 12px; color: #555; margin-top: 4px; padding: 6px; background: #f5f5f5; border-left: 3px solid #667eea; border-radius: 2px;"><strong>Notes:</strong> ${item.notes}</div>` : '';
                     const hasEvidence = item.evidence_id !== null && item.evidence_id !== undefined;
+                    const frameworkBadges = (item.frameworks_covered && item.frameworks_covered.length > 0)
+                        ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">${item.frameworks_covered.map(fw => `<span style="display: inline-block; padding: 2px 8px; font-size: 11px; background: #e8eaf6; color: #3949ab; border-radius: 12px; border: 1px solid #c5cae9;">${fw}</span>`).join('')}</div>`
+                        : '';
                     const buttonHtml = hasEvidence
                         ? `<button class="edit-evidence-btn" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" data-notes="${(item.notes || '').replace(/"/g, '&quot;')}" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>`
                         : `<button disabled style="padding: 6px 12px; background: #ccc; color: #666; border: none; border-radius: 4px; cursor: not-allowed; font-size: 12px;" title="Create evidence record first">No Record</button>`;
@@ -1962,6 +2210,7 @@
                                         : `<span class="status-pill ${item.status}" style="color: #999;">${item.status.replace('_', ' ')}</span>`
                                     }
                                     <div>${item.required_evidence}${ownerLabel}</div>
+                                    ${frameworkBadges}
                                     <div style="font-size: 12px; color: #666; margin-top: 4px;">📅 ${collectedAtText}</div>
                                     ${notesDisplay}
                                 </div>
@@ -1971,9 +2220,9 @@
                     `;
                 }).join('');
 
-                checklistPanel.innerHTML = `
+                actionPlanPanel.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="margin: 0;">Evidence Collection Checklist</h4>
+                        <h4 style="margin: 0;">Action Plan</h4>
                         <button id="toggleEvidenceBtn" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Collapse</button>
                     </div>
                     <div id="evidenceContent">
@@ -1983,7 +2232,7 @@
                         In Progress: <strong>${checklist.in_progress}</strong> •
                         Not Started: <strong>${checklist.not_started}</strong>
                     </p>
-                    <ul class="evidence-list">${itemsHtml || '<li class="evidence-item">No checklist items yet for this assessment.</li>'}</ul>
+                    <ul class="evidence-list">${itemsHtml || '<li class="evidence-item">No action plan items yet for this assessment.</li>'}</ul>
                     ${checklist.items.length > 15 ? `<p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">Showing first 15 of ${checklist.items.length} items.</p>` : ''}
                     </div>
                     <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; flex-direction: column; justify-content: center; align-items: center;">
@@ -2014,10 +2263,10 @@
                     </div>
                 `;
 
-                checklistPanel.dataset.loadedAssessmentId = assessmentId;
+                actionPlanPanel.dataset.loadedAssessmentId = assessmentId;
 
-                checklistLink.setAttribute('aria-expanded', 'true');
-                checklistLink.textContent = 'Hide Evidence Collection Checklist';
+                actionPlanLink.setAttribute('aria-expanded', 'true');
+                actionPlanLink.textContent = 'Hide Action Plan';
 
                 // Attach event handler for collapse/expand button
                 const toggleBtn = document.getElementById('toggleEvidenceBtn');
@@ -2056,9 +2305,9 @@
                     });
                 });
             } catch (error) {
-                checklistPanel.innerHTML = `<p style="color: #b00020; margin: 0;">❌ Could not load evidence checklist. Please try again.</p>`;
-                checklistLink.setAttribute('aria-expanded', 'false');
-                checklistLink.textContent = 'View Evidence Collection Checklist';
+                actionPlanPanel.innerHTML = `<p style="color: #b00020; margin: 0;">❌ Could not load action plan. Please try again.</p>`;
+                actionPlanLink.setAttribute('aria-expanded', 'false');
+                actionPlanLink.textContent = 'View Action Plan';
             }
         }
 
@@ -2118,9 +2367,9 @@
                 }
 
                 closeEditModal();
-                const checklistLink = document.getElementById('viewEvidenceChecklistLink');
-                if (checklistLink && checklistLink.dataset.assessmentId) {
-                    await loadEvidenceChecklist(checklistLink.dataset.assessmentId);
+                const actionPlanLink = document.getElementById('viewActionPlanLink');
+                if (actionPlanLink && actionPlanLink.dataset.assessmentId) {
+                    await loadActionPlan(actionPlanLink.dataset.assessmentId);
                 }
             } catch (error) {
                 alert('❌ Failed to save update: ' + error.message);

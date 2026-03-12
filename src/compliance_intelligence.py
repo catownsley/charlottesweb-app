@@ -1,4 +1,4 @@
-"""Metadata-driven compliance-as-code evaluator."""
+"""Metadata-driven compliance intelligence evaluator."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ class MetadataPayload(TypedDict, total=False):
 SUPPORTED_OPERATORS = {"equals", "gte"}
 
 
-class ComplianceAsCodeEvaluator:
+class ComplianceIntelligenceEvaluator:
     """Evaluate metadata profiles against machine-readable policy rules."""
 
     def __init__(self, policy_file: str | None = None) -> None:

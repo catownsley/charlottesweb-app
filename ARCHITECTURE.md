@@ -2,7 +2,7 @@
 
 ## Core Product Philosophy
 
-CharlottesWeb transforms compliance from a manual checklist exercise into **exploitability-driven regulatory intelligence**. We don't just tell you what controls you need—we tell you which vulnerabilities in your actual stack create regulatory risk.
+CharlottesWeb transforms compliance from a manual exercise into **exploitability-driven regulatory intelligence**. We don't just tell you what controls you need—we tell you which vulnerabilities in your actual stack create regulatory risk.
 
 ---
 
@@ -137,7 +137,7 @@ residual_risk = threat_pressure × (1 - control_confidence/100) × blast_radius
 **Artifacts Generated:**
 - **Control-to-Evidence Mapping:** What evidence satisfies each control
 - **Policy Templates:** Access control policy, incident response plan, logging retention policy
-- **Checklists:** Required documentation by audit phase
+- **Action Plans:** Required documentation by audit phase
 - **Evidence Binder:** Organized package for auditors (PDF/zip export)
 
 **Example Mapping:**
@@ -212,7 +212,7 @@ EvidenceArtifact:
 - organization_id: FK
 - assessment_id: FK
 - control_id: FK
-- artifact_type: str (policy, checklist, report)
+- artifact_type: str (policy, action_plan, report)
 - content: text | blob
 - status: str (generated, reviewed, approved)
 - generated_at: datetime
@@ -233,7 +233,7 @@ RemediationTask:
 ## Technology Decisions
 
 ### Backend
-- **Language:** Python 3.11+
+- **Language:** Python 3.14+
 - **Framework:** FastAPI (async, OpenAPI auto-generation, type hints)
 - **Database:** PostgreSQL (JSONB for metadata flexibility)
 - **ORM:** SQLAlchemy 2.0 (async support)
@@ -359,7 +359,7 @@ GET /api/v1/controls/{control_id}
 
 ### Phase 2: Evidence Layer
 1. Add control-to-evidence mapping table
-2. Build checklist generation logic
+2. Build action plan generation logic
 3. Create policy/template rendering engine
 4. Implement audit binder export (PDF/zip)
 
@@ -400,7 +400,7 @@ GET /api/v1/controls/{control_id}
 
 ## Open Questions & Future Considerations
 
-1. **Multi-framework support:** How to extend beyond HIPAA to SOC2, ISO 27001, etc.?
+1. **Multi-framework support:** Now supported via `Framework` and `FrameworkRequirement` tables, enabling extension beyond HIPAA to SOC 2, ISO 27001, etc.
 2. **Evidence ingestion:** Should we pull evidence automatically via API (e.g., AWS IAM snapshots) or require manual upload?
 3. **AI/ML risk module:** How to assess AI model bias, training data privacy, and inference security?
 4. **Global expansion:** GDPR, PIPEDA, LGPD—different data privacy frameworks require localized rule engines.
