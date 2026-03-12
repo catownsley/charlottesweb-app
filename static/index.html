@@ -1410,7 +1410,7 @@
                     return;
                 }
 
-                versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default;">Loading versions...</div>';
+                versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">Fetching versions from NVD...</div>';
                 versionSuggestionsBox.classList.add('show');
 
                 try {
@@ -1419,7 +1419,7 @@
                     );
 
                     if (!response.ok) {
-                        versionSuggestionsBox.classList.remove('show');
+                        versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">No versions found \u2014 enter manually</div>';
                         return;
                     }
 
@@ -1427,7 +1427,7 @@
                     const versions = data.versions || [];
 
                     if (versions.length === 0) {
-                        versionSuggestionsBox.classList.remove('show');
+                        versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">No versions found \u2014 enter manually</div>';
                         return;
                     }
 
@@ -1456,7 +1456,7 @@
                     versionSuggestionsBox.classList.add('show');
                 } catch (err) {
                     console.warn('Failed to fetch version suggestions:', err);
-                    versionSuggestionsBox.classList.remove('show');
+                    versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">Could not reach NVD \u2014 enter version manually</div>';
                 }
             }
 
