@@ -272,24 +272,31 @@ class EvidenceCreate(BaseModel):
 
     control_id: str
     assessment_id: str | None = None
-    evidence_type: str  # policy, config, screenshot, logs, report, etc.
+    evidence_type: str = Field(..., max_length=100)
     title: str = Field(..., min_length=1, max_length=255)
-    description: str | None = None
-    owner: str | None = None
+    description: str | None = Field(default=None, max_length=5000)
+    owner: str | None = Field(default=None, max_length=255)
     due_date: datetime | None = None
 
 
 class EvidenceUpdate(BaseModel):
     """Schema for updating evidence."""
 
-    status: str | None = None  # not_started, in_progress, completed, not_applicable
-    owner: str | None = None
+    status: str | None = Field(default=None, max_length=50)
+    owner: str | None = Field(default=None, max_length=255)
     due_date: datetime | None = None
-    artifact_path: str | None = None
-    artifact_url: str | None = None
-    artifact_hash: str | None = None
+    artifact_path: str | None = Field(default=None, max_length=500)
+    artifact_url: str | None = Field(default=None, max_length=2048)
+    artifact_hash: str | None = Field(default=None, max_length=128)
     collected_at: datetime | None = None  # when evidence was actually collected
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=5000)
+
+
+class EvidenceAttachUrlRequest(BaseModel):
+    """Schema for attaching a URL as evidence."""
+
+    artifact_url: str = Field(..., min_length=1, max_length=2048)
+    description: str | None = Field(default=None, max_length=1000)
 
 
 class EvidenceResponse(BaseModel):
@@ -330,6 +337,8 @@ class ActionPlanItem(BaseModel):
     collected_at: datetime | None = None
     notes: str | None = None
     evidence_id: str | None = None
+    artifact_url: str | None = None
+    artifact_description: str | None = None
     frameworks_covered: list[str] | None = None
 
 

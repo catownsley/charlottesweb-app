@@ -736,6 +736,300 @@ class TestEvidence:
         assert matching_item["notes"] == "Persisted progress"
 
 
+# ========== Evidence Attachment & Sanitization Tests ==========
+
+
+class TestEvidenceAttachments:
+    """Tests for evidence URL attachment and input sanitization."""
+
+    def test_attach_url_to_evidence(self, client):
+        """Test attaching a valid URL to an evidence record."""
+        create_response = client.post(
+            "/api/v1/evidence",
+            json={
+                "control_id": "HIPAA.164.312(a)(1)",
+                "evidence_type": "policy",
+                "title": "Test Evidence",
+            },
+        )
+        evidence_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/api/v1/evidence/{evidence_id}/attach",
+            json={
+                "artifact_url": "https://docs.example.com/encryption-policy.pdf",
+                "description": "Encryption policy document",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["artifact_url"] == "https://docs.example.com/encryption-policy.pdf"
+        assert data["description"] == "Encryption policy document"
+        assert data["uploaded_at"] is not None
+        assert data["status"] == "in_progress"  # auto-advanced from not_started
+
+    def test_attach_url_rejects_javascript_scheme(self, client):
+        """Test that javascript: URLs are rejected."""
+        create_response = client.post(
+            "/api/v1/evidence",
+            json={
+                "control_id": "HIPAA.164.312(a)(1)",
+                "evidence_type": "policy",
+                "title": "Test Evidence",
+            },
+        )
+        evidence_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/api/v1/evidence/{evidence_id}/attach",
+            json={"artifact_url": "javascript:alert(1)"},
+        )
+        assert response.status_code == 400
+        assert "not allowed" in response.json()["detail"].lower()
+
+    def test_attach_url_rejects_data_scheme(self, client):
+        """Test that data: URLs are rejected."""
+        create_response = client.post(
+            "/api/v1/evidence",
+            json={
+                "control_id": "HIPAA.164.312(a)(1)",
+                "evidence_type": "policy",
+                "title": "Test Evidence",
+            },
+        )
+        evidence_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/api/v1/evidence/{evidence_id}/attach",
+            json={"artifact_url": "data:text/html,<script>alert(1)</script>"},
+        )
+        assert response.status_code == 400
+
+    def test_attach_url_rejects_empty_url(self, client):
+        """Test that empty URLs are rejected."""
+        create_response = client.post(
+            "/api/v1/evidence",
+            json={
+                "control_id": "HIPAA.164.312(a)(1)",
+                "evidence_type": "policy",
+                "title": "Test Evidence",
+            },
+        )
+        evidence_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/api/v1/evidence/{evidence_id}/attach",
+            json={"artifact_url": ""},
+        )
+        assert response.status_code == 422  # Pydantic min_length=1
+
+    def test_attach_url_not_found(self, client):
+        """Test 404 when attaching to nonexistent evidence."""
+        response = client.post(
+            "/api/v1/evidence/nonexistent/attach",
+            json={"artifact_url": "https://example.com/doc.pdf"},
+        )
+        assert response.status_code == 404
+
+    def test_action_plan_includes_artifact_url(
+        self, client, org_data, metadata_profile_data
+    ):
+        """Test that action plan items include artifact_url when evidence has one."""
+        assess_response = client.post(
+            "/api/v1/assessments",
+            json={
+                "organization_id": org_data["id"],
+                "metadata_profile_id": metadata_profile_data["id"],
+            },
+        )
+        assessment_id = assess_response.json()["id"]
+
+        # Generate action plan to auto-create evidence records
+        plan_response = client.get(f"/api/v1/assessments/{assessment_id}/action-plan")
+        assert plan_response.status_code == 200
+        items = plan_response.json()["items"]
+        assert len(items) > 0
+
+        # Find an item with an evidence_id
+        target = next((i for i in items if i.get("evidence_id")), None)
+        assert target is not None
+
+        # Attach a URL to it
+        attach_response = client.post(
+            f"/api/v1/evidence/{target['evidence_id']}/attach",
+            json={"artifact_url": "https://example.com/evidence.pdf"},
+        )
+        assert attach_response.status_code == 200
+
+        # Reload action plan and verify artifact_url appears
+        plan_response2 = client.get(f"/api/v1/assessments/{assessment_id}/action-plan")
+        items2 = plan_response2.json()["items"]
+        updated = next(
+            (i for i in items2 if i["evidence_id"] == target["evidence_id"]),
+            None,
+        )
+        assert updated is not None
+        assert updated["artifact_url"] == "https://example.com/evidence.pdf"
+
+    def test_action_plan_evidence_title_includes_org_name(
+        self, client, org_data, metadata_profile_data
+    ):
+        """Test that auto-created evidence titles include the org name with spaces trimmed."""
+        assess_response = client.post(
+            "/api/v1/assessments",
+            json={
+                "organization_id": org_data["id"],
+                "metadata_profile_id": metadata_profile_data["id"],
+            },
+        )
+        assessment_id = assess_response.json()["id"]
+
+        plan_response = client.get(f"/api/v1/assessments/{assessment_id}/action-plan")
+        assert plan_response.status_code == 200
+        items = plan_response.json()["items"]
+
+        # Find an item with an evidence_id and check the evidence title
+        target = next((i for i in items if i.get("evidence_id")), None)
+        assert target is not None
+
+        evidence_response = client.get(f"/api/v1/evidence/{target['evidence_id']}")
+        assert evidence_response.status_code == 200
+        title = evidence_response.json()["title"]
+
+        # Org name with spaces removed should be in the title
+        org_slug = org_data["name"].replace(" ", "")
+        assert org_slug in title
+
+    def test_update_evidence_rejects_javascript_url(self, client):
+        """Test that PATCH rejects javascript: URLs."""
+        create_response = client.post(
+            "/api/v1/evidence",
+            json={
+                "control_id": "HIPAA.164.312(a)(1)",
+                "evidence_type": "policy",
+                "title": "Test Evidence",
+            },
+        )
+        evidence_id = create_response.json()["id"]
+
+        response = client.patch(
+            f"/api/v1/evidence/{evidence_id}",
+            json={"artifact_url": "javascript:alert('xss')"},
+        )
+        assert response.status_code == 400
+
+
+class TestSanitizationUtilities:
+    """Unit tests for sanitization functions."""
+
+    def test_sanitize_url_valid_https(self):
+        from src.utils import sanitize_url
+
+        assert (
+            sanitize_url("https://example.com/doc.pdf") == "https://example.com/doc.pdf"
+        )
+
+    def test_sanitize_url_valid_http(self):
+        from src.utils import sanitize_url
+
+        assert (
+            sanitize_url("http://localhost:8000/test") == "http://localhost:8000/test"
+        )
+
+    def test_sanitize_url_rejects_javascript(self):
+        from src.utils import sanitize_url
+
+        import pytest
+
+        with pytest.raises(ValueError, match="not allowed"):
+            sanitize_url("javascript:alert(1)")
+
+    def test_sanitize_url_rejects_data(self):
+        from src.utils import sanitize_url
+
+        import pytest
+
+        with pytest.raises(ValueError, match="not allowed"):
+            sanitize_url("data:text/html,<h1>test</h1>")
+
+    def test_sanitize_url_rejects_file(self):
+        from src.utils import sanitize_url
+
+        import pytest
+
+        with pytest.raises(ValueError, match="not allowed"):
+            sanitize_url("file:///etc/passwd")
+
+    def test_sanitize_url_rejects_empty(self):
+        from src.utils import sanitize_url
+
+        import pytest
+
+        with pytest.raises(ValueError, match="empty"):
+            sanitize_url("")
+
+    def test_sanitize_url_rejects_no_host(self):
+        from src.utils import sanitize_url
+
+        import pytest
+
+        with pytest.raises(ValueError, match="host"):
+            sanitize_url("https://")
+
+    def test_sanitize_url_rejects_oversized(self):
+        from src.utils import sanitize_url
+
+        import pytest
+
+        with pytest.raises(ValueError, match="maximum length"):
+            sanitize_url("https://example.com/" + "a" * 2100)
+
+    def test_sanitize_text_escapes_html(self):
+        from src.utils import sanitize_text
+
+        result = sanitize_text("<script>alert('xss')</script>")
+        assert "<script>" not in result
+        assert "&lt;script&gt;" in result
+
+    def test_sanitize_text_rejects_oversized(self):
+        from src.utils import sanitize_text
+
+        import pytest
+
+        with pytest.raises(ValueError, match="maximum length"):
+            sanitize_text("a" * 6000)
+
+    def test_sanitize_text_strips_control_chars(self):
+        from src.utils import sanitize_text
+
+        result = sanitize_text("hello\x00world\x07test")
+        assert "\x00" not in result
+        assert "\x07" not in result
+
+    def test_sanitize_filename_strips_path_traversal(self):
+        from src.utils import sanitize_filename
+
+        result = sanitize_filename("../../etc/passwd")
+        assert result == "passwd"
+        assert ".." not in result
+
+    def test_sanitize_filename_rejects_empty(self):
+        from src.utils import sanitize_filename
+
+        import pytest
+
+        with pytest.raises(ValueError):
+            sanitize_filename("")
+
+    def test_sanitize_filename_rejects_dots_only(self):
+        from src.utils import sanitize_filename
+
+        import pytest
+
+        with pytest.raises(ValueError, match="Invalid filename"):
+            sanitize_filename("..")
+
+
 # ========== Component Tests ==========
 
 
