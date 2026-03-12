@@ -28,7 +28,7 @@ cp .env.example .env
 ### 3. Seed Database
 
 ```bash
-# Create tables and seed HIPAA controls
+# Create tables and seed multi-framework controls
 python -m src.seed
 ```
 
@@ -239,7 +239,7 @@ See [SECURITY_KEYS.md](SECURITY_KEYS.md) and [SECURITY.md](SECURITY.md) for comp
 
 ## Testing the Vertical Slice
 
-## Risk-Convergence API (HIPAA-first)
+## Risk-Convergence API
 
 CharlottesWeb now exposes a convergence endpoint that merges compliance posture
 and threat intelligence into an actionable backlog:
@@ -266,8 +266,8 @@ curl "http://localhost:8000/api/v1/risk/prioritized-backlog?assessment_id=<id>&t
 ```
 
 ### Future direction (planned)
-- Dynamic HIPAA feed ingestion (versioned controls)
-- Multi-regulation adapters (SOC 2, PCI DSS, GDPR, etc.)
+- Dynamic regulatory feed ingestion (versioned controls)
+- Additional framework adapters (SOC 2, PCI DSS, etc.)
 - Data-lifecycle metadata inference for regulation applicability
 
 To run the server with HTTPS using self-signed certificates for local development:
@@ -408,7 +408,7 @@ Response:
 {
 "id": "finding-id",
 "assessment_id": "assessment-id",
-"control_id": "HIPAA.164.312(a)(1)",
+"control_id": "ctrl-uuid-here",
 "title": "Multi-Factor Authentication (MFA) Not Enabled",
 "description": "MFA is not enabled for user authentication...",
 "severity": "high",
@@ -423,7 +423,7 @@ Response:
 ]
 ```
 
-### List All HIPAA Controls
+### List All Controls
 
 ```bash
 curl http://localhost:8000/api/v1/controls
@@ -499,7 +499,7 @@ src/
 ├── api.py # API route handlers
 ├── rules_engine.py # Core rules logic (metadata → controls → findings)
 ├── main.py # FastAPI application entry point
-└── seed.py # Database seed script for HIPAA controls
+└── seed.py # Database seed script for multi-framework controls
 
 tests/
 └── test_api.py # API integration tests
@@ -516,7 +516,7 @@ scripts/
 This MVP covers the full request cycle:
 
 1. **Metadata Intake** → Organization + MetadataProfile models
-2. **Control Mapping** → 10 seeded HIPAA controls
+2. **Control Mapping** → 23 canonical controls across 7 frameworks (87 mappings)
 3. **Rules Engine** → 5 implemented rules that map metadata to findings:
 - Access Control (MFA check)
 - Encryption at Rest
@@ -534,7 +534,7 @@ This MVP covers the full request cycle:
 See [docs/tickets/TICKET_INDEX.md](docs/tickets/TICKET_INDEX.md) for the full roadmap.
 
 ### Immediate Enhancements (Phase 1 completion)
-- Add more HIPAA controls (currently 10, target 30-50)
+- Expand canonical controls and cross-framework mappings
 - Expand rules engine logic
 - Add real CVE/NVD integration (currently mocked)
 - Implement remediation roadmap grouping endpoint
@@ -594,4 +594,5 @@ uvicorn src.main:app --port 8001
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Complete technical architecture
 - [FastAPI Docs](https://fastapi.tiangolo.com/)
 - [SQLAlchemy Docs](https://docs.sqlalchemy.org/)
+- [NIST 800-53 Rev 5](https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final)
 - [HIPAA Security Rule](https://www.hhs.gov/hipaa/for-professionals/security/index.html)
