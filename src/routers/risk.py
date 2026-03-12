@@ -2,7 +2,7 @@
 
 This router intentionally reuses current entities (Assessment, Finding, Evidence,
 Control, MetadataProfile) to provide immediate value without disruptive schema
-changes. It is HIPAA-first for v1, with clear extension points for multi-reg.
+changes. It supports multi-framework regulatory mapping (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA).
 """
 
 from __future__ import annotations
