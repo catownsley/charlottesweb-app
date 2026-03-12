@@ -50,7 +50,7 @@ DON'T:
   - Hardcode secrets in Python
   - Use weak/default secrets
   - Use DEBUG=true in production
-  - Allow all origins with CORS "*"
+  - Use CORS wildcard origins
   - Use SQLite in production
   - Share secrets via chat/email
   - Skip TLS
@@ -81,7 +81,7 @@ Before deploying to production:
   □ API_KEY_REQUIRED=true
   □ DEBUG=false
   □ APP_ENV=production
-  □ CORS_ORIGINS explicitly whitelisted (not "*")
+  □ CORS_ORIGINS explicitly whitelisted
   □ DATABASE_URL points to production database
   □ Database has strong password
   □ HTTPS/TLS enabled
@@ -216,7 +216,7 @@ class Settings(BaseSettings):
     # ========================================================================
 
     # Allowed origins for CORS
-    # Development: Empty list → defaults to "*" (allow all)
+    # Development: Defaults to localhost origins
     # Production: Explicit whitelist required
     # Format in .env: CORS_ORIGINS=https://app.example.com,https://dashboard.example.com
     cors_origins: list[str] = []
@@ -229,9 +229,12 @@ class Settings(BaseSettings):
     cors_allow_methods: list[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 
     # Allowed headers in CORS requests
-    # "*" allows all headers (fine for API)
-    # Can restrict to specific headers for tighter security
-    cors_allow_headers: list[str] = ["*"]
+    cors_allow_headers: list[str] = [
+        "Content-Type",
+        "Authorization",
+        "X-API-Key",
+        "X-Request-ID",
+    ]
 
     # ========================================================================
     # SECURITY - RATE LIMITING
@@ -289,16 +292,23 @@ class Settings(BaseSettings):
         """Get CORS allowed origins based on environment.
 
         Logic:
-        - Development + no explicit origins → Allow all ("*")
+        - Development + no explicit origins → Allow localhost origins
         - Production or explicit origins → Use whitelist
 
         Security:
-        - Never return ["*"] in production
+        - Never returns wildcard ("*")
         - Requires explicit origin configuration in production
         """
-        if self.debug and not self.cors_origins:
-            return ["*"]  # Allow all in development for convenience
-        return self.cors_origins  # Use explicit whitelist
+        if self.cors_origins:
+            return self.cors_origins  # Use explicit whitelist
+        if self.debug:
+            return [
+                "https://localhost:8443",
+                "https://127.0.0.1:8443",
+                "https://localhost:3000",
+                "https://127.0.0.1:3000",
+            ]
+        return []  # No origins allowed in production without explicit config
 
 
 # ============================================================================
@@ -333,7 +343,7 @@ def validate_security_config() -> list[str]:
 
     Checks for common misconfigurations that could lead to security issues:
     - Weak or default SECRET_KEY in production
-    - CORS wildcard (*) in production
+    - Missing CORS origin whitelist in production
     - Debug mode enabled in production
     - API key authentication disabled in production
     - SQLite database in production (not scalable/concurrent-safe)
@@ -366,10 +376,10 @@ def validate_security_config() -> list[str]:
                 "Generate strong key: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
             )
 
-        # Check 3: CORS should have explicit origin whitelist (not *)
-        if "*" in settings.cors_allowed_origins:
+        # Check 3: CORS should have explicit origin whitelist
+        if not settings.cors_allowed_origins:
             warnings.append(
-                "[CRITICAL] SECURITY: CORS allows all origins (*) in production! "
+                "[CRITICAL] SECURITY: No CORS origins configured for production! "
                 "Set CORS_ORIGINS=https://yourdomain.com"
             )
 

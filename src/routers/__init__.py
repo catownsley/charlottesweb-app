@@ -5,10 +5,14 @@ from src.routers import (
     components,
     controls,
     evidence,
+    findings,
+    frameworks,
     health,
     metadata_profiles,
     organizations,
+    reports,
     risk,
+    vulnerability_analysis,
 )
 
 __all__ = [
@@ -16,8 +20,12 @@ __all__ = [
     "components",
     "controls",
     "evidence",
+    "findings",
+    "frameworks",
     "health",
     "metadata_profiles",
     "organizations",
+    "reports",
     "risk",
+    "vulnerability_analysis",
 ]

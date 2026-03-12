@@ -24,6 +24,7 @@ Middleware order matters! Apply in this sequence:
 4. CORS (framework-level)
 5. Application routes (innermost)
 """
+
 import time
 import uuid
 from collections.abc import Callable
@@ -39,8 +40,13 @@ from src.security import get_api_key_optional  # Re-export for convenience
 # Rate limiter instance for use in route decorators
 limiter = Limiter(key_func=get_remote_address)
 
-__all__ = ["SecurityHeadersMiddleware", "RequestIDMiddleware", "ResponseTimeMiddleware", "limiter", "get_api_key_optional"]
-
+__all__ = [
+    "SecurityHeadersMiddleware",
+    "RequestIDMiddleware",
+    "ResponseTimeMiddleware",
+    "limiter",
+    "get_api_key_optional",
+]
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -77,7 +83,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Alternative: SAMEORIGIN = allow same-origin framing
         # Exception: Allow for /docs and /redoc endpoints (self-hosted documentation)
         is_docs_endpoint = request.url.path in ["/docs", "/redoc", "/openapi.json"]
-        response.headers["X-Frame-Options"] = "SAMEORIGIN" if is_docs_endpoint else "DENY"
+        response.headers["X-Frame-Options"] = (
+            "SAMEORIGIN" if is_docs_endpoint else "DENY"
+        )
 
         # Security Header 2: MIME Sniffing Protection
         # Forces browser to respect declared Content-Type
@@ -106,7 +114,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "connect-src 'self'; "
                 "img-src 'self' https://nvd.nist.gov https://fastapi.tiangolo.com; "
                 "font-src 'self'; "
-                "default-src 'none'"
+                "default-src 'none'; "
+                "upgrade-insecure-requests"
             )
             response.headers["Content-Security-Policy"] = csp
         else:
@@ -124,15 +133,19 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Security Header 6: Permissions Policy (Feature Policy)
         # Disables browser features we don't use
         # Reduces attack surface
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), microphone=(), camera=()"
+        )
 
         # Security Header 7: HTTP Strict Transport Security (HSTS)
         # Forces HTTPS for all future requests (31536000 sec = 1 year)
         # includeSubDomains = applies to all subdomains too
+        # preload = eligible for browser HSTS preload lists
         # Only add for HTTPS connections (adding on HTTP has no effect)
-        # Note: Cannot be removed except by waiting for max-age to expire
         if request.url.scheme == "https":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains; preload"
+            )
 
         return response
 

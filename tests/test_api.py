@@ -326,22 +326,20 @@ def test_get_assessment_status(client):
 
 
 def test_evidence_checklist_toggle_ui_wiring_present(client):
-    """Test that checklist collapse/expand wiring remains present in the web UI."""
+    """Test that action plan collapse/expand wiring remains present in the web UI."""
     response = client.get("/")
     assert response.status_code == 200
 
     html = response.text
 
-    # Top-level checklist toggle link and panel
-    assert 'id="viewEvidenceChecklistLink"' in html
-    assert 'id="evidenceChecklistPanel"' in html
+    # Top-level action plan toggle link and panel
+    assert 'id="viewActionPlanLink"' in html
+    assert 'id="actionPlanPanel"' in html
 
     # Guard against regressions where link only reloads and no longer toggles visibility
-    assert "checklistPanel.classList.contains('hidden')" in html
-    assert "checklistPanel.classList.remove('hidden')" in html
-    assert "checklistPanel.classList.add('hidden')" in html
-    assert "Hide Evidence Collection Checklist" in html
-    assert "View Evidence Collection Checklist" in html
+    assert "actionPlanPanel.classList.contains('hidden')" in html
+    assert "actionPlanPanel.classList.remove('hidden')" in html
+    assert "actionPlanPanel.classList.add('hidden')" in html
 
     # In-panel collapse/expand button wiring should also remain present
     assert 'id="toggleEvidenceBtn"' in html

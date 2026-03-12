@@ -1,6 +1,9 @@
-"""Seed database with initial HIPAA controls and healthcare-specific evidence requirements."""
+"""Seed database with compliance frameworks, controls, and healthcare-specific evidence requirements."""
 
 from datetime import datetime, timedelta
+
+from sqlalchemy import inspect, text
+from sqlalchemy.orm import Session
 
 from src.database import Base, SessionLocal, engine
 from src.models import (
@@ -8,15 +11,452 @@ from src.models import (
     Control,
     Evidence,
     Finding,
+    Framework,
+    FrameworkRequirement,
     MetadataProfile,
     Organization,
 )
 
 
-def seed_controls():
-    """Seed database with HIPAA + healthcare-specific controls and sample evidence."""
+def _migrate_control_columns() -> None:
+    """Add new nullable columns to controls table if they don't exist (SQLite compat)."""
+    inspector = inspect(engine)
+    if "controls" not in inspector.get_table_names():
+        return
+    existing = {col["name"] for col in inspector.get_columns("controls")}
+    with engine.begin() as conn:
+        if "canonical_concept" not in existing:
+            conn.execute(text("ALTER TABLE controls ADD COLUMN canonical_concept TEXT"))
+        if "source" not in existing:
+            conn.execute(
+                text("ALTER TABLE controls ADD COLUMN source TEXT DEFAULT 'seed'")
+            )
+        if "source_id" not in existing:
+            conn.execute(text("ALTER TABLE controls ADD COLUMN source_id TEXT"))
+
+
+def _seed_frameworks(db: Session) -> None:  # noqa: C901
+    """Seed regulatory frameworks and cross-framework requirement mappings."""
+    frameworks = [
+        Framework(
+            code="HIPAA",
+            name="HIPAA Security Rule",
+            version="2013",
+            jurisdiction="US",
+            source_url="https://www.hhs.gov/hipaa/for-professionals/security/index.html",
+        ),
+        Framework(
+            code="NIST_800_53",
+            name="NIST 800-53",
+            version="Rev 5",
+            jurisdiction="US",
+            source_url="https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final",
+        ),
+        Framework(
+            code="GDPR",
+            name="General Data Protection Regulation",
+            version="2016/679",
+            jurisdiction="EU",
+            source_url="https://gdpr-info.eu/",
+        ),
+        Framework(
+            code="SOX",
+            name="Sarbanes-Oxley Act",
+            version="2002",
+            jurisdiction="US",
+            source_url="https://www.congress.gov/bill/107th-congress/house-bill/3763",
+        ),
+        Framework(
+            code="FedRAMP",
+            name="FedRAMP",
+            version="Rev 5",
+            jurisdiction="US",
+            source_url="https://www.fedramp.gov/",
+        ),
+        Framework(
+            code="APRA_CPS_234",
+            name="APRA CPS 234",
+            version="2019",
+            jurisdiction="AU",
+            source_url="https://www.apra.gov.au/sites/default/files/cps_234_july_2019_for_public_release.pdf",
+        ),
+        Framework(
+            code="CCPA",
+            name="California Consumer Privacy Act",
+            version="2020",
+            jurisdiction="US-CA",
+            source_url="https://oag.ca.gov/privacy/ccpa",
+        ),
+    ]
+
+    for fw in frameworks:
+        db.add(fw)
+    db.flush()
+    print(f"Seeded {len(frameworks)} regulatory frameworks.")
+
+    # Build lookup for framework IDs
+    fw_by_code: dict[str, str] = {str(fw.code): str(fw.id) for fw in frameworks}
+
+    # Cross-framework requirement mappings
+    # Each tuple: (control_id, framework_code, citation, citation_title, baseline)
+    mappings = [
+        # --- Risk Analysis ---
+        (
+            "HIPAA.164.308(a)(1)(ii)(A)",
+            "HIPAA",
+            "164.308(a)(1)(ii)(A)",
+            "Risk Analysis",
+            None,
+        ),
+        ("HIPAA.164.308(a)(1)(ii)(A)", "NIST_800_53", "RA-3", "Risk Assessment", None),
+        ("HIPAA.164.308(a)(1)(ii)(A)", "FedRAMP", "RA-3", "Risk Assessment", "Low"),
+        (
+            "HIPAA.164.308(a)(1)(ii)(A)",
+            "GDPR",
+            "Art. 35",
+            "Data Protection Impact Assessment",
+            None,
+        ),
+        (
+            "HIPAA.164.308(a)(1)(ii)(A)",
+            "APRA_CPS_234",
+            "Section 15",
+            "Information Security Risk Assessment",
+            None,
+        ),
+        # --- Access Control ---
+        ("HIPAA.164.312(a)(1)", "HIPAA", "164.312(a)(1)", "Access Control", None),
+        ("HIPAA.164.312(a)(1)", "NIST_800_53", "AC-2", "Account Management", None),
+        ("HIPAA.164.312(a)(1)", "FedRAMP", "AC-2", "Account Management", "Low"),
+        (
+            "HIPAA.164.312(a)(1)",
+            "GDPR",
+            "Art. 32(1)(b)",
+            "Access Controls for Processing Systems",
+            None,
+        ),
+        ("HIPAA.164.312(a)(1)", "SOX", "ITGC-1", "Logical Access Controls", None),
+        (
+            "HIPAA.164.312(a)(1)",
+            "APRA_CPS_234",
+            "Section 25",
+            "Access Management",
+            None,
+        ),
+        # --- Encryption at Rest ---
+        (
+            "HIPAA.164.312(a)(2)(iv)",
+            "HIPAA",
+            "164.312(a)(2)(iv)",
+            "Encryption and Decryption",
+            None,
+        ),
+        (
+            "HIPAA.164.312(a)(2)(iv)",
+            "NIST_800_53",
+            "SC-28",
+            "Protection of Information at Rest",
+            None,
+        ),
+        (
+            "HIPAA.164.312(a)(2)(iv)",
+            "FedRAMP",
+            "SC-28",
+            "Protection of Information at Rest",
+            "Moderate",
+        ),
+        (
+            "HIPAA.164.312(a)(2)(iv)",
+            "GDPR",
+            "Art. 32(1)(a)",
+            "Encryption of Personal Data",
+            None,
+        ),
+        ("HIPAA.164.312(a)(2)(iv)", "SOX", "ITGC-4", "Data Protection Controls", None),
+        (
+            "HIPAA.164.312(a)(2)(iv)",
+            "APRA_CPS_234",
+            "Section 23",
+            "Cryptographic Controls",
+            None,
+        ),
+        # --- Transmission Security ---
+        (
+            "HIPAA.164.312(e)(1)",
+            "HIPAA",
+            "164.312(e)(1)",
+            "Transmission Security",
+            None,
+        ),
+        (
+            "HIPAA.164.312(e)(1)",
+            "NIST_800_53",
+            "SC-8",
+            "Transmission Confidentiality and Integrity",
+            None,
+        ),
+        (
+            "HIPAA.164.312(e)(1)",
+            "FedRAMP",
+            "SC-8",
+            "Transmission Confidentiality and Integrity",
+            "Moderate",
+        ),
+        ("HIPAA.164.312(e)(1)", "GDPR", "Art. 32(1)(a)", "Encryption in Transit", None),
+        (
+            "HIPAA.164.312(e)(1)",
+            "APRA_CPS_234",
+            "Section 23",
+            "Cryptographic Techniques - Transit",
+            None,
+        ),
+        # --- Audit Controls ---
+        ("HIPAA.164.312(b)", "HIPAA", "164.312(b)", "Audit Controls", None),
+        ("HIPAA.164.312(b)", "NIST_800_53", "AU-2", "Event Logging", None),
+        ("HIPAA.164.312(b)", "FedRAMP", "AU-2", "Event Logging", "Low"),
+        (
+            "HIPAA.164.312(b)",
+            "GDPR",
+            "Art. 30",
+            "Records of Processing Activities",
+            None,
+        ),
+        ("HIPAA.164.312(b)", "SOX", "ITGC-3", "IT Operations and Monitoring", None),
+        ("HIPAA.164.312(b)", "APRA_CPS_234", "Section 33", "Testing of Controls", None),
+        # --- Malware Protection ---
+        (
+            "HIPAA.164.308(a)(5)(ii)(B)",
+            "HIPAA",
+            "164.308(a)(5)(ii)(B)",
+            "Protection from Malicious Software",
+            None,
+        ),
+        (
+            "HIPAA.164.308(a)(5)(ii)(B)",
+            "NIST_800_53",
+            "SI-3",
+            "Malicious Code Protection",
+            None,
+        ),
+        (
+            "HIPAA.164.308(a)(5)(ii)(B)",
+            "FedRAMP",
+            "SI-3",
+            "Malicious Code Protection",
+            "Low",
+        ),
+        # --- Data Backup ---
+        (
+            "HIPAA.164.308(a)(7)(ii)(A)",
+            "HIPAA",
+            "164.308(a)(7)(ii)(A)",
+            "Data Backup Plan",
+            None,
+        ),
+        ("HIPAA.164.308(a)(7)(ii)(A)", "NIST_800_53", "CP-9", "System Backup", None),
+        ("HIPAA.164.308(a)(7)(ii)(A)", "FedRAMP", "CP-9", "System Backup", "Low"),
+        ("HIPAA.164.308(a)(7)(ii)(A)", "SOX", "ITGC-5", "Backup and Recovery", None),
+        # --- Incident Response ---
+        (
+            "HIPAA.164.308(a)(6)(ii)",
+            "HIPAA",
+            "164.308(a)(6)(ii)",
+            "Response and Reporting",
+            None,
+        ),
+        ("HIPAA.164.308(a)(6)(ii)", "NIST_800_53", "IR-6", "Incident Reporting", None),
+        ("HIPAA.164.308(a)(6)(ii)", "FedRAMP", "IR-6", "Incident Reporting", "Low"),
+        (
+            "HIPAA.164.308(a)(6)(ii)",
+            "GDPR",
+            "Art. 33",
+            "Notification to Supervisory Authority",
+            None,
+        ),
+        (
+            "HIPAA.164.308(a)(6)(ii)",
+            "APRA_CPS_234",
+            "Section 35",
+            "Notification of Security Incidents",
+            None,
+        ),
+        # --- Physical Access ---
+        (
+            "HIPAA.164.310(a)(1)",
+            "HIPAA",
+            "164.310(a)(1)",
+            "Facility Access Controls",
+            None,
+        ),
+        (
+            "HIPAA.164.310(a)(1)",
+            "NIST_800_53",
+            "PE-2",
+            "Physical Access Authorizations",
+            None,
+        ),
+        (
+            "HIPAA.164.310(a)(1)",
+            "FedRAMP",
+            "PE-2",
+            "Physical Access Authorizations",
+            "Low",
+        ),
+        # --- Workforce Authorization ---
+        (
+            "HIPAA.164.308(a)(3)(ii)(A)",
+            "HIPAA",
+            "164.308(a)(3)(ii)(A)",
+            "Authorization and Supervision",
+            None,
+        ),
+        (
+            "HIPAA.164.308(a)(3)(ii)(A)",
+            "NIST_800_53",
+            "PS-2",
+            "Position Risk Designation",
+            None,
+        ),
+        (
+            "HIPAA.164.308(a)(3)(ii)(A)",
+            "GDPR",
+            "Art. 32(4)",
+            "Authorized Personnel Controls",
+            None,
+        ),
+        # --- Healthcare: API Auth ---
+        ("HC.SC-2.1", "HIPAA", "164.312(d)", "Person or Entity Authentication", None),
+        ("HC.SC-2.1", "NIST_800_53", "IA-2", "Identification and Authentication", None),
+        ("HC.SC-2.1", "FedRAMP", "IA-2", "Identification and Authentication", "Low"),
+        # --- Healthcare: TLS ---
+        ("HC.SC-7.1", "HIPAA", "164.312(e)(1)", "Transmission Security", None),
+        ("HC.SC-7.1", "NIST_800_53", "SC-8", "Transmission Confidentiality", None),
+        ("HC.SC-7.1", "FedRAMP", "SC-8", "Transmission Confidentiality", "Moderate"),
+        # --- Healthcare: Encryption at Rest ---
+        ("HC.SC-4.1", "HIPAA", "164.312(a)(2)(iv)", "Encryption at Rest", None),
+        (
+            "HC.SC-4.1",
+            "NIST_800_53",
+            "SC-28",
+            "Protection of Information at Rest",
+            None,
+        ),
+        (
+            "HC.SC-4.1",
+            "GDPR",
+            "Art. 32(1)(a)",
+            "Encryption of Personal Data at Rest",
+            None,
+        ),
+        # --- Healthcare: Key Management ---
+        ("HC.SC-12.1", "HIPAA", "164.312(a)(2)(iv)", "Encryption Key Management", None),
+        ("HC.SC-12.1", "NIST_800_53", "SC-12", "Cryptographic Key Management", None),
+        # --- Healthcare: Ephemeral Storage ---
+        ("HC.SC-7.2", "HIPAA", "164.312(a)(1)", "Data Minimization", None),
+        (
+            "HC.SC-7.2",
+            "NIST_800_53",
+            "SC-28(1)",
+            "Cryptographic Protection - Ephemeral",
+            None,
+        ),
+        ("HC.SC-7.2", "GDPR", "Art. 5(1)(e)", "Storage Limitation Principle", None),
+        # --- Healthcare: Access Logging ---
+        ("HC.AU-6.1", "HIPAA", "164.312(b)", "Audit Controls", None),
+        ("HC.AU-6.1", "NIST_800_53", "AU-6", "Audit Record Review", None),
+        ("HC.AU-6.1", "FedRAMP", "AU-6", "Audit Record Review", "Low"),
+        ("HC.AU-6.1", "SOX", "ITGC-3", "IT Operations Monitoring", None),
+        # --- Healthcare: Secure Deletion ---
+        ("HC.SC-13.1", "HIPAA", "164.310(d)(2)(i)", "Disposal of ePHI", None),
+        ("HC.SC-13.1", "NIST_800_53", "MP-6", "Media Sanitization", None),
+        ("HC.SC-13.1", "GDPR", "Art. 17", "Right to Erasure", None),
+        # --- Healthcare: De-identification ---
+        ("HC.UI-1.1", "HIPAA", "164.514(a)", "De-identification Standard", None),
+        (
+            "HC.UI-1.1",
+            "GDPR",
+            "Art. 11",
+            "Processing Not Requiring Identification",
+            None,
+        ),
+        # --- Healthcare: IAM Least Privilege ---
+        (
+            "HC.SC-2.2",
+            "HIPAA",
+            "164.312(a)(1)",
+            "Access Control - Least Privilege",
+            None,
+        ),
+        ("HC.SC-2.2", "NIST_800_53", "AC-6", "Least Privilege", None),
+        ("HC.SC-2.2", "FedRAMP", "AC-6", "Least Privilege", "Low"),
+        (
+            "HC.SC-2.2",
+            "APRA_CPS_234",
+            "Section 25",
+            "Access Management - Least Privilege",
+            None,
+        ),
+        # --- Healthcare: Input Validation ---
+        (
+            "HC.SC-3.1",
+            "HIPAA",
+            "164.312(a)(1)",
+            "Access Control - Input Validation",
+            None,
+        ),
+        ("HC.SC-3.1", "NIST_800_53", "SI-10", "Information Input Validation", None),
+        ("HC.SC-3.1", "FedRAMP", "SI-10", "Information Input Validation", "Moderate"),
+        # --- Healthcare: Secret Management ---
+        (
+            "HC.SC-12.2",
+            "HIPAA",
+            "164.312(a)(2)(iv)",
+            "Encryption - Secret Management",
+            None,
+        ),
+        ("HC.SC-12.2", "NIST_800_53", "SC-12", "Cryptographic Key Establishment", None),
+        # --- Healthcare: Incident Response ---
+        ("HC.AU-2.1", "HIPAA", "164.308(a)(6)(ii)", "Security Incident Response", None),
+        ("HC.AU-2.1", "NIST_800_53", "IR-4", "Incident Handling", None),
+        ("HC.AU-2.1", "FedRAMP", "IR-4", "Incident Handling", "Low"),
+        ("HC.AU-2.1", "GDPR", "Art. 33", "Breach Notification - 72 Hours", None),
+        (
+            "HC.AU-2.1",
+            "APRA_CPS_234",
+            "Section 35",
+            "Notification of Security Incidents",
+            None,
+        ),
+        # --- Healthcare: Network Segmentation ---
+        ("HC.SC-7.3", "HIPAA", "164.312(e)(1)", "Network Security", None),
+        ("HC.SC-7.3", "NIST_800_53", "SC-7", "Boundary Protection", None),
+        ("HC.SC-7.3", "FedRAMP", "SC-7", "Boundary Protection", "Low"),
+        ("HC.SC-7.3", "APRA_CPS_234", "Section 23", "Network Security Controls", None),
+    ]
+
+    for control_id, fw_code, citation, citation_title, baseline in mappings:
+        fw_id = fw_by_code.get(fw_code)
+        if not fw_id:
+            continue
+        db.add(
+            FrameworkRequirement(
+                control_id=control_id,
+                framework_id=fw_id,
+                citation=citation,
+                citation_title=citation_title,
+                baseline=baseline,
+            )
+        )
+
+    db.flush()
+    print(f"Seeded {len(mappings)} cross-framework requirement mappings.")
+
+
+def seed_controls() -> None:
+    """Seed database with frameworks, controls, and sample evidence."""
     # Create all tables
     Base.metadata.create_all(bind=engine)
+    _migrate_control_columns()
 
     db = SessionLocal()
 
@@ -368,6 +808,10 @@ def seed_controls():
         f"Successfully seeded {len(controls)} controls (10 HIPAA + 11 healthcare-specific)."
     )
 
+    # Seed regulatory frameworks and cross-framework mappings
+    _seed_frameworks(db)
+    db.commit()
+
     # First, create an organization and metadata profile for the sample assessment
     org = Organization(
         id="org-example-audit",
@@ -612,7 +1056,7 @@ def seed_controls():
     db.close()
     print(
         "\nSeed complete! Assessment 'org-sample-q1-2026' ready for testing."
-        "\nAccess the evidence checklist at /api/v1/assessments/org-sample-q1-2026/evidence-checklist"
+        "\nAccess the action plan at /api/v1/assessments/org-sample-q1-2026/action-plan"
     )
 
 

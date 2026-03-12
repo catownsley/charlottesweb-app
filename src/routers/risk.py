@@ -22,6 +22,7 @@ from src.database import get_db, get_or_404
 from src.middleware import get_api_key_optional, limiter
 from src.models import Assessment, Control, Evidence, Finding
 from src.risk_engine import RiskComputationInput, compute_control_risk
+from src.utils import to_str
 
 router = APIRouter(prefix="/risk", tags=["risk"])
 F = TypeVar("F", bound=Callable[..., Any])
@@ -35,13 +36,6 @@ def _typed_get(path: str) -> Callable[[F], F]:
 def _typed_limit(rule: str) -> Callable[[F], F]:
     """Typed wrapper around slowapi limiter decorators for mypy compatibility."""
     return cast(Callable[[F], F], limiter.limit(rule))
-
-
-def _to_text(value: Any, default: str = "") -> str:
-    if value is None:
-        return default
-    text = str(value).strip()
-    return text if text else default
 
 
 def _resolve_scope(
@@ -61,7 +55,7 @@ def _resolve_scope(
         assessment = get_or_404(
             db, Assessment, scoped_assessment_id, "Assessment not found"
         )
-        assessment_org = _to_text(getattr(assessment, "organization_id", None))
+        assessment_org = to_str(getattr(assessment, "organization_id", None))
 
         if scoped_organization_id and assessment_org != scoped_organization_id:
             raise HTTPException(
@@ -94,9 +88,7 @@ def _fetch_scoped_findings(
             Assessment.organization_id == organization_id
         )
 
-    return cast(
-        list[Finding], findings_query.filter(Finding.control_id.isnot(None)).all()
-    )
+    return findings_query.filter(Finding.control_id.isnot(None)).all()
 
 
 def _collect_evidence_by_control(
@@ -118,7 +110,7 @@ def _collect_evidence_by_control(
 
     evidence_by_control: dict[str, list[Evidence]] = defaultdict(list)
     for ev in evidence_rows:
-        key = _to_text(getattr(ev, "control_id", None))
+        key = to_str(getattr(ev, "control_id", None))
         if key:
             evidence_by_control[key].append(ev)
     return evidence_by_control
@@ -162,7 +154,7 @@ def _summarize_findings(
             if max_cvss is None or cvss_value > max_cvss:
                 max_cvss = cvss_value
 
-        severity = _to_text(getattr(finding, "severity", None), default="low")
+        severity = to_str(getattr(finding, "severity", None), default="low")
         if severity_rank.get(severity.lower(), 1) > severity_rank.get(
             max_severity.lower(), 1
         ):
@@ -174,7 +166,7 @@ def _summarize_findings(
 
         if idx < 3:
             sample_findings.append(
-                _to_text(getattr(finding, "title", None), default="Untitled finding")
+                to_str(getattr(finding, "title", None), default="Untitled finding")
             )
 
     return max_severity, max_cvss, cve_count, sample_findings
@@ -185,7 +177,7 @@ def _extract_evidence_signal(
 ) -> tuple[list[str], datetime | None, datetime | None]:
     """Extract confidence-relevant evidence status and freshness values."""
     evidence_statuses = [
-        _to_text(getattr(ev, "status", None), default="not_started")
+        to_str(getattr(ev, "status", None), default="not_started")
         for ev in evidence_rows
     ]
 
@@ -215,19 +207,17 @@ def _build_backlog_items(
     """Build scored backlog items for each control with findings."""
     findings_by_control: dict[str, list[Finding]] = defaultdict(list)
     for finding in findings:
-        control_id = _to_text(getattr(finding, "control_id", None))
+        control_id = to_str(getattr(finding, "control_id", None))
         if control_id:
             findings_by_control[control_id].append(finding)
 
     items: list[dict[str, Any]] = []
     for control_id, grouped_findings in findings_by_control.items():
         control = control_by_id.get(control_id)
-        control_title = _to_text(
+        control_title = to_str(
             getattr(control, "title", None), default="Unknown control"
         )
-        control_category = _to_text(
-            getattr(control, "category", None), default="Unknown"
-        )
+        control_category = to_str(getattr(control, "category", None), default="Unknown")
 
         max_severity, max_cvss, cve_count, sample_findings = _summarize_findings(
             grouped_findings
@@ -326,15 +316,15 @@ def get_prioritized_risk_backlog(
         }
 
     control_ids = {
-        _to_text(getattr(finding, "control_id", None))
+        to_str(getattr(finding, "control_id", None))
         for finding in findings
-        if _to_text(getattr(finding, "control_id", None))
+        if to_str(getattr(finding, "control_id", None))
     }
     controls: list[Control] = (
         db.query(Control).filter(Control.id.in_(list(control_ids))).all()
     )
     control_by_id = {
-        _to_text(getattr(control, "id", None)): control for control in controls
+        to_str(getattr(control, "id", None)): control for control in controls
     }
 
     evidence_by_control = _collect_evidence_by_control(
