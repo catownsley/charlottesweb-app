@@ -233,7 +233,7 @@ RemediationTask:
 ## Technology Decisions
 
 ### Backend
-- **Language:** Python 3.11+
+- **Language:** Python 3.14+
 - **Framework:** FastAPI (async, OpenAPI auto-generation, type hints)
 - **Database:** PostgreSQL (JSONB for metadata flexibility)
 - **ORM:** SQLAlchemy 2.0 (async support)

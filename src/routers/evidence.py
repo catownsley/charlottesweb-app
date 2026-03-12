@@ -1,4 +1,5 @@
 """Evidence collection and management endpoints."""
+
 import logging
 from datetime import UTC, datetime
 
@@ -48,10 +49,9 @@ def create_evidence(
         db.refresh(evidence)
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to create evidence: {str(e)}", exc_info=True)
+        logger.error("Failed to create evidence: %s", e, exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail="Failed to create evidence item. Please try again."
+            status_code=500, detail="Failed to create evidence item. Please try again."
         ) from e
 
     # Audit log
@@ -60,8 +60,11 @@ def create_evidence(
         request=request,
         api_key=api_key,
         resource_type="evidence",
-        resource_id=evidence.id,  # type: ignore[arg-type]
-        details={"control_id": evidence.control_id, "evidence_type": evidence.evidence_type},
+        resource_id=evidence.id,
+        details={
+            "control_id": evidence.control_id,
+            "evidence_type": evidence.evidence_type,
+        },
     )
 
     return evidence
@@ -103,7 +106,7 @@ def update_evidence(
         request=request,
         api_key=api_key,
         resource_type="evidence",
-        resource_id=evidence.id,  # type: ignore[arg-type]
+        resource_id=evidence.id,
         details={"updated_fields": list(update_data.keys())},
     )
 

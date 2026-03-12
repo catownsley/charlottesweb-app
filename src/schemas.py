@@ -320,7 +320,7 @@ class EvidenceChecklistResponse(BaseModel):
 
 
 class ComplianceRuleResult(BaseModel):
-    """Schema for a single compliance-as-code rule evaluation result."""
+    """Schema for a single compliance intelligence rule evaluation result."""
 
     rule_id: str
     control_id: str
@@ -334,8 +334,8 @@ class ComplianceRuleResult(BaseModel):
     severity_on_fail: str
 
 
-class ComplianceAsCodeResponse(BaseModel):
-    """Schema for metadata-driven compliance-as-code evaluation response."""
+class ComplianceIntelligenceResponse(BaseModel):
+    """Schema for metadata-driven compliance intelligence evaluation response."""
 
     assessment_id: str
     metadata_profile_id: str

@@ -140,7 +140,7 @@ async def app_lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title=settings.app_name,
     version=__version__,
-    description="HIPAA Compliance-as-Code Platform",
+    description="HIPAA Compliance Intelligence Platform",
     lifespan=app_lifespan,
     # Security: Disable API documentation in production
     # Interactive docs can leak API structure and be used for reconnaissance

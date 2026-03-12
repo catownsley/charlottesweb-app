@@ -70,7 +70,7 @@ def create_organization(
     except Exception as e:
         db.rollback()
         # Log actual error server-side
-        logger.error(f"Failed to create organization: {str(e)}", exc_info=True)
+        logger.error("Failed to create organization: %s", e, exc_info=True)
         # Return safe error message to client
         raise HTTPException(
             status_code=500,
@@ -83,7 +83,7 @@ def create_organization(
         request=request,
         api_key=api_key,
         resource_type="organization",
-        resource_id=org.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+        resource_id=org.id,
         details={"name": org.name, "industry": org.industry},
     )
 
@@ -109,7 +109,7 @@ def onboard_organization(
         db.flush()
 
         member = OrganizationMember(
-            organization_id=org.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+            organization_id=org.id,
             email=onboarding_data.admin_email,
             full_name=onboarding_data.admin_name,
             role=onboarding_data.admin_role,
@@ -120,7 +120,7 @@ def onboard_organization(
         db.refresh(member)
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to onboard organization: {str(e)}", exc_info=True)
+        logger.error("Failed to onboard organization: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="Failed to onboard organization. Please ensure the application has write access and try again.",
@@ -131,7 +131,7 @@ def onboard_organization(
         request=request,
         api_key=api_key,
         resource_type="organization",
-        resource_id=org.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+        resource_id=org.id,
         details={
             "name": org.name,
             "industry": org.industry,
@@ -161,7 +161,7 @@ def get_organization(
         request=request,
         api_key=api_key,
         resource_type="organization",
-        resource_id=org.id,  # type: ignore[arg-type] - SQLAlchemy Column unwraps at runtime
+        resource_id=org.id,
     )
 
     return org

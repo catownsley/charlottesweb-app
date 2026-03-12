@@ -1,6 +1,6 @@
 # CharlottesWeb
 
-> **HIPAA Compliance-as-Code platform for AI-enabled health applications**
+> **HIPAA Compliance Intelligence Platform for AI-enabled health applications**
 
 CharlottesWeb automates regulatory mapping by correlating HIPAA requirements with real-world exploitable vulnerabilities (CVE/CWE), producing prioritized remediation roadmaps and audit-ready evidence packages.
 
@@ -51,7 +51,7 @@ charlottesweb-app/
 │ └── tickets/ # Phased execution backlog
 │ ├── TICKET_INDEX.md
 │ └── README.md
-├── src/ # Application code (to be implemented)
+├── src/ # Application code
 ├── scripts/ # Automation scripts
 └── .github/
 └── ISSUE_TEMPLATE/ # GitHub issue templates
@@ -108,7 +108,7 @@ charlottesweb-app/
 - Metadata intake workflow (no PHI ingestion)
 - Remediation guidance and priority windows (immediate/30_days/quarterly)
 - Metadata-driven compliance evaluation endpoint (JSON policy rules → deterministic pass/fail)
-- Optional finding persistence via `GET /api/v1/assessments/{assessment_id}/compliance-as-code?persist_findings=true`
+- Optional finding persistence via `GET /api/v1/assessments/{assessment_id}/compliance-intelligence?persist_findings=true`
 - Auto-resolve: findings automatically removed when policy rules pass (`auto_resolve=true` by default)
 
 ### Phase 2 - Audit Evidence (In Progress)

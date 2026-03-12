@@ -1,16 +1,16 @@
 # CharlottesWeb Business Plan
 
-**HIPAA Compliance-as-Code Platform for AI-Enabled Health Applications**
+**HIPAA Compliance Intelligence Platform for AI-Enabled Health Applications**
 
 ## Document Purpose
 
-This document outlines the complete business plan for CharlottesWeb, a Compliance-as-Code platform initially targeting HIPAA compliance for AI-enabled health technology companies. Its core objective is to shift compliance from manual, checklist-based processes to automated, exploitability-driven regulatory intelligence.
+This document outlines the complete business plan for CharlottesWeb, a Compliance Intelligence platform initially targeting HIPAA compliance for AI-enabled health technology companies. Its core objective is to shift compliance from manual, checklist-based processes to automated, exploitability-driven regulatory intelligence.
 
 ---
 
 ## 1. Executive Summary
 
-CharlottesWeb is a Compliance-as-Code platform focused initially on HIPAA-regulated health technology companies. Digital health startups handling Protected Health Information (PHI) often lack in-house security leadership yet face significant regulatory, financial, and reputational risk in the event of a breach.
+CharlottesWeb is a Compliance Intelligence platform focused initially on HIPAA-regulated health technology companies. Digital health startups handling Protected Health Information (PHI) often lack in-house security leadership yet face significant regulatory, financial, and reputational risk in the event of a breach.
 
 CharlottesWeb automates regulatory mapping by ingesting structured metadata about an organization's data types, data flows, infrastructure, and application stack. The platform correlates applicable HIPAA requirements with real-world exploitable vulnerabilities (via NVD/CVE/CWE), secure coding risk patterns, and infrastructure misconfigurations to produce a prioritized remediation roadmap and audit-ready evidence package.
 
