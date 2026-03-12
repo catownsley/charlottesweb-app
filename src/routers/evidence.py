@@ -38,7 +38,7 @@ router = APIRouter(prefix="/evidence", tags=["evidence"])
 # def _generate_safe_filename(original_filename: str, org_slug: str) -> str:
 #     """Generate randomized filename to prevent path traversal and enumeration.
 #
-#     NEVER use the original filename for storage — it may contain:
+#     NEVER use the original filename for storage. It may contain:
 #     - Path traversal sequences (../../etc/passwd)
 #     - Script injection (<script>alert(1)</script>.pdf)
 #     - Null bytes (file.pdf%00.exe)

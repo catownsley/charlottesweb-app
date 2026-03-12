@@ -222,7 +222,7 @@ When an auditor reviews such a healthcare AI organization, they'd want:
 5. **Access Control Evidence** - IAM, RBAC, MFA, API key rotation
 6. **Incident Response Evidence** - Breach logs, remediation proof, drill results
 
-This framework is **realistic but aspirational**—a healthcare AI company may not have all of these controls yet, but the automation tool helps them **track what they have, what they're missing, and what the auditor will ask for**.
+This framework is **realistic but aspirational**. A healthcare AI company may not have all of these controls yet, but the automation tool helps them **track what they have, what they're missing, and what the auditor will ask for**.
 
 ---
 

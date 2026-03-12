@@ -4,12 +4,12 @@ This file is the single roadmap and ticket source for phase-based execution.
 
 ## Phase Summary
 
-## Phase 0 - Foundation ✅ COMPLETE
-- CW-001: Define domain model and architecture decisions
-- CW-002: Bootstrap backend service skeleton
-- CW-003: Create initial persistence schema
+## Phase 0: Foundation ✅ COMPLETE
+- CW-001: Define domain model and architecture decisions ✅
+- CW-002: Bootstrap backend service skeleton ✅
+- CW-003: Create initial persistence schema ✅
 
-## Phase 1 - HIPAA Intelligence Engine ✅ COMPLETE
+## Phase 1: HIPAA Intelligence Engine ✅ COMPLETE
 - CW-101: Build metadata intake API ✅
 - CW-102: Implement HIPAA control catalog seed ✅
 - CW-103: Implement rules mapping engine ✅
@@ -18,29 +18,29 @@ This file is the single roadmap and ticket source for phase-based execution.
 - CW-106: Generate remediation roadmap output ✅
 - CW-107: Add compliance-threat fused prioritized backlog endpoint ✅
 
-## Phase 2 - Audit Evidence Automation 🚧 IN PROGRESS
+## Phase 2: Audit Evidence Automation 🚧 IN PROGRESS
 - CW-201: Control-to-evidence mapping model ✅
 - CW-202: Evidence checklist generation ✅
 - CW-203: Policy/document templates generation
 - CW-204: Audit binder export endpoint
 
-## Phase 3 - Web App Workflows 🚧 IN PROGRESS
+## Phase 3: Web App Workflows 🚧 IN PROGRESS
 - CW-301: Auth and organization onboarding ✅
 - CW-302: Assessment run workflow UI ✅
 - CW-303: Findings dashboard and filters ✅
 - CW-304: Report download and share flow 🎯 NEXT FOCUS
 
-## Phase 4 - Pilot Readiness 🚧 IN PROGRESS
+## Phase 4: Pilot Readiness 🚧 IN PROGRESS
 - CW-401: Tenant isolation guardrails ✅
 - CW-402: Observability and audit logging
 - CW-403: Pilot onboarding scripts and sample data
 
-## Phase 5 - Continuous Monitoring ⏸️ NOT STARTED
+## Phase 5: Continuous Monitoring ⏸️ NOT STARTED
 - CW-501: Scheduled re-assessment jobs
 - CW-502: Delta risk detection and alerts
 - CW-503: Posture timeline and trend reporting
 
-## Phase 5.5 - Dynamic Regulatory Intelligence ⏸️ PLANNED
+## Phase 5.5: Dynamic Regulatory Intelligence ⏸️ PLANNED
 - CW-504: Dynamic HIPAA feed ingestion and versioning
 - CW-505: Regulation adapter framework (SOC 2, PCI DSS, GDPR, etc.)
 - CW-506: Data-lifecycle based regulation applicability inference
@@ -54,6 +54,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-001 Define domain model and architecture decisions
 - Type: Architecture
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: Written ADRs for API style, database, queue/jobs, and deployment target.
 - Acceptance:
 	- Core entities documented (Organization, MetadataProfile, Control, Finding, EvidenceArtifact, RemediationTask)
@@ -62,6 +63,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-002 Bootstrap backend service skeleton
 - Type: Backend
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: Running API service with health endpoint and basic project layout.
 - Acceptance:
 	- App starts locally
@@ -71,6 +73,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-003 Create initial persistence schema
 - Type: Backend/Data
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: First migration with core tables and indexes.
 - Acceptance:
 	- Migration applies and rolls back
@@ -90,6 +93,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-102 Implement HIPAA control catalog seed
 - Type: Compliance/Backend
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: Seeded machine-readable HIPAA controls and mappings.
 - Acceptance:
 	- Controls versioned
@@ -98,6 +102,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-103 Implement rules mapping engine
 - Type: Backend
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: Deterministic mapping from metadata profile to applicable controls.
 - Acceptance:
 	- Unit tests cover base rule scenarios
@@ -115,6 +120,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-105 Add risk scoring and prioritization
 - Type: Backend
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: Findings scored and grouped into Immediate / 30 Days / Quarterly / Annual.
 - Acceptance:
 	- Scoring formula documented
@@ -123,6 +129,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-106 Generate remediation roadmap output
 - Type: Backend/Reporting
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: Structured remediation roadmap JSON for dashboard/reporting.
 - Acceptance:
 	- Endpoint returns grouped actions with owner and due window
@@ -131,6 +138,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-107 Add compliance-threat fused prioritized backlog endpoint
 - Type: Backend/Security/Compliance
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: Residual-risk prioritized engineering backlog that combines control posture and threat pressure.
 - Acceptance:
 	- Endpoint `GET /api/v1/risk/prioritized-backlog` supports assessment and organization scope
@@ -143,6 +151,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-201 Control-to-evidence mapping model
 - Type: Backend/Data
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: Evidence requirements linked to mapped controls.
 - Acceptance:
 	- Evidence artifact schema supports status and owner
@@ -289,3 +298,15 @@ This file is the single roadmap and ticket source for phase-based execution.
 	- Input model supports sourcing/processing/storage/destruction/geolocation dimensions
 	- Inference output returns applicable regulation set with rationale
 	- HIPAA path remains deterministic and backward-compatible with current workflows
+
+---
+
+## Recent Completed Work (not ticketed)
+
+- **Evidence URL attachments** with input sanitization (PR #55)
+- **Dark mode** with purple color palette and softer severity colors (PRs #53, #54)
+- **MITRE ATT&CK integration** for threat-informed compliance: translates CWEs into real-world attack techniques with healthcare breach examples
+- **Multi-framework compliance** support: 7 frameworks (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) with 87 cross-framework control mappings
+- **STRIDE threat model** integrated into architecture documentation
+- **Component name input validation** updated to support real-world names (node.js, vue.js) with backend sanitization
+- **Manifest ingestion** (pom.xml) with org-scoped persistence

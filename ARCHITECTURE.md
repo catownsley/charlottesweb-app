@@ -2,7 +2,7 @@
 
 ## Core Product Philosophy
 
-CharlottesWeb transforms compliance from a manual exercise into **exploitability-driven regulatory intelligence**. We don't just tell you what controls you need—we tell you which vulnerabilities in your actual stack create regulatory risk.
+CharlottesWeb transforms compliance from a manual exercise into **exploitability-driven regulatory intelligence**. We don't just tell you what controls you need. We tell you which vulnerabilities in your actual stack create regulatory risk.
 
 ---
 
@@ -234,7 +234,7 @@ RemediationTask:
 ### Backend (Current)
 - **Language:** Python 3.14+
 - **Framework:** FastAPI (async, OpenAPI auto-generation, type hints)
-- **Database:** SQLite (development) — PostgreSQL planned for production
+- **Database:** SQLite (development), PostgreSQL planned for production
 - **ORM:** SQLAlchemy 2.0
 - **Migrations:** Alembic
 - **Security:** PyJWT, passlib, slowapi (rate limiting)
@@ -244,7 +244,7 @@ RemediationTask:
 - **Database:** PostgreSQL (JSONB for metadata flexibility)
 - **Task Queue:** Celery + Redis (long-running assessments)
 
-### Frontend (Planned — Phase 3)
+### Frontend (Planned, Phase 3)
 - **Framework:** React + TypeScript or Next.js
 - **State Management:** React Query (server state) + Zustand (client state)
 - **UI Components:** shadcn/ui or Radix UI
@@ -256,9 +256,10 @@ RemediationTask:
 - **Observability:** Sentry (errors) + Datadog/Grafana (metrics)
 
 ### Data Sources
-- **NVD:** REST API (rate-limited, cache locally) — integrated
-- **CWE:** XML dataset (periodic sync) — integrated via MITRE ATT&CK STIX
-- **CIS Benchmarks:** Manual ingestion (licensed content) — planned
+- **NVD:** REST API (rate-limited, cache locally). Integrated.
+- **CWE:** XML dataset (periodic sync). Integrated.
+- **MITRE ATT&CK:** STIX data via GitHub. Translates technical weaknesses (CWEs) into real-world attack techniques with healthcare breach examples. Integrated.
+- **CIS Benchmarks:** Manual ingestion (licensed content). Planned.
 
 ---
 
@@ -406,7 +407,7 @@ GET /api/v1/controls/{control_id}
 1. **Multi-framework support:** Implemented via `Framework` and `FrameworkRequirement` tables with 7 frameworks (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) and 87 cross-framework mappings.
 2. **Evidence ingestion:** Should we pull evidence automatically via API (e.g., AWS IAM snapshots) or require manual upload?
 3. **AI/ML risk module:** How to assess AI model bias, training data privacy, and inference security?
-4. **Global expansion:** GDPR, PIPEDA, LGPD—different data privacy frameworks require localized rule engines.
+4. **Global expansion:** GDPR, PIPEDA, LGPD. Different data privacy frameworks require localized rule engines.
 5. **Continuous monitoring cadence:** Daily, weekly, or monthly re-assessments? User-configurable?
 
 ---
@@ -422,6 +423,7 @@ GET /api/v1/controls/{control_id}
 - [CCPA](https://oag.ca.gov/privacy/ccpa)
 - [NVD (National Vulnerability Database)](https://nvd.nist.gov/)
 - [CWE (Common Weakness Enumeration)](https://cwe.mitre.org/)
+- [MITRE ATT&CK Framework](https://attack.mitre.org/)
 - [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework)
 - [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks/)
 

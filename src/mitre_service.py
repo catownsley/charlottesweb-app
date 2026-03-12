@@ -1,7 +1,7 @@
-"""MITRE ATT&CK API integration for threat intelligence.
+"""MITRE ATT&CK Framework integration for threat-informed compliance.
 
-Integrates with MITRE ATT&CK Framework to add threat context to compliance findings.
-Maps technical gaps (CWEs) to real-world attack techniques used in healthcare breaches.
+Uses the ATT&CK framework to translate technical weaknesses (CWEs) into
+business-relevant attack scenarios with real healthcare breach examples.
 
 Design Philosophy:
 - Real-time API: Fetch from GitHub (auto-updated, no manual downloads)
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class MITREService:
-    """Service for querying MITRE ATT&CK framework for threat intelligence."""
+    """Service for querying MITRE ATT&CK framework for threat-informed compliance."""
 
     # MITRE ATT&CK STIX 2.0 data from GitHub
     ENTERPRISE_ATTACK_URL = (
