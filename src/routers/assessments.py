@@ -415,6 +415,15 @@ def generate_action_plan(
     """
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
 
+    # Fetch org name for evidence titles (spaces trimmed)
+    org = get_or_404(
+        db,
+        Organization,
+        str(getattr(assessment, "organization_id", "")),
+        "Organization not found",
+    )
+    org_slug = str(getattr(org, "name", "")).replace(" ", "")
+
     controls: list[Control] = (
         db.query(Control).filter(Control.evidence_types.isnot(None)).all()
     )
@@ -464,7 +473,7 @@ def generate_action_plan(
                     assessment_id=assessment_id,
                     control_id=control_id,
                     evidence_type=evidence_type,
-                    title=f"{control_id}: {evidence_type}",
+                    title=f"{org_slug} - {control_id}: {evidence_type}",
                     description=f"Evidence for {control_title}",
                     status="not_started",
                     owner="system",
@@ -506,6 +515,10 @@ def generate_action_plan(
                 collected_at=getattr(evidence, "collected_at", None),
                 notes=to_optional_str(getattr(evidence, "notes", None)),
                 evidence_id=to_optional_str(getattr(evidence, "id", None)),
+                artifact_url=to_optional_str(getattr(evidence, "artifact_url", None)),
+                artifact_description=to_optional_str(
+                    getattr(evidence, "description", None)
+                ),
                 frameworks_covered=frameworks if frameworks else None,
             )
             action_items.append(item)

@@ -91,11 +91,10 @@ Before deploying to production:
 SEED DOCUMENTATION
 ====================
 
-See SECURITY_KEYS.md for:
+See DEV_GUIDE.md "Security Configuration" section for:
   - How to generate secrets
   - Platform-specific setup (Heroku, AWS, GCP, etc.)
   - Secret rotation procedures
-  - Encryption setup
   - Compliance checklist
 
 GENERATE SECRETS
