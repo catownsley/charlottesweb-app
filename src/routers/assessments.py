@@ -371,20 +371,29 @@ def _evidence_rank(evidence: Evidence) -> tuple[int, int, int, int, float]:
 def _build_framework_coverage_map(
     db: Session, control_ids: list[str]
 ) -> dict[str, list[str]]:
-    """Build a map of control_id → list of framework names that reference it."""
+    """Build a map of control_id → list of framework citations that reference it.
+
+    Returns citations in the format "FRAMEWORK §citation" (e.g., "HIPAA §164.312(a)(1)").
+    """
     from src.models import Framework
 
     rows = (
-        db.query(FrameworkRequirement.control_id, Framework.name)
+        db.query(
+            FrameworkRequirement.control_id,
+            Framework.code,
+            FrameworkRequirement.citation,
+        )
         .join(Framework, FrameworkRequirement.framework_id == Framework.id)
         .filter(FrameworkRequirement.control_id.in_(control_ids))
+        .order_by(Framework.code, FrameworkRequirement.citation)
         .all()
     )
     coverage: dict[str, list[str]] = {}
-    for control_id, fw_name in rows:
+    for control_id, fw_code, citation in rows:
+        label = f"{fw_code} §{citation}"
         coverage.setdefault(str(control_id), [])
-        if fw_name not in coverage[str(control_id)]:
-            coverage[str(control_id)].append(str(fw_name))
+        if label not in coverage[str(control_id)]:
+            coverage[str(control_id)].append(label)
     return coverage
 
 

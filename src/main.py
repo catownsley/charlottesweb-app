@@ -197,12 +197,12 @@ app.add_middleware(ResponseTimeMiddleware)
 # CORS Middleware (Cross-Origin Resource Sharing)
 # Controls which web origins can access this API
 # Security considerations:
-#   - Development: Allow all origins (*) for convenience
+#   - Development: Allows localhost origins only
 #   - Production: Explicit whitelist required (set CORS_ORIGINS env var)
-#   - Allow credentials: Needed for cookie-based auth
+#   - Never uses wildcard (*) — explicit origins only
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_allowed_origins,  # ['*'] in dev, whitelist in prod
+    allow_origins=settings.cors_allowed_origins,  # Explicit origins, never '*'
     allow_credentials=settings.cors_allow_credentials,  # Allow cookies/auth headers
     allow_methods=settings.cors_allow_methods,  # HTTP methods allowed
     allow_headers=settings.cors_allow_headers,  # Headers allowed in requests

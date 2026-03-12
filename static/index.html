@@ -693,21 +693,63 @@
         .threat-model-content .risk-medium { color: #f9a825; font-weight: 600; }
         .threat-model-content .risk-low { color: #2e7d32; font-weight: 600; }
 
-        .mermaid-placeholder {
-            background: #f9f9f9;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 20px;
+        .arch-diagram {
             margin: 16px 0;
-            text-align: center;
-            color: #666;
             font-size: 13px;
         }
-
-        .mermaid-placeholder pre {
-            text-align: left;
-            background: white;
+        .arch-diagram .trust-boundary {
+            border: 2px dashed #90a4ae;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            position: relative;
+        }
+        .arch-diagram .trust-boundary .tb-label {
+            position: absolute;
+            top: -10px;
+            left: 16px;
+            background: #fff;
+            padding: 0 8px;
+            font-weight: 700;
+            font-size: 11px;
+            color: #546e7a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .arch-diagram .node {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 6px;
             font-size: 12px;
+            font-weight: 600;
+            margin: 4px;
+            vertical-align: middle;
+        }
+        .arch-diagram .node-user { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+        .arch-diagram .node-app { background: #e8eaf6; color: #283593; border: 1px solid #9fa8da; }
+        .arch-diagram .node-mw { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
+        .arch-diagram .node-router { background: #e0f2f1; color: #00695c; border: 1px solid #80cbc4; }
+        .arch-diagram .node-db { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+        .arch-diagram .node-ext { background: #fce4ec; color: #b71c1c; border: 1px solid #ef9a9a; }
+        .arch-diagram .node-audit { background: #f1f8e9; color: #33691e; border: 1px solid #aed581; }
+        .arch-diagram .flow-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin: 6px 0;
+            flex-wrap: wrap;
+        }
+        .arch-diagram .flow-arrow {
+            color: #78909c;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .arch-diagram .router-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 6px;
+            margin: 8px 0;
         }
     </style>
 </head>
@@ -818,37 +860,104 @@
                 <p>This diagram is designed for security review and threat modeling (DFD-style with trust boundaries).</p>
 
                 <h3>Full Solution Architecture (Threat Modeling View)</h3>
-                <div class="mermaid-placeholder">
-                    <p><strong>Architecture Diagram</strong> (Mermaid flowchart)</p>
-                    <pre><code>[User]
-    |
-    v
-[Browser UI: static/index.html + JS]
-    |
-    | HTTPS requests
-    v
-[FastAPI App: main.py]
-    |
-    +--> [Middleware: Security headers, request-id, rate-limit, CORS, gzip]
-    |
-    v
-[API Router /api/v1]
-    |
-    +--> organizations
-    +--> metadata_profiles
-    +--> components --> [Manifest Parser] --> [NVD]
-    +--> assessments --> [Rules Engine] --> [Compliance/CWE Mapping]
-    |                    |                    |
-    |                    +--> [NVD]           +--> [MITRE]
-    |                    +--> [Findings/Assessment writes]
-    +--> evidence
-    +--> risk --> [Risk Scoring Engine]
-    |
-    v
-[Database: orgs, profiles, assessments, findings, evidence, controls]
+                <div class="arch-diagram">
 
-[Audit Logs] &lt;- App + middleware events
-[Dev TLS certs] &lt;- local HTTPS startup path</code></pre>
+                    <!-- TB1: User / Browser -->
+                    <div class="trust-boundary">
+                        <span class="tb-label">TB1 &mdash; Client (Untrusted)</span>
+                        <div class="flow-row">
+                            <span class="node node-user">User</span>
+                            <span class="flow-arrow">&rarr;</span>
+                            <span class="node node-user">Browser UI (index.html + JS)</span>
+                        </div>
+                    </div>
+
+                    <div class="flow-row"><span class="flow-arrow">&darr; HTTPS (TLS 1.2+)</span></div>
+
+                    <!-- TB2: Application -->
+                    <div class="trust-boundary">
+                        <span class="tb-label">TB2 &mdash; Application Server</span>
+
+                        <div class="flow-row">
+                            <span class="node node-app">FastAPI (main.py)</span>
+                        </div>
+                        <div class="flow-row">
+                            <span class="flow-arrow">&darr;</span>
+                        </div>
+                        <div class="flow-row">
+                            <span class="node node-mw">Security Headers</span>
+                            <span class="node node-mw">Request ID</span>
+                            <span class="node node-mw">Rate Limiter</span>
+                            <span class="node node-mw">CORS</span>
+                            <span class="node node-mw">Gzip</span>
+                        </div>
+                        <div class="flow-row">
+                            <span class="flow-arrow">&darr;</span>
+                        </div>
+                        <div class="flow-row">
+                            <span class="node node-app">API Router /api/v1</span>
+                        </div>
+
+                        <div class="router-grid">
+                            <span class="node node-router">organizations</span>
+                            <span class="node node-router">metadata_profiles</span>
+                            <span class="node node-router">components</span>
+                            <span class="node node-router">assessments</span>
+                            <span class="node node-router">frameworks</span>
+                            <span class="node node-router">findings</span>
+                            <span class="node node-router">evidence</span>
+                            <span class="node node-router">risk</span>
+                            <span class="node node-router">reports</span>
+                            <span class="node node-router">vuln_analysis</span>
+                        </div>
+
+                        <div class="flow-row" style="margin-top: 10px;">
+                            <span class="node node-app">Rules Engine</span>
+                            <span class="node node-app">Manifest Parser</span>
+                            <span class="node node-app">Compliance Intel</span>
+                            <span class="node node-app">Risk Scorer</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+
+                        <!-- TB3: Database -->
+                        <div class="trust-boundary" style="flex: 1; min-width: 200px;">
+                            <span class="tb-label">TB3 &mdash; Data Store</span>
+                            <div class="flow-row"><span class="flow-arrow">&darr; SQLAlchemy ORM</span></div>
+                            <div class="router-grid">
+                                <span class="node node-db">organizations</span>
+                                <span class="node node-db">assessments</span>
+                                <span class="node node-db">findings</span>
+                                <span class="node node-db">evidence</span>
+                                <span class="node node-db">controls</span>
+                                <span class="node node-db">frameworks</span>
+                                <span class="node node-db">fw_requirements</span>
+                                <span class="node node-db">metadata_profiles</span>
+                            </div>
+                        </div>
+
+                        <!-- TB4: External APIs -->
+                        <div class="trust-boundary" style="flex: 1; min-width: 200px;">
+                            <span class="tb-label">TB4 &mdash; External Services</span>
+                            <div class="flow-row"><span class="flow-arrow">&darr; HTTPS outbound</span></div>
+                            <div class="router-grid">
+                                <span class="node node-ext">NVD API (CVEs)</span>
+                                <span class="node node-ext">MITRE (CWEs)</span>
+                            </div>
+                        </div>
+
+                        <!-- TB5: Audit / Ops -->
+                        <div class="trust-boundary" style="flex: 1; min-width: 200px;">
+                            <span class="tb-label">TB5 &mdash; Audit &amp; Ops</span>
+                            <div class="flow-row"><span class="flow-arrow">&darr; File I/O</span></div>
+                            <div class="router-grid">
+                                <span class="node node-audit">Audit Logs</span>
+                                <span class="node node-audit">TLS Certs</span>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
 
                 <h3>STRIDE Threat Model (Per Diagram)</h3>
@@ -1072,7 +1181,7 @@
                 <table>
                     <tr><th>Component</th><th>Current Risk</th><th>Mitigation</th></tr>
                     <tr><td>Middleware stack properly layered</td><td class="risk-low">LOW</td><td>Good architecture</td></tr>
-                    <tr><td>CORS allows all origins in dev</td><td class="risk-medium">MEDIUM</td><td>Production must whitelist</td></tr>
+                    <tr><td>CORS restricted to explicit TLS origins</td><td class="risk-low">LOW</td><td>No wildcard; TLS-only origins</td></tr>
                     <tr><td>All routes go through middleware</td><td class="risk-low">LOW</td><td>No bypass paths</td></tr>
                 </table>
 
@@ -1447,13 +1556,12 @@
                         const suggestionEl = document.createElement('div');
                         suggestionEl.className = 'suggestion';
                         suggestionEl.textContent = version;
-                        suggestionEl.addEventListener('click', (e) => {
+                        suggestionEl.addEventListener('mousedown', (e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             versionInput.value = version;
-                            versionInput.dispatchEvent(new Event('change', { bubbles: true }));
                             versionSuggestionsBox.classList.remove('show');
-                            versionInput.focus();
+                            versionInput.dispatchEvent(new Event('change', { bubbles: true }));
                         });
                         suggestionEl.addEventListener('mouseenter', () => {
                             versionSuggestionsBox.querySelectorAll('.suggestion').forEach(el => {
@@ -1545,7 +1653,7 @@
 
             versionInput.addEventListener('focus', async () => {
                 const componentName = componentNameInput.value.trim();
-                if (componentName.length >= 2) {
+                if (componentName.length >= 2 && !versionInput.value.trim()) {
                     await loadVersionSuggestions(componentName);
                 }
             });
@@ -1595,11 +1703,6 @@
                     if (orgNameInput && orgNameInput.value.trim()) {
                         saveManifestForOrg(orgNameInput.value, fileContent);
                     }
-                    // Auto-populate component rows from the uploaded file
-                    await populateComponentsFromManifest(fileContent, {
-                        replaceExisting: true,
-                        showAlert: false
-                    });
                 } catch (error) {
                     console.error('Failed to read file:', error);
                     alert('Failed to read file content');
@@ -1754,26 +1857,15 @@
 </project>`
         };
 
-        // Load sample manifest when dropdown changes
-        sampleManifestSelect.addEventListener('change', async () => {
+        // Load sample manifest into textarea when dropdown changes (does not auto-populate list)
+        sampleManifestSelect.addEventListener('change', () => {
             const selectedKey = sampleManifestSelect.value;
             if (!selectedKey || !SAMPLE_MANIFESTS[selectedKey]) {
                 return;
             }
 
-            const content = SAMPLE_MANIFESTS[selectedKey];
-            manifestContentInput.value = content;
+            manifestContentInput.value = SAMPLE_MANIFESTS[selectedKey];
             manifestFileInput.value = '';
-
-            // Auto-populate the component list with merge behavior
-            try {
-                await populateComponentsFromManifest(content, {
-                    replaceExisting: true,
-                    showAlert: false
-                });
-            } catch (error) {
-                console.warn('Failed to auto-populate from sample manifest:', error);
-            }
         });
 
         // Resolve manifest content from textarea, file upload, or sample select
@@ -2018,7 +2110,6 @@
                     const orgRes = await fetch('/api/v1/organizations', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        credentials: 'include',
                         body: JSON.stringify({name: orgName})
                     });
 
