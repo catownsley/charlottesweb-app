@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "charlottesweb"
 version = "0.3.0"
-description = "HIPAA Compliance Intelligence Platform with Evidence Automation"
+description = "Multi-Framework Compliance Intelligence Platform for Regulated Data"
 requires-python = ">=3.14"
 
 [tool.setuptools.packages.find]

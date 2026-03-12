@@ -2,7 +2,7 @@
 
 > **Intelligent Compliance for Applications that Protect Regulated Data**
 
-CharlottesWeb automates regulatory mapping by correlating HIPAA requirements with real-world exploitable vulnerabilities (CVE/CWE), producing prioritized remediation roadmaps and audit-ready evidence packages.
+CharlottesWeb automates regulatory mapping by correlating compliance requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) with real-world exploitable vulnerabilities (CVE/CWE), producing prioritized remediation roadmaps and audit-ready evidence packages.
 
 ## Security First
 
@@ -35,7 +35,7 @@ Most tools tell you what controls you need. We tell you which vulnerabilities in
 ### What We Build
 
 - **Metadata-only intake** (zero PHI ingestion)
-- **HIPAA rule mapping** (Security/Privacy/Breach Notification)
+- **Multi-framework regulatory mapping** (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA)
 - **CVE/CWE correlation** (exploitability-aware risk scoring)
 - **Prioritized remediation roadmap** (Immediate / 30 Days / Quarterly / Annual)
 - **Audit evidence automation** (control-to-evidence mapping, policy templates, audit binders)
@@ -89,7 +89,7 @@ charlottesweb-app/
 | Phase | Focus | Status |
 |-------|-------|--------|
 | **Phase 0** | Foundation (domain model, backend skeleton, schema) | **Complete** |
-| **Phase 1** | HIPAA Intelligence Engine (intake, mapping, correlation, scoring) | **Complete** |
+| **Phase 1** | Compliance Intelligence Engine (intake, multi-framework mapping, correlation, scoring) | **Complete** |
 | **Phase 2** | Audit Evidence Automation (templates, action plans, binder export) | **In Progress** (50%) |
 | **Phase 3** | Web App Workflows (auth, UI, dashboard, reports) | **In Progress** (CW-301/CW-302/CW-303 complete; CW-304 next) |
 | **Phase 4** | Pilot Readiness (isolation, observability, onboarding) | Not Started |
@@ -103,7 +103,7 @@ charlottesweb-app/
 - Development guide and E2E test scripts
 
 ### Phase 1 - Intelligence Engine (Complete)
-- 22 HIPAA Security Rule controls seeded (10 baseline + 12 healthcare-specific)
+- 23 canonical controls seeded across 7 regulatory frameworks (87 cross-framework mappings)
 - Rules engine with NVD vulnerability correlation
 - Finding generation with CVSS scores, CWE IDs, and prioritization
 - Metadata intake workflow (no PHI ingestion)
