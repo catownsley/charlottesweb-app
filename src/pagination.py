@@ -21,6 +21,7 @@ Usage:
 - GET /controls?skip=0&limit=50 → PaginatedResponse
 - GET /controls?limit=9999 → Plain array (backward compat)
 """
+
 from typing import TypeVar
 
 from pydantic import BaseModel, Field
@@ -79,7 +80,9 @@ class PaginatedResponse[T](BaseModel):
     has_more: bool = Field(description="Whether more items exist")
 
     @staticmethod
-    def create(items: list[T], total: int, skip: int, limit: int) -> "PaginatedResponse[T]":
+    def create(
+        items: list[T], total: int, skip: int, limit: int
+    ) -> "PaginatedResponse[T]":
         """Create paginated response.
 
         Args:

@@ -12,6 +12,7 @@ Security Features:
 - JWT tokens signed with HS256 algorithm
 - Auto-error disabled to allow graceful handling in optional auth scenarios
 """
+
 import secrets
 from datetime import UTC, datetime, timedelta
 
@@ -93,9 +94,13 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = datetime.now(UTC) + timedelta(
+            minutes=settings.access_token_expire_minutes
+        )
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.jwt_algorithm)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.secret_key, algorithm=settings.jwt_algorithm
+    )
     return encoded_jwt
 
 
@@ -118,7 +123,9 @@ def verify_access_token(token: str) -> dict | None:
         about why token validation failed.
     """
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.jwt_algorithm]
+        )
         return payload
     except JWTError:
         # Don't leak why verification failed (expired, invalid signature, etc.)

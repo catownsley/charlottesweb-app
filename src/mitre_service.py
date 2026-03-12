@@ -12,6 +12,7 @@ Design Philosophy:
 Data Source: https://github.com/mitre-attack/attack-stix-data
 API: GitHub raw content (always latest)
 """
+
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -35,13 +36,25 @@ class MITREService:
     CWE_TO_TECHNIQUE_MAP = {
         "CWE-287": ["T1078"],  # Improper Auth → Valid Accounts
         "CWE-306": ["T1078"],  # Missing Auth → Valid Accounts
-        "CWE-308": ["T1078", "T1556"],  # Missing Auth for Critical → Valid Accounts, Modify Auth
-        "CWE-285": ["T1078", "T1134"],  # Improper Authorization → Valid Accounts, Access Token
+        "CWE-308": [
+            "T1078",
+            "T1556",
+        ],  # Missing Auth for Critical → Valid Accounts, Modify Auth
+        "CWE-285": [
+            "T1078",
+            "T1134",
+        ],  # Improper Authorization → Valid Accounts, Access Token
         "CWE-862": ["T1078"],  # Missing Authorization → Valid Accounts
-        "CWE-798": ["T1078", "T1552"],  # Hard-coded Credentials → Valid Accounts, Unsecured Creds
+        "CWE-798": [
+            "T1078",
+            "T1552",
+        ],  # Hard-coded Credentials → Valid Accounts, Unsecured Creds
         "CWE-261": ["T1552"],  # Weak Password → Unsecured Credentials
         "CWE-312": ["T1005", "T1074"],  # Cleartext Storage → Data from Local System
-        "CWE-319": ["T1040", "T1557"],  # Cleartext Transmission → Network Sniffing, MitM
+        "CWE-319": [
+            "T1040",
+            "T1557",
+        ],  # Cleartext Transmission → Network Sniffing, MitM
         "CWE-311": ["T1005"],  # Missing Encryption → Data from Local System
         "CWE-326": ["T1040"],  # Weak Encryption → Network Sniffing
         "CWE-327": ["T1040"],  # Broken Crypto → Network Sniffing
@@ -115,7 +128,9 @@ class MITREService:
 
             # Cache the full STIX bundle
             self._cache[cache_key] = (data, datetime.now(UTC))
-            logger.info(f"Fetched MITRE ATT&CK data: {len(data.get('objects', []))} objects")
+            logger.info(
+                f"Fetched MITRE ATT&CK data: {len(data.get('objects', []))} objects"
+            )
 
             return data
 
@@ -188,11 +203,15 @@ class MITREService:
         for obj in self._attack_data.get("objects", []):
             if obj.get("type") == "course-of-action":
                 if obj.get("id") in mitigation_ids:
-                    mitigations.append({
-                        "id": obj.get("external_references", [{}])[0].get("external_id", ""),
-                        "name": obj.get("name", ""),
-                        "description": obj.get("description", ""),
-                    })
+                    mitigations.append(
+                        {
+                            "id": obj.get("external_references", [{}])[0].get(
+                                "external_id", ""
+                            ),
+                            "name": obj.get("name", ""),
+                            "description": obj.get("description", ""),
+                        }
+                    )
 
         return mitigations
 
