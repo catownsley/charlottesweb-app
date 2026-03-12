@@ -1,4 +1,5 @@
 """Health check and utility endpoints."""
+
 from fastapi import APIRouter, Request
 
 from src.config import settings
