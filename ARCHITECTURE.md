@@ -32,20 +32,19 @@ Metadata Input → Rules Engine → Vulnerability Correlation → Risk Scoring �
 
 **Key Principle:** Zero PHI ingestion. We analyze the *architecture*, not the data.
 
-#### 2. HIPAA Rules Engine
-**Purpose:** Map organizational profile to applicable regulatory requirements.
+#### 2. Multi-Framework Rules Engine
+**Purpose:** Map organizational profile to applicable regulatory requirements across frameworks.
 
 **Logic:**
-- Parse HIPAA Security Rule (Administrative, Physical, Technical Safeguards)
-- Parse HIPAA Privacy Rule (permitted uses, minimum necessary, patient rights)
-- Parse HIPAA Breach Notification Rule (trigger thresholds, timelines)
-- Apply conditional logic based on metadata (e.g., "handles payment data" → PCI-relevant considerations)
-- Generate control applicability matrix
+- Parse applicable regulatory frameworks (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA)
+- Map framework-specific requirements to canonical controls
+- Apply conditional logic based on metadata (e.g., "handles payment data" → PCI-relevant considerations, "EU data subjects" → GDPR)
+- Generate cross-framework control applicability matrix
 
 **Data Model:**
 ```python
 Control:
-- id: "HIPAA.164.308(a)(1)(ii)(A)"
+- id: "ctrl-uuid-here"
 - title: "Risk Analysis"
 - category: "Administrative Safeguards"
 - requirement: "Conduct an accurate and thorough assessment..."
@@ -69,7 +68,7 @@ IF stack contains "Django 3.2.10"
 AND CVE-2022-XXXX affects Django < 3.2.11
 AND exploitability score > 7.5
 AND vulnerability impacts "data confidentiality"
-THEN map to HIPAA.164.312(a)(1) - Access Control
+THEN map to canonical control "Access Control" (mapped across HIPAA, NIST, GDPR, etc.)
 AND severity = HIGH
 ```
 
@@ -96,7 +95,7 @@ Prioritization Buckets:
 - Priority window
 - Responsible team (DevOps, Engineering, Security)
 
-#### 4.1 Compliance + Threat Convergence Layer (HIPAA-first v1)
+#### 4.1 Compliance + Threat Convergence Layer
 **Purpose:** Produce an engineering backlog that reflects both regulatory posture and exploitability pressure.
 
 **Implemented Pattern (v1):**
@@ -121,15 +120,15 @@ residual_risk = threat_pressure × (1 - control_confidence/100) × blast_radius
 **Purpose:** Move from static regulation catalogs to versioned, machine-readable, continuously updated regulatory mappings.
 
 **Target capabilities:**
-- Dynamic HIPAA feed ingestion (rule updates, interpretations, mapping changes)
-- Additional frameworks (SOC 2, PCI DSS, GDPR, state privacy laws) via provider adapters
+- Dynamic regulatory feed ingestion (rule updates, interpretations, mapping changes)
+- Additional frameworks (SOC 2, PCI DSS, state privacy laws) via provider adapters
 - Versioned control catalog with effective dates and migration diffs
 - Policy impact notifications when regulatory mappings change
 
 **Long-term Product Direction:**
 - Customer describes data sourcing, processing, storage, destruction, and geolocation.
 - System infers applicable regulations and required controls automatically.
-- HIPAA remains the default and most mature path in current releases.
+- Multi-framework mapping (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) is supported in current releases.
 
 #### 5. Evidence Automation Layer
 **Purpose:** Generate audit-ready documentation.
@@ -178,8 +177,8 @@ MetadataProfile:
 - created_at: datetime
 
 Control:
-- id: str (e.g., "HIPAA.164.312(a)(1)")
-- framework: str ("HIPAA_Security_Rule")
+- id: str (UUID)
+- canonical_concept: str (e.g., "Access Control", "Encryption at Rest")
 - title: str
 - requirement: text
 - category: str
@@ -351,7 +350,7 @@ GET /api/v1/controls/{control_id}
 
 ### Phase 1: Intelligence Engine
 1. Implement metadata intake validation
-2. Seed HIPAA control catalog
+2. Seed multi-framework control catalog
 3. Build rules mapping engine (metadata → applicable controls)
 4. Add vulnerability correlation service (CVE/CWE lookup)
 5. Implement risk scoring algorithm
@@ -400,7 +399,7 @@ GET /api/v1/controls/{control_id}
 
 ## Open Questions & Future Considerations
 
-1. **Multi-framework support:** Now supported via `Framework` and `FrameworkRequirement` tables, enabling extension beyond HIPAA to SOC 2, ISO 27001, etc.
+1. **Multi-framework support:** Implemented via `Framework` and `FrameworkRequirement` tables with 7 frameworks (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) and 87 cross-framework mappings.
 2. **Evidence ingestion:** Should we pull evidence automatically via API (e.g., AWS IAM snapshots) or require manual upload?
 3. **AI/ML risk module:** How to assess AI model bias, training data privacy, and inference security?
 4. **Global expansion:** GDPR, PIPEDA, LGPD—different data privacy frameworks require localized rule engines.
@@ -411,8 +410,12 @@ GET /api/v1/controls/{control_id}
 ## References
 
 - [HIPAA Security Rule](https://www.hhs.gov/hipaa/for-professionals/security/index.html)
-- [HIPAA Privacy Rule](https://www.hhs.gov/hipaa/for-professionals/privacy/index.html)
-- [HIPAA Breach Notification Rule](https://www.hhs.gov/hipaa/for-professionals/breach-notification/index.html)
+- [NIST 800-53 Rev 5](https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final)
+- [GDPR](https://gdpr-info.eu/)
+- [SOX](https://www.congress.gov/bill/107th-congress/house-bill/3763)
+- [FedRAMP](https://www.fedramp.gov/)
+- [APRA CPS 234](https://www.apra.gov.au/information-security)
+- [CCPA](https://oag.ca.gov/privacy/ccpa)
 - [NVD (National Vulnerability Database)](https://nvd.nist.gov/)
 - [CWE (Common Weakness Enumeration)](https://cwe.mitre.org/)
 - [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework)

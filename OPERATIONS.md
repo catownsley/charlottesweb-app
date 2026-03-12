@@ -12,7 +12,7 @@ This file consolidates runtime status, performance strategy, and operational pri
 | Phase | Focus | Status |
 |---|---|---|
 | Phase 0 | Foundation | Complete |
-| Phase 1 | HIPAA intelligence engine | Complete |
+| Phase 1 | Multi-framework intelligence engine | Complete |
 | Phase 1.5 | Compliance + threat convergence | Complete |
 | Phase 2 | Audit evidence automation | In progress (40–50%) |
 | Phase 3 | Web app workflows | In progress (30–40%) |
@@ -74,6 +74,6 @@ This file consolidates runtime status, performance strategy, and operational pri
 ## Related Docs
 - Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
 - Security controls: [SECURITY.md](SECURITY.md)
-- Threat model + trust boundaries: [docs/THREAT_MODEL_ARCHITECTURE.md](docs/THREAT_MODEL_ARCHITECTURE.md)
+- Threat model + trust boundaries: [THREAT_MODEL.md](THREAT_MODEL.md)
 - Dev setup and workflows: [DEV_GUIDE.md](DEV_GUIDE.md)
 - Execution roadmap: [docs/tickets/TICKET_INDEX.md](docs/tickets/TICKET_INDEX.md)

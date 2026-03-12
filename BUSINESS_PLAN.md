@@ -1,20 +1,20 @@
 # CharlottesWeb Business Plan
 
-**HIPAA Compliance Intelligence Platform for AI-Enabled Health Applications**
+**Multi-Framework Compliance Intelligence Platform for Applications that Protect Regulated Data**
 
 ## Document Purpose
 
-This document outlines the complete business plan for CharlottesWeb, a Compliance Intelligence platform initially targeting HIPAA compliance for AI-enabled health technology companies. Its core objective is to shift compliance from manual processes to automated, exploitability-driven regulatory intelligence with actionable remediation plans.
+This document outlines the complete business plan for CharlottesWeb, a multi-framework Compliance Intelligence platform for applications that protect regulated data. Its core objective is to shift compliance from manual processes to automated, exploitability-driven regulatory intelligence with actionable remediation plans.
 
 ---
 
 ## 1. Executive Summary
 
-CharlottesWeb is a Compliance Intelligence platform focused initially on HIPAA-regulated health technology companies. Digital health startups handling Protected Health Information (PHI) often lack in-house security leadership yet face significant regulatory, financial, and reputational risk in the event of a breach.
+CharlottesWeb is a Compliance Intelligence platform for organizations handling regulated data (PHI, PII, financial records). Companies processing sensitive data often lack in-house security leadership yet face significant regulatory, financial, and reputational risk in the event of a breach.
 
-CharlottesWeb automates regulatory mapping by ingesting structured metadata about an organization's data types, data flows, infrastructure, and application stack. The platform correlates applicable HIPAA requirements with real-world exploitable vulnerabilities (via NVD/CVE/CWE), secure coding risk patterns, and infrastructure misconfigurations to produce a prioritized remediation roadmap and audit-ready evidence package.
+CharlottesWeb automates regulatory mapping by ingesting structured metadata about an organization's data types, data flows, infrastructure, and application stack. The platform correlates applicable regulatory requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) with real-world exploitable vulnerabilities (via NVD/CVE/CWE), secure coding risk patterns, and infrastructure misconfigurations to produce a prioritized remediation roadmap and audit-ready evidence package.
 
-**Our goal:** Become the automated HIPAA intelligence and audit preparation layer for modern health tech companies building on AWS, Azure, and AI-enabled stacks.
+**Our goal:** Become the automated compliance intelligence and audit preparation layer for modern companies building on AWS, Azure, and AI-enabled stacks that handle regulated data.
 
 ---
 
@@ -30,7 +30,7 @@ We shift compliance from **manual spreadsheets + expensive consultants** to **au
 
 Most compliance tools map controls to frameworks. CharlottesWeb maps:
 
-- Regulatory requirements (HIPAA Security, Privacy, Breach Rules)
+- Regulatory requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA)
 - Infrastructure components
 - Known vulnerabilities (CVE via NVD)
 - Common weakness patterns (CWE)
@@ -68,7 +68,7 @@ Most compliance tools map controls to frameworks. CharlottesWeb maps:
 
 ### Core Problem
 
-- HIPAA enforcement carries real financial penalties
+- Regulatory enforcement carries real financial penalties (HIPAA, GDPR, SOX, etc.)
 - Startups underestimate breach exposure
 - Security leadership is expensive
 - Existing tools lack exploitability-aware action plans
@@ -81,13 +81,13 @@ Most compliance tools map controls to frameworks. CharlottesWeb maps:
 | **Static Compliance Platforms** | Drata, Vanta | Framework-based, not exploit-based | We correlate CVEs/CWEs to regulatory exposure |
 | **Traditional Consultants** | Boutique firms | Expensive, episodic, manual | Automated + optional advisory tier |
 | **Enterprise GRC Platforms** | Archer, ServiceNow | Heavy, enterprise-focused | Startup-focused, lightweight deployment |
-| **Security Scanners** | Snyk, Prisma, etc. | Findings lack compliance translation | We translate technical findings into HIPAA impact |
+| **Security Scanners** | Snyk, Prisma, etc. | Findings lack compliance translation | We translate technical findings into regulatory impact across 7 frameworks |
 
 ---
 
 ## 4. Product & Technology
 
-### Phase 1: HIPAA Compliance Intelligence Engine
+### Phase 1: Multi-Framework Compliance Intelligence Engine
 
 #### Input (Metadata-Driven Model)
 
@@ -105,9 +105,8 @@ Most compliance tools map controls to frameworks. CharlottesWeb maps:
 
 #### Processing Layer
 
-- HIPAA Security Rule mapping
-- HIPAA Privacy Rule mapping
-- HIPAA Breach Notification Rule mapping
+- Multi-framework regulatory mapping (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA)
+- Cross-framework control correlation
 - NVD ingestion (CVE correlation)
 - CWE ingestion
 - CIS Benchmark alignment
@@ -156,7 +155,7 @@ This transforms CharlottesWeb from a compliance scanner into a **compliance oper
 
 | Tier | Description | Key Features | Pricing Model |
 |------|-------------|--------------|---------------|
-| **Tier 1 – Automated Scan** | One-time initial compliance assessment | HIPAA compliance gap analysis, Downloadable report | One-time fee |
+| **Tier 1 – Automated Scan** | One-time initial compliance assessment | Multi-framework compliance gap analysis, Downloadable report | One-time fee |
 | **Tier 2 – Continuous Monitoring Subscription** | Ongoing, automated compliance maintenance | Monthly vulnerability correlation, Alerting on new CVEs, Ongoing compliance posture updates, Evidence tracking updates | Monthly SaaS Subscription |
 | **Tier 3 – Advisory Premium** | Expert consultation and strategic guidance | Direct consultation (security & compliance strategy), Remediation prioritization, Board readiness preparation, Audit readiness strategy, Incident response simulation guidance | High-Margin Service Fee (Add-on) |
 
@@ -183,7 +182,7 @@ Digital health startups building AI-enabled health platforms that process PHI.
 
 ### The Hook
 
-> "Is your health tech startup one breach away from a HIPAA investigation?"
+> "Is your startup one breach away from a regulatory investigation?"
 
 ### The Aha Moment
 
@@ -224,7 +223,7 @@ See [docs/tickets/TICKET_INDEX.md](docs/tickets/TICKET_INDEX.md) for detailed ex
 ### Quick Phase Overview
 
 - **Phase 0:** Foundation (architecture decisions, domain model, backend skeleton)
-- **Phase 1:** HIPAA Compliance Intelligence Engine (metadata intake, rule mapping, CVE/CWE correlation, risk scoring)
+- **Phase 1:** Multi-Framework Compliance Intelligence Engine (metadata intake, rule mapping, CVE/CWE correlation, risk scoring)
 - **Phase 2:** Audit Evidence Automation (control-to-evidence mapping, template generation, audit binder export)
 - **Phase 3:** Web App Workflows (auth, assessment UI, findings dashboard, report downloads)
 - **Phase 4:** Pilot Readiness (tenant isolation, observability, onboarding)
