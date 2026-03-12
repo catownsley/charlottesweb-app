@@ -13,7 +13,6 @@ from datetime import UTC, datetime
 from typing import Any, TypeVar, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from src.audit import AuditAction, AuditLevel, log_audit_event
@@ -97,13 +96,9 @@ def _collect_evidence_by_control(
     """Collect evidence rows grouped by control for scoring."""
     evidence_rows: list[Evidence] = (
         db.query(Evidence)
-        .outerjoin(Assessment, Evidence.assessment_id == Assessment.id)
         .filter(
             Evidence.control_id.in_(list(control_ids)),
-            or_(
-                Assessment.organization_id == organization_id,
-                Evidence.assessment_id.is_(None),
-            ),
+            Evidence.organization_id == organization_id,
         )
         .all()
     )

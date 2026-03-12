@@ -270,6 +270,7 @@ class FindingResponse(BaseModel):
 class EvidenceCreate(BaseModel):
     """Schema for creating evidence."""
 
+    organization_id: str | None = None
     control_id: str
     assessment_id: str | None = None
     evidence_type: str = Field(..., max_length=100)
@@ -303,6 +304,7 @@ class EvidenceResponse(BaseModel):
     """Schema for evidence response."""
 
     id: str
+    organization_id: str
     control_id: str
     assessment_id: str | None = None
     evidence_type: str

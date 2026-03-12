@@ -10,7 +10,7 @@ from src.audit import AuditAction, log_audit_event
 from src.config import settings
 from src.database import get_db, get_or_404
 from src.middleware import get_api_key_optional, limiter
-from src.models import Assessment, Control, Evidence
+from src.models import Assessment, Control, Evidence, Organization
 from src.schemas import (
     EvidenceAttachUrlRequest,
     EvidenceCreate,
@@ -111,11 +111,33 @@ def create_evidence(
     # Verify control exists
     get_or_404(db, Control, evidence_data.control_id, "Control not found")
 
-    # Verify assessment exists if provided
+    # Resolve organization_id
+    org_id = evidence_data.organization_id
+
     if evidence_data.assessment_id:
-        get_or_404(db, Assessment, evidence_data.assessment_id, "Assessment not found")
+        assessment = get_or_404(
+            db, Assessment, evidence_data.assessment_id, "Assessment not found"
+        )
+        assessment_org_id = str(assessment.organization_id)
+
+        if org_id and org_id != assessment_org_id:
+            raise HTTPException(
+                status_code=400,
+                detail="organization_id does not match the assessment's organization",
+            )
+        org_id = assessment_org_id
+
+    if not org_id:
+        raise HTTPException(
+            status_code=400,
+            detail="organization_id is required when no assessment_id is provided",
+        )
+
+    # Verify organization exists
+    get_or_404(db, Organization, org_id, "Organization not found")
 
     evidence = Evidence(
+        organization_id=org_id,
         control_id=evidence_data.control_id,
         assessment_id=evidence_data.assessment_id,
         evidence_type=evidence_data.evidence_type,

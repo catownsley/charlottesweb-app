@@ -435,9 +435,8 @@ def generate_action_plan(
 
     existing_evidence: list[Evidence] = (
         db.query(Evidence)
-        .join(Assessment, Evidence.assessment_id == Assessment.id)
         .filter(
-            Assessment.organization_id == assessment.organization_id,
+            Evidence.organization_id == str(assessment.organization_id),
             Evidence.control_id.in_(control_ids),
         )
         .all()
@@ -470,6 +469,7 @@ def generate_action_plan(
 
             if evidence is None:
                 new_evidence = Evidence(
+                    organization_id=str(assessment.organization_id),
                     assessment_id=assessment_id,
                     control_id=control_id,
                     evidence_type=evidence_type,
