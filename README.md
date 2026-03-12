@@ -21,6 +21,7 @@ See [SECURITY.md](SECURITY.md) for complete security documentation.
 - **[Business Plan](BUSINESS_PLAN.md)** - Market strategy, competitive landscape, go-to-market, team hiring
 - ️ **[Architecture & Product Vision](ARCHITECTURE.md)** - Technical design, domain model, system architecture, API design
 - **[Security Documentation](SECURITY.md)** - Security features, configuration, and best practices
+- **[Threat Model](THREAT_MODEL.md)** - STRIDE threat analysis, trust boundaries, and prioritized mitigations
 - **[Operations Guide](OPERATIONS.md)** - Delivery status, performance strategy, operational priorities
 - **[Ticket Index](docs/tickets/TICKET_INDEX.md)** - Phased execution roadmap with detailed tickets
 - **[GitHub Issues](https://github.com/catownsley/charlottesweb-app/issues)** - Active implementation backlog
