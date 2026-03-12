@@ -10,28 +10,28 @@ This file is the single roadmap and ticket source for phase-based execution.
 - CW-003: Create initial persistence schema
 
 ## Phase 1 - HIPAA Intelligence Engine ✅ COMPLETE
-- CW-101: Build metadata intake API
-- CW-102: Implement HIPAA control catalog seed
-- CW-103: Implement rules mapping engine
-- CW-104: Add CVE/CWE correlation service abstraction
-- CW-105: Add risk scoring and prioritization
-- CW-106: Generate remediation roadmap output
-- CW-107: Add compliance-threat fused prioritized backlog endpoint
+- CW-101: Build metadata intake API ✅
+- CW-102: Implement HIPAA control catalog seed ✅
+- CW-103: Implement rules mapping engine ✅
+- CW-104: Add CVE/CWE correlation service abstraction ✅
+- CW-105: Add risk scoring and prioritization ✅
+- CW-106: Generate remediation roadmap output ✅
+- CW-107: Add compliance-threat fused prioritized backlog endpoint ✅
 
 ## Phase 2 - Audit Evidence Automation 🚧 IN PROGRESS
-- CW-201: Control-to-evidence mapping model
-- CW-202: Evidence checklist generation
+- CW-201: Control-to-evidence mapping model ✅
+- CW-202: Evidence checklist generation ✅
 - CW-203: Policy/document templates generation
 - CW-204: Audit binder export endpoint
 
 ## Phase 3 - Web App Workflows 🚧 IN PROGRESS
-- CW-301: Auth and organization onboarding ✅ COMPLETE
-- CW-302: Assessment run workflow UI ✅ COMPLETE
-- CW-303: Findings dashboard and filters ✅ COMPLETE
+- CW-301: Auth and organization onboarding ✅
+- CW-302: Assessment run workflow UI ✅
+- CW-303: Findings dashboard and filters ✅
 - CW-304: Report download and share flow 🎯 NEXT FOCUS
 
-## Phase 4 - Pilot Readiness ⏸️ NOT STARTED
-- CW-401: Tenant isolation guardrails
+## Phase 4 - Pilot Readiness 🚧 IN PROGRESS
+- CW-401: Tenant isolation guardrails ✅
 - CW-402: Observability and audit logging
 - CW-403: Pilot onboarding scripts and sample data
 
@@ -81,6 +81,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-101 Build metadata intake API
 - Type: Backend
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: Endpoint to ingest architecture metadata only (no PHI).
 - Acceptance:
 	- Request validation blocks PHI fields
@@ -105,6 +106,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-104 Add CVE/CWE correlation service abstraction
 - Type: Security/Backend
 - Priority: P1
+- Status: ✅ Complete
 - Outcome: Adapter interface for vulnerability intelligence sources.
 - Acceptance:
 	- Provider abstraction with mocked implementation
@@ -149,6 +151,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-202 Evidence checklist generation
 - Type: Backend
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: Endpoint generating audit checklist from findings + controls.
 - Acceptance:
 	- Checklist includes required docs, source, and due date
@@ -213,6 +216,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 ### CW-401 Tenant isolation guardrails
 - Type: Security/Backend
 - Priority: P0
+- Status: ✅ Complete
 - Outcome: Strict org-level data isolation controls.
 - Acceptance:
 	- Authorization checks enforce tenant boundaries
