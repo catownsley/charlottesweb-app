@@ -53,11 +53,11 @@
 
     <style>
         /*
-        STYLING: Minimal, accessible design
+        STYLING: Dark mode with purple palette
         - System fonts for fast loading (no external resources needed)
         - High contrast for accessibility (WCAG AA compliance)
         - Mobile-responsive (max-width ensures readability on phone)
-        - Print-friendly (colors work in grayscale)
+        - Purple complementary color scheme
         */
 
         * {
@@ -67,8 +67,8 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             line-height: 1.6;
-            color: #333;
-            background: #f9f9f9;
+            color: #e0d8f0;
+            background: #13111a;
             margin: 0;
             padding: 0;
         }
@@ -80,7 +80,7 @@
         }
 
         header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #6b3fa0 0%, #9333ea 50%, #7c3aed 100%);
             color: white;
             padding: 30px 20px;
             border-radius: 8px 8px 0 0;
@@ -99,10 +99,10 @@
         }
 
         .form-wrapper {
-            background: white;
+            background: #1e1b2e;
             padding: 30px;
             border-radius: 0 0 8px 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
             margin-bottom: 20px;
         }
 
@@ -110,7 +110,7 @@
             display: block;
             margin-top: 20px;
             font-weight: 600;
-            color: #222;
+            color: #c9b8e8;
         }
 
         label:first-child {
@@ -123,19 +123,21 @@
             width: 100%;
             padding: 12px;
             margin-top: 8px;
-            border: 2px solid #ddd;
+            border: 2px solid #3d3556;
             border-radius: 4px;
             font-family: inherit;
             font-size: 14px;
             transition: border-color 0.2s;
+            background: #2a2440;
+            color: #e0d8f0;
         }
 
         input[type="text"]:focus,
         textarea:focus {
             /* Visual feedback on focus - helps with accessibility */
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #9333ea;
+            box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.2);
         }
 
         textarea {
@@ -149,7 +151,7 @@
             /* BUTTON STYLING: High contrast, clear affordance */
             margin-top: 20px;
             padding: 12px 30px;
-            background: #667eea;
+            background: #7c3aed;
             color: white;
             border: none;
             border-radius: 4px;
@@ -160,7 +162,7 @@
         }
 
         button:hover {
-            background: #5568d3;
+            background: #6d28d9;
         }
 
         button:active {
@@ -169,17 +171,18 @@
 
         button:disabled {
             /* Disabled state feedback */
-            background: #ccc;
+            background: #3d3556;
+            color: #6b6080;
             cursor: not-allowed;
         }
 
         .btn-secondary {
-            background: #6c757d !important;
+            background: #4a4260 !important;
             margin-left: 10px;
         }
 
         .btn-secondary:hover {
-            background: #5a6268 !important;
+            background: #5a5070 !important;
         }
 
         .export-buttons {
@@ -196,8 +199,8 @@
         }
 
         .guidance-box {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
+            background: #2d2145;
+            border: 1px solid #6b3fa0;
             border-radius: 4px;
             padding: 15px;
             margin: 20px 0;
@@ -205,7 +208,7 @@
 
         .guidance-box h4 {
             margin-top: 0;
-            color: #856404;
+            color: #c9a0ff;
         }
 
         .guidance-box ul {
@@ -215,14 +218,14 @@
 
         .guidance-box li {
             margin: 5px 0;
-            color: #856404;
+            color: #b8a0d8;
         }
 
         .result {
-            background: white;
+            background: #1e1b2e;
             padding: 30px;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
             margin-top: 20px;
         }
 
@@ -232,17 +235,17 @@
 
         .result.loading {
             text-align: center;
-            color: #667eea;
+            color: #a78bfa;
         }
 
         .result.success {
-            border-left: 4px solid #28a745;
+            border-left: 4px solid #10b981;
         }
 
         .result.error {
-            border-left: 4px solid #dc3545;
-            color: #721c24;
-            background-color: #f8d7da;
+            border-left: 4px solid #ef4444;
+            color: #fca5a5;
+            background-color: #2d1b2e;
         }
 
         .findings-list {
@@ -253,32 +256,32 @@
 
         .finding-item {
             /* FINDING DISPLAY: Clear formatting for vulnerability details */
-            background: #f5f5f5;
+            background: #252038;
             padding: 15px;
             margin-bottom: 12px;
             border-radius: 4px;
-            border-left: 4px solid #ff9800;
+            border-left: 4px solid #f59e0b;
         }
 
         .finding-item.critical {
-            border-left-color: #dc3545;
-            background: #fff5f5;
+            border-left-color: #ef4444;
+            background: #2d1b25;
         }
 
         .finding-item.high {
-            border-left-color: #ff9800;
-            background: #fffaf0;
+            border-left-color: #f59e0b;
+            background: #2d2520;
         }
 
         .finding-item.medium {
-            border-left-color: #ffc107;
-            background: #fffef0;
+            border-left-color: #eab308;
+            background: #2d2a1b;
         }
 
         .cve-id {
             font-family: monospace;
             font-weight: 600;
-            color: #333;
+            color: #e0d8f0;
         }
 
         .cvss-score {
@@ -292,22 +295,22 @@
         }
 
         .cvss-score.critical {
-            background: #dc3545;
+            background: #ef4444;
             color: white;
         }
 
         .cvss-score.high {
-            background: #ff9800;
-            color: white;
+            background: #f59e0b;
+            color: #1a1a1a;
         }
 
         .cvss-score.medium {
-            background: #ffc107;
-            color: #333;
+            background: #eab308;
+            color: #1a1a1a;
         }
 
         .cvss-score.low {
-            background: #28a745;
+            background: #10b981;
             color: white;
         }
 
@@ -315,7 +318,7 @@
         .threat-context {
             margin-top: 12px;
             padding: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4c1d95 0%, #6b21a8 50%, #7c3aed 100%);
             border-radius: 6px;
             color: white;
         }
@@ -325,16 +328,16 @@
             line-height: 1.6;
             margin-bottom: 10px;
             padding: 8px;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 4px;
-            border-left: 3px solid rgba(255, 255, 255, 0.5);
+            border-left: 3px solid rgba(255, 255, 255, 0.4);
         }
 
         .mitre-technique {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.2);
             padding: 6px 10px;
             border-radius: 4px;
             font-size: 12px;
@@ -346,20 +349,20 @@
         }
 
         .mitre-technique:hover {
-            background: rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .breach-example {
             margin-top: 8px;
             padding: 10px;
-            background: rgba(220, 53, 69, 0.15);
-            border: 1px solid rgba(220, 53, 69, 0.3);
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
             border-radius: 4px;
             font-size: 12px;
         }
 
         .breach-example strong {
-            color: #ffc107;
+            color: #fbbf24;
         }
 
         .breach-impact {
@@ -372,15 +375,15 @@
             margin-top: 8px;
             font-size: 12px;
             padding: 8px;
-            background: rgba(40, 167, 69, 0.15);
+            background: rgba(16, 185, 129, 0.15);
             border-radius: 4px;
-            border-left: 3px solid rgba(40, 167, 69, 0.5);
+            border-left: 3px solid rgba(16, 185, 129, 0.5);
         }
 
         .help-text {
             /* Inline help for user guidance */
             font-size: 12px;
-            color: #666;
+            color: #8b7faa;
             margin-top: 5px;
         }
 
@@ -392,7 +395,7 @@
         }
 
         .stat-box {
-            background: #f5f5f5;
+            background: #252038;
             padding: 15px;
             border-radius: 4px;
             text-align: center;
@@ -401,12 +404,12 @@
         .stat-value {
             font-size: 32px;
             font-weight: 700;
-            color: #667eea;
+            color: #a78bfa;
         }
 
         .stat-label {
             font-size: 12px;
-            color: #666;
+            color: #8b7faa;
             margin-top: 5px;
         }
 
@@ -422,17 +425,19 @@
         .component-row input {
             width: 100%;
             padding: 10px;
-            border: 2px solid #ddd;
+            border: 2px solid #3d3556;
             border-radius: 4px;
             font-size: 14px;
             margin: 0;
             transition: border-color 0.2s;
+            background: #2a2440;
+            color: #e0d8f0;
         }
 
         .component-row input:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #9333ea;
+            box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.2);
         }
 
         .input-with-suggestions {
@@ -446,10 +451,10 @@
             top: 100%;
             left: 0;
             width: 100%;
-            background: white;
-            border: 1px solid #ddd;
+            background: #2a2440;
+            border: 1px solid #4a3d6b;
             border-radius: 4px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
             z-index: 100;
             display: none;
             margin-top: 2px;
@@ -464,9 +469,10 @@
         .version-suggestions .suggestion {
             padding: 10px 12px;
             cursor: pointer;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #3d3556;
             font-size: 14px;
             transition: background 0.15s;
+            color: #e0d8f0;
         }
 
         .component-suggestions .suggestion:last-child,
@@ -476,20 +482,20 @@
 
         .component-suggestions .suggestion:hover,
         .version-suggestions .suggestion:hover {
-            background: #f0f0f0;
+            background: #352e50;
         }
 
         .component-suggestions .suggestion.selected,
         .version-suggestions .suggestion.selected {
-            background: #e8eef7;
-            color: #667eea;
+            background: #3b2d60;
+            color: #c4b5fd;
             font-weight: 600;
         }
 
         .component-row button {
-            color: #dc3545;
-            background: #fff;
-            border: 2px solid #dc3545;
+            color: #f87171;
+            background: #2a2440;
+            border: 2px solid #f87171;
             margin: 0;
             padding: 10px;
             font-size: 14px;
@@ -499,36 +505,36 @@
         }
 
         .component-row button:hover {
-            background: #dc3545;
-            color: white;
+            background: #f87171;
+            color: #1e1b2e;
         }
 
         .component-label {
             font-size: 12px;
             font-weight: 600;
-            color: #666;
+            color: #8b7faa;
             margin-bottom: 5px;
         }
 
         .evidence-link {
             display: inline-block;
             margin-top: 10px;
-            color: #1a4fb8;
+            color: #c4b5fd;
             font-weight: 600;
             text-decoration: underline;
             cursor: pointer;
         }
 
         .evidence-link:focus {
-            outline: 3px solid rgba(102, 126, 234, 0.35);
+            outline: 3px solid rgba(147, 51, 234, 0.35);
             outline-offset: 2px;
             border-radius: 3px;
         }
 
         .evidence-panel {
             margin-top: 16px;
-            background: #f4f8ff;
-            border: 1px solid #d9e4ff;
+            background: #252038;
+            border: 1px solid #4a3d6b;
             border-radius: 6px;
             padding: 14px;
         }
@@ -539,7 +545,7 @@
 
         .evidence-summary {
             font-size: 13px;
-            color: #333;
+            color: #c9b8e8;
             margin: 8px 0 12px 0;
         }
 
@@ -550,8 +556,8 @@
         }
 
         .evidence-item {
-            background: white;
-            border: 1px solid #e3e3e3;
+            background: #2a2440;
+            border: 1px solid #3d3556;
             border-radius: 4px;
             padding: 10px;
             margin-bottom: 10px;
@@ -569,25 +575,25 @@
         }
 
         .status-pill.completed {
-            background: #e7f7eb;
-            color: #1e7a36;
+            background: #1a3a2a;
+            color: #6ee7b7;
         }
 
         .status-pill.in_progress {
-            background: #fff5de;
-            color: #8f5a00;
+            background: #3d2e1a;
+            color: #fbbf24;
         }
 
         .status-pill.not_started {
-            background: #f0f0f0;
-            color: #555;
+            background: #2a2440;
+            color: #8b7faa;
         }
 
         /* Tab Navigation */
         .tab-nav {
             display: flex;
-            background: white;
-            border-bottom: 2px solid #e0e0e0;
+            background: #1e1b2e;
+            border-bottom: 2px solid #3d3556;
             margin-bottom: 0;
         }
 
@@ -597,7 +603,7 @@
             background: transparent;
             font-size: 15px;
             font-weight: 600;
-            color: #666;
+            color: #8b7faa;
             cursor: pointer;
             border-bottom: 3px solid transparent;
             margin-bottom: -2px;
@@ -605,12 +611,12 @@
         }
 
         .tab-btn:hover {
-            color: #667eea;
+            color: #a78bfa;
         }
 
         .tab-btn.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
+            color: #c4b5fd;
+            border-bottom-color: #9333ea;
         }
 
         .tab-panel {
@@ -621,9 +627,23 @@
             display: block;
         }
 
-        /* Threat model styles removed — see THREAT_MODEL.md in repo root */
-        .unused-placeholder-for-removed-styles {
-            display: none;
+        /* Inline style overrides for dark mode */
+        select {
+            background: #2a2440;
+            color: #e0d8f0;
+            border: 1px solid #3d3556;
+        }
+
+        input[type="file"] {
+            color: #c9b8e8;
+        }
+
+        a {
+            color: #c4b5fd;
+        }
+
+        a:hover {
+            color: #ddd6fe;
         }
     </style>
 </head>
@@ -674,28 +694,28 @@
                 </div>
 
                 <!-- Add Component Button -->
-                <button type="button" id="addComponentBtn" style="margin-top: 10px; background: #28a745;">
+                <button type="button" id="addComponentBtn" style="margin-top: 10px; background: #6b3fa0;">
                     Add Component
                 </button>
 
-                <div style="margin-top: 14px; padding: 12px; border: 1px solid #e3e6f0; border-radius: 6px; background: #f8faff;">
+                <div style="margin-top: 14px; padding: 12px; border: 1px solid #3d3556; border-radius: 6px; background: #252038;">
                     <div style="font-weight: 600; margin-bottom: 8px;">Import Manifest (pom.xml)</div>
 
-                    <label style="font-size: 13px; color: #444; margin-bottom: 4px; display: block;">Load a sample pom.xml:</label>
-                    <select id="sampleManifestSelect" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px; background: #fff;">
+                    <label style="font-size: 13px; color: #c9b8e8; margin-bottom: 4px; display: block;">Load a sample pom.xml:</label>
+                    <select id="sampleManifestSelect" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; margin-bottom: 8px; background: #2a2440; color: #e0d8f0;">
                         <option value="">-- Select a sample manifest --</option>
                         <option value="spring-legacy">Spring Legacy App (Log4j, Jackson, PostgreSQL)</option>
                         <option value="healthcare-api">Healthcare API (Spring Boot, Hibernate, MySQL)</option>
                         <option value="microservices">Microservices Stack (Netty, gRPC, Redis, Kafka)</option>
                     </select>
 
-                    <label style="font-size: 13px; color: #444; margin-bottom: 4px; display: block;">Or upload / paste your own:</label>
+                    <label style="font-size: 13px; color: #c9b8e8; margin-bottom: 4px; display: block;">Or upload / paste your own:</label>
                     <input type="file" id="manifestFile" accept=".xml,.pom" style="margin-bottom: 8px; width: 100%;">
-                    <textarea id="manifestContent" rows="6" placeholder="Paste pom.xml content here (optional if file or sample selected)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+                    <textarea id="manifestContent" rows="6" placeholder="Paste pom.xml content here (optional if file or sample selected)" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; resize: vertical; background: #2a2440; color: #e0d8f0;"></textarea>
 
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button type="button" id="mergeManifestBtn" style="flex: 1; background: #28a745; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">Merge into List</button>
-                        <button type="button" id="replaceManifestBtn" style="flex: 1; background: #dc3545; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">Replace List</button>
+                        <button type="button" id="mergeManifestBtn" style="flex: 1; background: #6b3fa0; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">Merge into List</button>
+                        <button type="button" id="replaceManifestBtn" style="flex: 1; background: #ef4444; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">Replace List</button>
                     </div>
                     <div class="help-text" style="margin-top: 6px;"><strong>Merge</strong> adds new components and updates versions of existing ones. <strong>Replace</strong> clears the list first.</div>
                 </div>
@@ -1048,7 +1068,7 @@
                     return;
                 }
 
-                versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">Fetching versions from NVD...</div>';
+                versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #6b6080; cursor: default; font-style: italic;">Fetching versions from NVD...</div>';
                 versionSuggestionsBox.classList.add('show');
 
                 try {
@@ -1057,7 +1077,7 @@
                     );
 
                     if (!response.ok) {
-                        versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">No versions found \u2014 enter manually</div>';
+                        versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #6b6080; cursor: default; font-style: italic;">No versions found \u2014 enter manually</div>';
                         return;
                     }
 
@@ -1065,7 +1085,7 @@
                     const versions = data.versions || [];
 
                     if (versions.length === 0) {
-                        versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">No versions found \u2014 enter manually</div>';
+                        versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #6b6080; cursor: default; font-style: italic;">No versions found \u2014 enter manually</div>';
                         return;
                     }
 
@@ -1093,7 +1113,7 @@
                     versionSuggestionsBox.classList.add('show');
                 } catch (err) {
                     console.warn('Failed to fetch version suggestions:', err);
-                    versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default; font-style: italic;">Could not reach NVD \u2014 enter version manually</div>';
+                    versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #6b6080; cursor: default; font-style: italic;">Could not reach NVD \u2014 enter version manually</div>';
                 }
             }
 
@@ -1111,7 +1131,7 @@
                 versionInput.value = '';
                 versionSuggestionsBox.classList.remove('show');
 
-                componentSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #999; cursor: default;">Loading components...</div>';
+                componentSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #6b6080; cursor: default;">Loading components...</div>';
                 componentSuggestionsBox.classList.add('show');
 
                 // Debounce: Only fetch after user stops typing for 300ms
@@ -1735,9 +1755,9 @@
             const progressHtml = (typeof progressPercent === 'number')
                 ? `
                     <div style="max-width: 420px; margin: 12px auto 0 auto; text-align: left;">
-                        <div style="font-size: 12px; color: #555; margin-bottom: 4px;">Progress: ${progressPercent}%</div>
-                        <div style="height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden;">
-                            <div style="height: 100%; width: ${progressPercent}%; background: #667eea;"></div>
+                        <div style="font-size: 12px; color: #8b7faa; margin-bottom: 4px;">Progress: ${progressPercent}%</div>
+                        <div style="height: 8px; background: #3d3556; border-radius: 4px; overflow: hidden;">
+                            <div style="height: 100%; width: ${progressPercent}%; background: #9333ea;"></div>
                         </div>
                     </div>
                 `
@@ -1827,7 +1847,7 @@
 
         function buildFindingsListMarkup(findings) {
             if (!findings || findings.length === 0) {
-                return '<p style="color: #28a745; font-weight: 600;">No findings match the selected filters.</p>';
+                return '<p style="color: #6ee7b7; font-weight: 600;">No findings match the selected filters.</p>';
             }
 
             let findingsHtml = '<h4>Vulnerabilities Found:</h4><ul class="findings-list">';
@@ -1848,7 +1868,7 @@
                                     CVSS ${finding.cvss_score || 'N/A'}
                                 </span>
                             </div>
-                            <div style="text-align: right; font-size: 12px; color: #666;">
+                            <div style="text-align: right; font-size: 12px; color: #8b7faa;">
                                 Action: <strong>${finding.priority_window || 'n/a'}</strong>${controlDomain}
                             </div>
                         </div>
@@ -1857,7 +1877,7 @@
                             ${finding.description.substring(0, 150)}${finding.description.length > 150 ? '...' : ''}
                         </p>
                         <p style="margin: 6px 0 0 0; font-size: 12px;">
-                            <a href="#${remediationId}" style="color: #007bff;">Jump to remediation guidance</a>
+                            <a href="#${remediationId}" style="color: #c4b5fd;">Jump to remediation guidance</a>
                         </p>
                 `;
 
@@ -1904,10 +1924,10 @@
                 }
 
                 findingsHtml += `
-                        <div id="${remediationId}" style="margin: 10px 0 0 0; font-size: 12px; background: #f2f7ff; border-left: 3px solid #667eea; padding: 8px; border-radius: 2px;">
+                        <div id="${remediationId}" style="margin: 10px 0 0 0; font-size: 12px; background: #2d2145; border-left: 3px solid #9333ea; padding: 8px; border-radius: 2px;">
                             <strong>Remediation:</strong> ${guidanceText}
                         </div>
-                        ${finding.external_id ? `<p style="margin: 8px 0 0 0; font-size: 12px; color: #007bff;">
+                        ${finding.external_id ? `<p style="margin: 8px 0 0 0; font-size: 12px; color: #c4b5fd;">
                             <a href="https://nvd.nist.gov/vuln/detail/${finding.external_id}" target="_blank" rel="noopener noreferrer">
                                 View full details on NVD
                             </a>
@@ -1918,7 +1938,7 @@
 
             findingsHtml += '</ul>';
             if (findings.length > 10) {
-                findingsHtml += `<p style="color: #666; font-size: 12px;">Showing first 10 of ${findings.length} findings</p>`;
+                findingsHtml += `<p style="color: #8b7faa; font-size: 12px;">Showing first 10 of ${findings.length} findings</p>`;
             }
             return findingsHtml;
         }
@@ -1953,7 +1973,7 @@
                     window.currentAssessment.filteredFindings = filteredFindings;
                 }
             } catch (error) {
-                container.innerHTML = '<p style="color:#b00020;">Failed to apply filters. Please try again.</p>';
+                container.innerHTML = '<p style="color:#f87171;">Failed to apply filters. Please try again.</p>';
             }
         }
 
@@ -1987,7 +2007,7 @@
                     .map(dv => `<strong>${dv.name}</strong> → ${dv.version}`)
                     .join(', ');
                 html += `
-                <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #856404;">
+                <div style="background: #2d2145; border: 1px solid #6b3fa0; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #c9a0ff;">
                     <strong>Auto-detected versions:</strong> ${versionsList}
                     <div style="font-size: 12px; margin-top: 6px;">You can re-run the analysis with different versions if needed.</div>
                 </div>`;
@@ -1995,7 +2015,7 @@
 
             if (orgReused) {
                 html += `
-                <div style="background: #eef4ff; border: 1px solid #b3c7ff; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #2d4ea3;">
+                <div style="background: #252038; border: 1px solid #4a3d6b; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #c4b5fd;">
                     <strong>Using existing organization:</strong> Found a prior record for <strong>${org.name}</strong> and resumed saved evidence progress.
                 </div>`;
             }
@@ -2006,7 +2026,7 @@
                     <button onclick="exportReport()" title="Download human-readable report">Export Report</button>
                 </div>
                 ${runStatus ? `
-                <div style="background: #eef4ff; border-left: 4px solid #667eea; padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 14px;">
+                <div style="background: #252038; border-left: 4px solid #9333ea; padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 14px;">
                     <strong>Run Status:</strong> ${runStatus.status} • ${runStatus.progress_percent}% • ${runStatus.current_step}<br>
                     <strong>Assessment ID:</strong> ${runStatus.assessment_id} • <strong>Findings:</strong> ${runStatus.findings_count}
                 </div>` : ''}
@@ -2027,8 +2047,8 @@
                 <p><strong>Organization:</strong> ${org.name} (ID: ${org.id})</p>
                 <p><strong>Components:</strong> ${Object.keys(stack).map(k => `${k} ${stack[k]}`).join(', ')}</p>
 
-                <div style="background: #e8f5e9; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #28a745;">
-                    <h4 style="margin-top: 0; color: #2e7d32;">Evidence Automation Ready</h4>
+                <div style="background: #1a2e25; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #10b981;">
+                    <h4 style="margin-top: 0; color: #6ee7b7;">Evidence Automation Ready</h4>
                     <p style="margin-bottom: 0; font-size: 14px;">
                         Action plans are now available for this organization's assessments.
                         Use the API endpoints to track audit evidence collection and generate compliance reports.
@@ -2048,7 +2068,7 @@
             `;
 
             if (findings.length === 0) {
-                html += '<p style="color: #28a745; font-weight: 600;">No known vulnerabilities found!</p>';
+                html += '<p style="color: #6ee7b7; font-weight: 600;">No known vulnerabilities found!</p>';
             } else {
                 // Add guidance section
                 html += `
@@ -2064,10 +2084,10 @@
                     </div>
                 `;
                 html += `
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 14px 0 10px 0; padding: 12px; background: #f8f9fb; border: 1px solid #e5e7eb; border-radius: 6px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 14px 0 10px 0; padding: 12px; background: #252038; border: 1px solid #3d3556; border-radius: 6px;">
                         <div>
                             <label for="findingsFilterSeverity" style="margin: 0 0 6px 0; font-size: 12px;">Severity</label>
-                            <select id="findingsFilterSeverity" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <select id="findingsFilterSeverity" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; background: #2a2440; color: #e0d8f0;">
                                 <option value="">All</option>
                                 <option value="critical">Critical</option>
                                 <option value="high">High</option>
@@ -2077,7 +2097,7 @@
                         </div>
                         <div>
                             <label for="findingsFilterPriority" style="margin: 0 0 6px 0; font-size: 12px;">Priority Window</label>
-                            <select id="findingsFilterPriority" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <select id="findingsFilterPriority" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; background: #2a2440; color: #e0d8f0;">
                                 <option value="">All</option>
                                 <option value="immediate">Immediate</option>
                                 <option value="30_days">30 Days</option>
@@ -2087,7 +2107,7 @@
                         </div>
                         <div>
                             <label for="findingsFilterDomain" style="margin: 0 0 6px 0; font-size: 12px;">Control Domain</label>
-                            <select id="findingsFilterDomain" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <select id="findingsFilterDomain" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; background: #2a2440; color: #e0d8f0;">
                                 <option value="">All</option>
                                 <option value="Technical">Technical Safeguards</option>
                                 <option value="Administrative">Administrative Safeguards</option>
@@ -2096,7 +2116,7 @@
                         </div>
                         <div>
                             <label for="findingsSortBy" style="margin: 0 0 6px 0; font-size: 12px;">Sort By</label>
-                            <select id="findingsSortBy" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <select id="findingsSortBy" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; background: #2a2440; color: #e0d8f0;">
                                 <option value="severity">Severity</option>
                                 <option value="cvss_score">CVSS Score</option>
                                 <option value="priority_window">Priority Window</option>
@@ -2105,7 +2125,7 @@
                         </div>
                         <div>
                             <label for="findingsSortOrder" style="margin: 0 0 6px 0; font-size: 12px;">Sort Order</label>
-                            <select id="findingsSortOrder" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <select id="findingsSortOrder" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; background: #2a2440; color: #e0d8f0;">
                                 <option value="desc">Descending</option>
                                 <option value="asc">Ascending</option>
                             </select>
@@ -2191,14 +2211,14 @@
                 const itemsHtml = visibleItems.map((item) => {
                     const ownerLabel = item.owner ? ` • Owner: ${item.owner}` : '';
                     const collectedAtText = item.collected_at ? new Date(item.collected_at).toLocaleDateString() : 'Not collected';
-                    const notesDisplay = item.notes ? `<div style="font-size: 12px; color: #555; margin-top: 4px; padding: 6px; background: #f5f5f5; border-left: 3px solid #667eea; border-radius: 2px;"><strong>Notes:</strong> ${item.notes}</div>` : '';
+                    const notesDisplay = item.notes ? `<div style="font-size: 12px; color: #8b7faa; margin-top: 4px; padding: 6px; background: #2d2145; border-left: 3px solid #9333ea; border-radius: 2px;"><strong>Notes:</strong> ${item.notes}</div>` : '';
                     const hasEvidence = item.evidence_id !== null && item.evidence_id !== undefined;
                     const frameworkBadges = (item.frameworks_covered && item.frameworks_covered.length > 0)
-                        ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">${item.frameworks_covered.map(fw => `<span style="display: inline-block; padding: 2px 8px; font-size: 11px; background: #e8eaf6; color: #3949ab; border-radius: 12px; border: 1px solid #c5cae9;">${fw}</span>`).join('')}</div>`
+                        ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">${item.frameworks_covered.map(fw => `<span style="display: inline-block; padding: 2px 8px; font-size: 11px; background: #3b2d60; color: #c4b5fd; border-radius: 12px; border: 1px solid #5b4a8a;">${fw}</span>`).join('')}</div>`
                         : '';
                     const buttonHtml = hasEvidence
-                        ? `<button class="edit-evidence-btn" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" data-notes="${(item.notes || '').replace(/"/g, '&quot;')}" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>`
-                        : `<button disabled style="padding: 6px 12px; background: #ccc; color: #666; border: none; border-radius: 4px; cursor: not-allowed; font-size: 12px;" title="Create evidence record first">No Record</button>`;
+                        ? `<button class="edit-evidence-btn" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" data-notes="${(item.notes || '').replace(/"/g, '&quot;')}" style="padding: 6px 12px; background: #7c3aed; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>`
+                        : `<button disabled style="padding: 6px 12px; background: #3d3556; color: #6b6080; border: none; border-radius: 4px; cursor: not-allowed; font-size: 12px;" title="Create evidence record first">No Record</button>`;
 
                     return `
                         <li class="evidence-item" data-evidence-id="${item.evidence_id || 'none'}">
@@ -2207,11 +2227,11 @@
                                     <strong>${item.control_title}</strong>
                                     ${hasEvidence
                                         ? `<span class="status-pill ${item.status} edit-status-pill" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" data-notes="${(item.notes || '').replace(/"/g, '&quot;')}" style="cursor: pointer;">${item.status.replace('_', ' ')}</span>`
-                                        : `<span class="status-pill ${item.status}" style="color: #999;">${item.status.replace('_', ' ')}</span>`
+                                        : `<span class="status-pill ${item.status}" style="color: #6b6080;">${item.status.replace('_', ' ')}</span>`
                                     }
                                     <div>${item.required_evidence}${ownerLabel}</div>
                                     ${frameworkBadges}
-                                    <div style="font-size: 12px; color: #666; margin-top: 4px;">📅 ${collectedAtText}</div>
+                                    <div style="font-size: 12px; color: #8b7faa; margin-top: 4px;">📅 ${collectedAtText}</div>
                                     ${notesDisplay}
                                 </div>
                                 ${buttonHtml}
@@ -2223,7 +2243,7 @@
                 actionPlanPanel.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                         <h4 style="margin: 0;">Action Plan</h4>
-                        <button id="toggleEvidenceBtn" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Collapse</button>
+                        <button id="toggleEvidenceBtn" style="padding: 6px 12px; background: #7c3aed; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Collapse</button>
                     </div>
                     <div id="evidenceContent">
                     <p class="evidence-summary">
@@ -2233,14 +2253,14 @@
                         Not Started: <strong>${checklist.not_started}</strong>
                     </p>
                     <ul class="evidence-list">${itemsHtml || '<li class="evidence-item">No action plan items yet for this assessment.</li>'}</ul>
-                    ${checklist.items.length > 15 ? `<p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">Showing first 15 of ${checklist.items.length} items.</p>` : ''}
+                    ${checklist.items.length > 15 ? `<p style="font-size: 12px; color: #8b7faa; margin: 8px 0 0 0;">Showing first 15 of ${checklist.items.length} items.</p>` : ''}
                     </div>
                     <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; flex-direction: column; justify-content: center; align-items: center;">
-                        <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="background: #1e1b2e; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); border: 1px solid #3d3556;">
                             <h4 style="margin: 0 0 16px 0;">Update Evidence Item</h4>
                             <div style="margin-bottom: 16px;">
                                 <label style="display: block; margin-bottom: 4px; font-weight: bold;">Status</label>
-                                <select id="editStatus" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <select id="editStatus" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; background: #2a2440; color: #e0d8f0;">
                                     <option value="not_started">Not Started</option>
                                     <option value="in_progress">In Progress</option>
                                     <option value="completed">Completed</option>
@@ -2249,15 +2269,15 @@
                             </div>
                             <div style="margin-bottom: 16px;">
                                 <label style="display: block; margin-bottom: 4px; font-weight: bold;">Collected Date</label>
-                                <input type="date" id="editCollectedAt" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <input type="date" id="editCollectedAt" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; background: #2a2440; color: #e0d8f0;">
                             </div>
                             <div style="margin-bottom: 16px;">
                                 <label style="display: block; margin-bottom: 4px; font-weight: bold;">Notes</label>
-                                <textarea id="editNotes" placeholder="Add any notes..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 80px; font-family: inherit;"></textarea>
+                                <textarea id="editNotes" placeholder="Add any notes..." style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; min-height: 80px; font-family: inherit; background: #2a2440; color: #e0d8f0;"></textarea>
                             </div>
                             <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                <button onclick="closeEditModal()" style="padding: 8px 16px; background: #eee; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
-                                <button onclick="saveEvidenceUpdate()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>
+                                <button onclick="closeEditModal()" style="padding: 8px 16px; background: #3d3556; color: #c9b8e8; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                                <button onclick="saveEvidenceUpdate()" style="padding: 8px 16px; background: #7c3aed; color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>
                             </div>
                         </div>
                     </div>
@@ -2305,7 +2325,7 @@
                     });
                 });
             } catch (error) {
-                actionPlanPanel.innerHTML = `<p style="color: #b00020; margin: 0;">❌ Could not load action plan. Please try again.</p>`;
+                actionPlanPanel.innerHTML = `<p style="color: #f87171; margin: 0;">❌ Could not load action plan. Please try again.</p>`;
                 actionPlanLink.setAttribute('aria-expanded', 'false');
                 actionPlanLink.textContent = 'View Action Plan';
             }
