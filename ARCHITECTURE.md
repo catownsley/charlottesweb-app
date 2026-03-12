@@ -231,30 +231,34 @@ RemediationTask:
 
 ## Technology Decisions
 
-### Backend
+### Backend (Current)
 - **Language:** Python 3.14+
 - **Framework:** FastAPI (async, OpenAPI auto-generation, type hints)
-- **Database:** PostgreSQL (JSONB for metadata flexibility)
-- **ORM:** SQLAlchemy 2.0 (async support)
-- **Task Queue:** Celery + Redis (long-running assessments)
+- **Database:** SQLite (development) — PostgreSQL planned for production
+- **ORM:** SQLAlchemy 2.0
 - **Migrations:** Alembic
+- **Security:** PyJWT, passlib, slowapi (rate limiting)
+- **CI/CD:** GitHub Actions (CodeQL, Bandit, pip-audit)
 
-### Frontend
+### Backend (Planned)
+- **Database:** PostgreSQL (JSONB for metadata flexibility)
+- **Task Queue:** Celery + Redis (long-running assessments)
+
+### Frontend (Planned — Phase 3)
 - **Framework:** React + TypeScript or Next.js
 - **State Management:** React Query (server state) + Zustand (client state)
 - **UI Components:** shadcn/ui or Radix UI
 - **Charts:** Recharts or Nivo
 
-### Infrastructure
+### Infrastructure (Planned)
 - **Deployment:** Docker + Kubernetes or fly.io/Render
-- **CI/CD:** GitHub Actions
 - **Secrets:** 1Password/Vault or cloud-native (AWS Secrets Manager, etc.)
 - **Observability:** Sentry (errors) + Datadog/Grafana (metrics)
 
 ### Data Sources
-- **NVD:** REST API (rate-limited, cache locally)
-- **CWE:** XML dataset (periodic sync)
-- **CIS Benchmarks:** Manual ingestion (licensed content)
+- **NVD:** REST API (rate-limited, cache locally) — integrated
+- **CWE:** XML dataset (periodic sync) — integrated via MITRE ATT&CK STIX
+- **CIS Benchmarks:** Manual ingestion (licensed content) — planned
 
 ---
 

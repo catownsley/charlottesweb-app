@@ -14,7 +14,9 @@ from src.schemas import ControlResponse
 router = APIRouter(prefix="/controls", tags=["controls"])
 
 
-@router.get("", response_model=PaginatedResponse[ControlResponse] | list[ControlResponse])
+@router.get(
+    "", response_model=PaginatedResponse[ControlResponse] | list[ControlResponse]
+)
 @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 def list_controls(
     request: Request,
@@ -51,7 +53,9 @@ def list_controls(
 
 @router.get("/{control_id}", response_model=ControlResponse)
 @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
-def get_control(request: Request, control_id: str, db: Session = Depends(get_db)) -> Control:
+def get_control(
+    request: Request, control_id: str, db: Session = Depends(get_db)
+) -> Control:
     """Get control by ID.
 
     Uses cache for frequently accessed controls.

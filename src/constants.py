@@ -1,7 +1,6 @@
 """Application-wide constants for Charlotte's Web."""
 
 
-
 class AssessmentStatus:
     """Assessment status values."""
 

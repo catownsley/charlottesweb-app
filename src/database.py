@@ -1,4 +1,5 @@
 """Database session and engine configuration."""
+
 from collections.abc import Generator
 from typing import TypeVar
 
@@ -43,7 +44,9 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-def get_or_404[T](db: Session, model: type[T], entity_id: str, entity_name: str | None = None) -> T:
+def get_or_404[
+    T
+](db: Session, model: type[T], entity_id: str, entity_name: str | None = None) -> T:
     """Get entity by ID or raise 404 HTTPException.
 
     Args:
@@ -67,6 +70,6 @@ def get_or_404[T](db: Session, model: type[T], entity_id: str, entity_name: str 
     """
     entity = db.query(model).filter(model.id == entity_id).first()
     if not entity:
-        name = entity_name or model.__tablename__.rstrip('s').replace('_', ' ')
+        name = entity_name or model.__tablename__.rstrip("s").replace("_", " ")
         raise HTTPException(status_code=404, detail=f"{name.title()} not found")
     return entity
