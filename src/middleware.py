@@ -107,12 +107,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # Disable CSP for docs to avoid conflicts
             pass  # Don't set CSP for docs
         elif request.url.path == "/":
-            # Vulnerability analyzer form needs: inline scripts and styles
+            # App UI needs: inline scripts/styles + Cytoscape.js CDN for threat model
             csp = (
-                "script-src 'self' 'unsafe-inline'; "
+                "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
                 "style-src 'self' 'unsafe-inline'; "
                 "connect-src 'self'; "
-                "img-src 'self' https://nvd.nist.gov https://fastapi.tiangolo.com; "
+                "img-src 'self' data: https://nvd.nist.gov https://fastapi.tiangolo.com; "
                 "font-src 'self'; "
                 "default-src 'none'; "
                 "upgrade-insecure-requests"

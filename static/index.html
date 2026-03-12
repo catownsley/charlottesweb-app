@@ -645,7 +645,128 @@
         a:hover {
             color: #ddd6fe;
         }
+        /* Threat Model Styles */
+        .threat-model-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        #threatModelGraph {
+            width: 100%;
+            height: 550px;
+            background: #1a1726;
+            border: 1px solid #3d3556;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+
+        .tm-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .tm-stat {
+            background: #252038;
+            padding: 14px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .tm-stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #a78bfa;
+        }
+
+        .tm-stat-label {
+            font-size: 11px;
+            color: #8b7faa;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stride-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 13px;
+        }
+
+        .stride-table th {
+            background: #252038;
+            color: #c9b8e8;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #3d3556;
+        }
+
+        .stride-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #2d2545;
+            vertical-align: top;
+        }
+
+        .stride-table tr:hover td {
+            background: #1e1b2e;
+        }
+
+        .stride-category-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 12px;
+            color: white;
+        }
+
+        .stride-category-badge.spoofing { background: #e06b6b; }
+        .stride-category-badge.tampering { background: #e2a04d; }
+        .stride-category-badge.repudiation { background: #d4b94e; color: #1e1b2e; }
+        .stride-category-badge.information-disclosure { background: #60a5fa; }
+        .stride-category-badge.denial-of-service { background: #a78bfa; }
+        .stride-category-badge.elevation-of-privilege { background: #f472b6; }
+
+        .tm-node-details {
+            background: #252038;
+            border: 1px solid #3d3556;
+            border-radius: 6px;
+            padding: 14px;
+            margin: 12px 0;
+            display: none;
+        }
+
+        .tm-node-details.visible {
+            display: block;
+        }
+
+        .tm-legend {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 10px;
+            background: #252038;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-size: 12px;
+        }
+
+        .tm-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tm-legend-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+        }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js" defer></script>
 </head>
 <body>
     <div class="container">
@@ -659,6 +780,7 @@
         <!-- TAB NAVIGATION -->
         <div class="tab-nav">
             <button class="tab-btn active" data-tab="analyzer" type="button">Vulnerability Analyzer</button>
+            <button class="tab-btn" data-tab="threat-model" type="button">Threat Model</button>
         </div>
 
         <!-- TAB: Analyzer (existing content) -->
@@ -746,7 +868,58 @@
 
         </div><!-- /tab-analyzer -->
 
-        <!-- Threat model documentation: see THREAT_MODEL.md in repo root -->
+        <!-- TAB: Threat Model -->
+        <div id="tab-threat-model" class="tab-panel">
+            <div class="form-wrapper" style="border-radius: 0 0 8px 8px;">
+                <label for="tmOrgName">Organization Name</label>
+                <input
+                    type="text"
+                    id="tmOrgName"
+                    name="tmOrgName"
+                    required
+                    maxlength="100"
+                    placeholder="e.g., Acme Corporation"
+                    aria-label="Organization name for threat model"
+                >
+                <div class="help-text">
+                    Enter an organization that has a completed assessment
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 16px;">
+                    <button type="button" id="generateThreatModelBtn">
+                        Generate Threat Model
+                    </button>
+                    <button type="button" id="exportThreatModelPng" class="btn-secondary" disabled>
+                        Export PNG
+                    </button>
+                </div>
+            </div>
+
+            <div id="threatModelResult" class="result hidden">
+                <!-- Summary stats -->
+                <div id="tmSummary"></div>
+
+                <!-- Legend -->
+                <div class="tm-legend" id="tmLegend" style="display: none;">
+                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #7c3aed;"></div> Application</div>
+                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #e06b6b;"></div> Critical/High Risk</div>
+                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #d4b94e;"></div> Medium Risk</div>
+                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #10b981;"></div> Low/No Risk</div>
+                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #60a5fa;"></div> External Service</div>
+                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #a78bfa; border: 2px dashed #6d28d9;" ></div> Trust Boundary</div>
+                </div>
+
+                <!-- Graph -->
+                <div id="threatModelGraph"></div>
+
+                <!-- Node details on click -->
+                <div id="tmNodeDetails" class="tm-node-details"></div>
+
+                <!-- STRIDE Analysis -->
+                <h3 style="margin-top: 24px; color: #c9b8e8;">STRIDE Threat Analysis</h3>
+                <div id="tmStrideTable"></div>
+            </div>
+        </div><!-- /tab-threat-model -->
 
     </div>
 
@@ -2532,6 +2705,396 @@
             } catch (error) {
                 showError(`Report export failed: ${error.message}`);
             }
+        }
+        // =====================================================================
+        // THREAT MODEL TAB
+        // =====================================================================
+        let tmCyInstance = null;
+
+        const tmOrgInput = document.getElementById('tmOrgName');
+        const generateTmBtn = document.getElementById('generateThreatModelBtn');
+        const exportTmPngBtn = document.getElementById('exportThreatModelPng');
+        const tmResultDiv = document.getElementById('threatModelResult');
+
+        generateTmBtn.addEventListener('click', generateThreatModel);
+
+        exportTmPngBtn.addEventListener('click', () => {
+            if (!tmCyInstance) return;
+            const pngData = tmCyInstance.png({ full: true, scale: 2, bg: '#1a1726' });
+            const link = document.createElement('a');
+            link.href = pngData;
+            const orgName = tmOrgInput.value.trim() || 'org';
+            link.download = `threat-model-${orgName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.png`;
+            link.click();
+        });
+
+        async function generateThreatModel() {
+            const orgName = tmOrgInput.value.trim();
+            if (!orgName) {
+                alert('Please enter an organization name.');
+                return;
+            }
+
+            generateTmBtn.disabled = true;
+            generateTmBtn.textContent = 'Generating...';
+            tmResultDiv.classList.remove('hidden');
+            tmResultDiv.innerHTML = '<div style="text-align:center; color:#a78bfa; padding:40px;">Generating threat model...</div>';
+
+            try {
+                // Look up org by name
+                const orgResponse = await fetch(`/api/v1/organizations/by-name/${encodeURIComponent(orgName)}`);
+                if (!orgResponse.ok) {
+                    throw new Error('Organization not found. Run an assessment first.');
+                }
+                const org = await orgResponse.json();
+
+                // Generate threat model
+                const tmResponse = await fetch(`/api/v1/threat-model/organizations/${encodeURIComponent(org.id)}`);
+                if (!tmResponse.ok) {
+                    const err = await tmResponse.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Failed to generate threat model');
+                }
+
+                const model = await tmResponse.json();
+                renderThreatModel(model);
+                exportTmPngBtn.disabled = false;
+
+            } catch (error) {
+                tmResultDiv.innerHTML = `<div style="color: #f0abfc; padding: 20px; background: #2d1b2e; border-left: 4px solid #d946ef; border-radius: 4px;">${escapeHtml(error.message)}</div>`;
+            } finally {
+                generateTmBtn.disabled = false;
+                generateTmBtn.textContent = 'Generate Threat Model';
+            }
+        }
+
+        function renderThreatModel(model) {
+            // Render summary
+            const s = model.summary;
+            document.getElementById('tmSummary').innerHTML = `
+                <div class="tm-summary-grid">
+                    <div class="tm-stat"><div class="tm-stat-value">${s.total_components}</div><div class="tm-stat-label">Components</div></div>
+                    <div class="tm-stat"><div class="tm-stat-value">${s.trust_boundaries}</div><div class="tm-stat-label">Trust Boundaries</div></div>
+                    <div class="tm-stat"><div class="tm-stat-value">${s.data_flows}</div><div class="tm-stat-label">Data Flows</div></div>
+                    <div class="tm-stat"><div class="tm-stat-value">${s.stride_threats}</div><div class="tm-stat-label">STRIDE Threats</div></div>
+                    <div class="tm-stat"><div class="tm-stat-value">${s.findings_count}</div><div class="tm-stat-label">Findings</div></div>
+                    <div class="tm-stat"><div class="tm-stat-value">${s.has_phi ? 'Yes' : 'No'}</div><div class="tm-stat-label">PHI Exposure</div></div>
+                </div>
+            `;
+
+            document.getElementById('tmLegend').style.display = 'flex';
+            tmResultDiv.classList.remove('hidden');
+
+            // Build Cytoscape graph
+            renderCytoscapeGraph(model.graph);
+
+            // Render STRIDE table
+            renderStrideTable(model.stride_analysis);
+        }
+
+        function getNodeColor(node) {
+            if (node.type === 'boundary') return '#2d2545';
+            if (node.type === 'external') return '#60a5fa';
+            if (node.type === 'user') return '#a78bfa';
+            if (node.type === 'infrastructure') return '#6b3fa0';
+
+            const sev = (node.metadata && node.metadata.max_severity) || '';
+            if (sev === 'immediate' || sev === 'critical') return '#e06b6b';
+            if (sev === 'high') return '#e2a04d';
+            if (sev === 'medium') return '#d4b94e';
+            return '#10b981';
+        }
+
+        function getNodeShape(node) {
+            if (node.type === 'user') return 'hexagon';
+            if (node.type === 'external') return 'diamond';
+            if (node.type === 'infrastructure') return 'barrel';
+            return 'round-rectangle';
+        }
+
+        function getEdgeColor(edge) {
+            if (edge.data_classification === 'phi') return '#e06b6b';
+            if (edge.data_classification === 'credentials') return '#e2a04d';
+            if (edge.data_classification === 'public') return '#8b7faa';
+            return '#6b3fa0';
+        }
+
+        function renderCytoscapeGraph(graph) {
+            const container = document.getElementById('threatModelGraph');
+
+            // Build Cytoscape elements
+            const elements = [];
+
+            // Add nodes
+            for (const node of graph.nodes) {
+                const el = {
+                    data: {
+                        id: node.id,
+                        label: node.label,
+                        nodeType: node.type,
+                        metadata: node.metadata || {},
+                    }
+                };
+
+                if (node.parent && node.type !== 'boundary') {
+                    el.data.parent = node.parent;
+                }
+
+                elements.push(el);
+            }
+
+            // Add edges
+            for (const edge of graph.edges) {
+                elements.push({
+                    data: {
+                        id: edge.id,
+                        source: edge.source,
+                        target: edge.target,
+                        label: edge.label,
+                        classification: edge.data_classification,
+                        crossesBoundary: edge.crosses_boundary,
+                    }
+                });
+            }
+
+            // Destroy previous instance
+            if (tmCyInstance) {
+                tmCyInstance.destroy();
+            }
+
+            tmCyInstance = cytoscape({
+                container: container,
+                elements: elements,
+                style: [
+                    // Trust boundary (compound node)
+                    {
+                        selector: 'node[nodeType="boundary"]',
+                        style: {
+                            'background-color': '#2d2545',
+                            'background-opacity': 0.4,
+                            'border-width': 2,
+                            'border-style': 'dashed',
+                            'border-color': '#6d28d9',
+                            'label': 'data(label)',
+                            'text-valign': 'top',
+                            'text-halign': 'center',
+                            'font-size': '12px',
+                            'color': '#8b7faa',
+                            'padding': '20px',
+                            'shape': 'round-rectangle',
+                            'text-margin-y': '-8px',
+                        }
+                    },
+                    // Component nodes
+                    {
+                        selector: 'node[nodeType="component"]',
+                        style: {
+                            'label': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'font-size': '11px',
+                            'font-weight': 'bold',
+                            'color': '#fff',
+                            'text-outline-width': 1,
+                            'text-outline-color': '#13111a',
+                            'width': '90px',
+                            'height': '45px',
+                            'shape': 'round-rectangle',
+                            'text-wrap': 'ellipsis',
+                            'text-max-width': '80px',
+                        }
+                    },
+                    // User node
+                    {
+                        selector: 'node[nodeType="user"]',
+                        style: {
+                            'background-color': '#a78bfa',
+                            'label': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'font-size': '10px',
+                            'font-weight': 'bold',
+                            'color': '#fff',
+                            'text-outline-width': 1,
+                            'text-outline-color': '#13111a',
+                            'width': '70px',
+                            'height': '70px',
+                            'shape': 'hexagon',
+                        }
+                    },
+                    // External nodes
+                    {
+                        selector: 'node[nodeType="external"]',
+                        style: {
+                            'background-color': '#60a5fa',
+                            'label': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'font-size': '10px',
+                            'font-weight': 'bold',
+                            'color': '#fff',
+                            'text-outline-width': 1,
+                            'text-outline-color': '#13111a',
+                            'width': '80px',
+                            'height': '80px',
+                            'shape': 'diamond',
+                        }
+                    },
+                    // Infrastructure nodes
+                    {
+                        selector: 'node[nodeType="infrastructure"]',
+                        style: {
+                            'background-color': '#6b3fa0',
+                            'label': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'font-size': '10px',
+                            'font-weight': 'bold',
+                            'color': '#fff',
+                            'text-outline-width': 1,
+                            'text-outline-color': '#13111a',
+                            'width': '80px',
+                            'height': '50px',
+                            'shape': 'barrel',
+                        }
+                    },
+                    // Edges
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 2,
+                            'line-color': '#6b3fa0',
+                            'target-arrow-color': '#6b3fa0',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier',
+                            'label': 'data(label)',
+                            'font-size': '9px',
+                            'color': '#8b7faa',
+                            'text-rotation': 'autorotate',
+                            'text-background-color': '#1a1726',
+                            'text-background-opacity': 0.9,
+                            'text-background-padding': '3px',
+                        }
+                    },
+                    // PHI data flow edges (red)
+                    {
+                        selector: 'edge[classification="phi"]',
+                        style: {
+                            'line-color': '#e06b6b',
+                            'target-arrow-color': '#e06b6b',
+                            'width': 3,
+                        }
+                    },
+                    // Public data edges (gray)
+                    {
+                        selector: 'edge[classification="public"]',
+                        style: {
+                            'line-color': '#8b7faa',
+                            'target-arrow-color': '#8b7faa',
+                            'line-style': 'dashed',
+                        }
+                    },
+                ],
+                layout: {
+                    name: 'cose',
+                    animate: true,
+                    animationDuration: 800,
+                    nodeRepulsion: function() { return 8000; },
+                    idealEdgeLength: function() { return 120; },
+                    edgeElasticity: function() { return 100; },
+                    gravity: 0.25,
+                    padding: 40,
+                    componentSpacing: 60,
+                },
+                minZoom: 0.3,
+                maxZoom: 3,
+            });
+
+            // Apply dynamic colors to component nodes after init
+            tmCyInstance.nodes('[nodeType="component"]').forEach(function(node) {
+                const meta = node.data('metadata') || {};
+                const sev = meta.max_severity || '';
+                let color = '#10b981';
+                if (sev === 'immediate' || sev === 'critical') color = '#e06b6b';
+                else if (sev === 'high') color = '#e2a04d';
+                else if (sev === 'medium') color = '#d4b94e';
+                node.style('background-color', color);
+            });
+
+            // Click handler for node details
+            tmCyInstance.on('tap', 'node', function(evt) {
+                const node = evt.target;
+                if (node.data('nodeType') === 'boundary') return;
+
+                const meta = node.data('metadata') || {};
+                const detailsDiv = document.getElementById('tmNodeDetails');
+                detailsDiv.classList.add('visible');
+                detailsDiv.innerHTML = `
+                    <h4 style="margin: 0 0 8px 0; color: #c9b8e8;">${escapeHtml(node.data('label'))}</h4>
+                    <div style="font-size: 13px; color: #b8a0d8;">
+                        <div><strong>Type:</strong> ${escapeHtml(node.data('nodeType'))}</div>
+                        ${meta.version ? `<div><strong>Version:</strong> ${escapeHtml(meta.version)}</div>` : ''}
+                        <div><strong>Findings:</strong> ${meta.findings_count || 0}</div>
+                        ${meta.max_severity ? `<div><strong>Max Severity:</strong> <span class="cvss-score ${meta.max_severity}">${escapeHtml(meta.max_severity)}</span></div>` : ''}
+                        <div><strong>PHI Exposure:</strong> ${meta.phi_exposure ? 'Yes' : 'No'}</div>
+                    </div>
+                `;
+            });
+
+            // Click on background to hide details
+            tmCyInstance.on('tap', function(evt) {
+                if (evt.target === tmCyInstance) {
+                    document.getElementById('tmNodeDetails').classList.remove('visible');
+                }
+            });
+        }
+
+        function renderStrideTable(strideAnalysis) {
+            const container = document.getElementById('tmStrideTable');
+            if (!strideAnalysis || strideAnalysis.length === 0) {
+                container.innerHTML = '<p style="color: #8b7faa;">No STRIDE threats identified.</p>';
+                return;
+            }
+
+            let html = `<table class="stride-table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Threats</th>
+                        <th>Description</th>
+                        <th>Severity</th>
+                        <th>MITRE Techniques</th>
+                        <th>Recommended Actions</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            for (const category of strideAnalysis) {
+                const badgeClass = category.category.toLowerCase().replace(/ /g, '-');
+
+                if (category.threats.length === 0) {
+                    html += `<tr>
+                        <td><span class="stride-category-badge ${badgeClass}">${escapeHtml(category.category)}</span></td>
+                        <td>0</td>
+                        <td colspan="4" style="color: #8b7faa;">No threats identified</td>
+                    </tr>`;
+                    continue;
+                }
+
+                for (let i = 0; i < category.threats.length; i++) {
+                    const threat = category.threats[i];
+                    html += `<tr>
+                        ${i === 0 ? `<td rowspan="${category.threats.length}"><span class="stride-category-badge ${badgeClass}">${escapeHtml(category.category)}</span></td>
+                        <td rowspan="${category.threats.length}" style="text-align:center; font-weight:600;">${category.threat_count}</td>` : ''}
+                        <td>${escapeHtml(threat.description)}</td>
+                        <td><span class="cvss-score ${threat.severity}">${escapeHtml(threat.severity)}</span></td>
+                        <td style="font-size: 11px;">${threat.mitre_techniques.map(t => escapeHtml(t)).join('<br>') || '<span style="color:#8b7faa;">None</span>'}</td>
+                        <td style="font-size: 11px;">${threat.recommended_actions.map(a => escapeHtml(a)).join('<br>') || '<span style="color:#8b7faa;">Review finding</span>'}</td>
+                    </tr>`;
+                }
+            }
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
         }
     </script>
 </body>

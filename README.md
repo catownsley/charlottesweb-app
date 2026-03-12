@@ -40,6 +40,7 @@ Most tools tell you what controls you need. We tell you which vulnerabilities in
 - **CVE/CWE correlation** (exploitability-aware risk scoring)
 - **Prioritized remediation roadmap** (Immediate / 30 Days / Quarterly / Annual)
 - **Audit evidence automation** (control-to-evidence mapping, policy templates, audit binders)
+- **Interactive threat modeling** (STRIDE analysis, Cytoscape.js data flow diagrams, MITRE ATT&CK enrichment)
 
 ## Project Structure
 
