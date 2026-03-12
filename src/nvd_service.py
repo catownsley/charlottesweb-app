@@ -1,12 +1,19 @@
 """NVD API integration for CVE vulnerability intelligence."""
 
 import logging
+import time
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypedDict, cast
 
 import requests
 
 logger = logging.getLogger(__name__)
+
+
+class NVDApiError(Exception):
+    """Raised when the NVD API returns an error or is unreachable."""
+
+    pass
 
 
 class CVEResult(TypedDict):
@@ -25,6 +32,8 @@ CACHE_TTL_HOURS = 24
 DEFAULT_MAX_RESULTS = 10
 VERSION_SEARCH_MAX_RESULTS = 100
 REQUEST_TIMEOUT_SECONDS = 30
+RATE_LIMIT_RETRY_ATTEMPTS = 3
+RATE_LIMIT_BACKOFF_SECONDS = 6  # NVD rate limit resets every 30s; 6s * 3 retries = 18s
 
 # Version filtering constants
 MAX_VALID_SINGLE_DIGIT_VERSION = 50  # Filter out build numbers like 382, 3802
@@ -40,13 +49,17 @@ class NVDService:
 
     BASE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
-    def __init__(self, api_key: str | None = None) -> None:
+    def __init__(
+        self, api_key: str | None = None, max_retries: int = RATE_LIMIT_RETRY_ATTEMPTS
+    ) -> None:
         """Initialize NVD service.
 
         Args:
             api_key: NVD API key for higher rate limits (optional)
+            max_retries: Number of retry attempts on rate limit (0 to disable retries)
         """
         self.api_key = api_key
+        self.max_retries = max_retries
         self.headers: dict[str, str] = {}
         if api_key:
             self.headers["apiKey"] = api_key
@@ -54,6 +67,46 @@ class NVDService:
         # Simple in-memory cache (in production, use Redis)
         self._cache: dict[str, tuple[list[CVEResult] | list[str], datetime]] = {}
         self._cache_ttl = timedelta(hours=CACHE_TTL_HOURS)
+
+    def _request_with_retry(self, params: dict[str, str | int]) -> dict[str, Any]:
+        """Make an NVD API request with retry on rate limit (429).
+
+        Retries up to self.max_retries times with backoff.
+        Raises NVDApiError on persistent failure so callers can handle it.
+        """
+        last_error: Exception | None = None
+        attempts = max(self.max_retries, 1)
+
+        for attempt in range(attempts):
+            try:
+                response = requests.get(
+                    self.BASE_URL,
+                    params=params,
+                    headers=self.headers,
+                    timeout=REQUEST_TIMEOUT_SECONDS,
+                )
+
+                if response.status_code == 429:
+                    wait = RATE_LIMIT_BACKOFF_SECONDS * (attempt + 1)
+                    logger.warning(
+                        f"NVD rate limit hit (attempt {attempt + 1}/{attempts}), "
+                        f"retrying in {wait}s"
+                    )
+                    time.sleep(wait)
+                    continue
+
+                response.raise_for_status()
+                return response.json()
+
+            except requests.exceptions.RequestException as e:
+                last_error = e
+                logger.warning(
+                    f"NVD API request failed (attempt {attempt + 1}/{attempts}): {e}"
+                )
+                if attempt < attempts - 1:
+                    time.sleep(RATE_LIMIT_BACKOFF_SECONDS)
+
+        raise NVDApiError(f"NVD API failed after {attempts} attempts: {last_error}")
 
     def search_cves_by_keyword(
         self, keyword: str, max_results: int = DEFAULT_MAX_RESULTS
@@ -66,6 +119,9 @@ class NVDService:
 
         Returns:
             List of CVE dictionaries with id, description, cvss, cwe
+
+        Raises:
+            NVDApiError: If the NVD API is unreachable after retries.
         """
         cache_key = f"keyword:{keyword}:{max_results}"
 
@@ -76,78 +132,63 @@ class NVDService:
                 logger.info(f"Cache hit for keyword: {keyword}")
                 return cached_data  # type: ignore[return-value]
 
-        try:
-            params: dict[str, str | int] = {
-                "keywordSearch": keyword,
-                "resultsPerPage": max_results,
-            }
+        params: dict[str, str | int] = {
+            "keywordSearch": keyword,
+            "resultsPerPage": max_results,
+        }
 
-            response = requests.get(
-                self.BASE_URL,
-                params=params,
-                headers=self.headers,
-                timeout=REQUEST_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
+        # Let NVDApiError propagate so callers know the API failed
+        data = self._request_with_retry(params)
+        vulnerabilities = data.get("vulnerabilities", [])
 
-            data = response.json()
-            vulnerabilities = data.get("vulnerabilities", [])
+        results: list[CVEResult] = []
+        for vuln in vulnerabilities:
+            cve = vuln.get("cve", {})
+            cve_id = cve.get("id", "")
 
-            results: list[CVEResult] = []
-            for vuln in vulnerabilities:
-                cve = vuln.get("cve", {})
-                cve_id = cve.get("id", "")
+            # Extract description
+            descriptions = cve.get("descriptions", [])
+            description = ""
+            if descriptions:
+                description = descriptions[0].get("value", "")
 
-                # Extract description
-                descriptions = cve.get("descriptions", [])
-                description = ""
-                if descriptions:
-                    description = descriptions[0].get("value", "")
+            # Extract CVSS score
+            metrics = cve.get("metrics", {})
+            cvss_score: float | None = None
+            cvss_severity: str | None = None
 
-                # Extract CVSS score
-                metrics = cve.get("metrics", {})
-                cvss_score: float | None = None
-                cvss_severity: str | None = None
+            # Try CVSS v3.1 first, then v3.0, then v2.0
+            for version in ["cvssMetricV31", "cvssMetricV30", "cvssMetricV2"]:
+                if version in metrics and metrics[version]:
+                    cvss_data = metrics[version][0].get("cvssData", {})
+                    cvss_score = cvss_data.get("baseScore")
+                    cvss_severity = cvss_data.get("baseSeverity", "").lower()
+                    break
 
-                # Try CVSS v3.1 first, then v3.0, then v2.0
-                for version in ["cvssMetricV31", "cvssMetricV30", "cvssMetricV2"]:
-                    if version in metrics and metrics[version]:
-                        cvss_data = metrics[version][0].get("cvssData", {})
-                        cvss_score = cvss_data.get("baseScore")
-                        cvss_severity = cvss_data.get("baseSeverity", "").lower()
-                        break
+            # Extract CWE IDs
+            weaknesses = cve.get("weaknesses", [])
+            cwe_ids: list[str] = []
+            for weakness in weaknesses:
+                for desc in weakness.get("description", []):
+                    cwe_value = desc.get("value", "")
+                    if cwe_value.startswith("CWE-"):
+                        cwe_ids.append(cwe_value)
 
-                # Extract CWE IDs
-                weaknesses = cve.get("weaknesses", [])
-                cwe_ids: list[str] = []
-                for weakness in weaknesses:
-                    for desc in weakness.get("description", []):
-                        cwe_value = desc.get("value", "")
-                        if cwe_value.startswith("CWE-"):
-                            cwe_ids.append(cwe_value)
-
-                results.append(
-                    CVEResult(
-                        cve_id=cve_id,
-                        description=description,
-                        cvss_score=cvss_score,
-                        cvss_severity=cvss_severity,
-                        cwe_ids=list(set(cwe_ids)),  # Deduplicate
-                        published_date=cve.get("published", ""),
-                    )
+            results.append(
+                CVEResult(
+                    cve_id=cve_id,
+                    description=description,
+                    cvss_score=cvss_score,
+                    cvss_severity=cvss_severity,
+                    cwe_ids=list(set(cwe_ids)),  # Deduplicate
+                    published_date=cve.get("published", ""),
                 )
+            )
 
-            # Cache results
-            self._cache[cache_key] = (results, datetime.now(UTC))
-            logger.info(f"Fetched {len(results)} CVEs for keyword: {keyword}")
-            return results
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"NVD API request failed: {e}")
-            return []
-        except Exception as e:
-            logger.error(f"Error processing NVD response: {e}")
-            return []
+        # Only cache successful results (never cache failures)
+        self._cache[cache_key] = (results, datetime.now(UTC))
+        logger.info(f"Fetched {len(results)} CVEs for keyword: {keyword}")
+        return results
 
     def analyze_software_stack(
         self, software_stack: dict[str, str]
@@ -160,23 +201,44 @@ class NVDService:
 
         Returns:
             Dictionary mapping component names to lists of CVEs
+
+        Raises:
+            NVDApiError: If the NVD API is unreachable for any component.
+                Partial results are not returned; the caller should show
+                the error to the user rather than displaying empty results.
         """
         results: dict[str, list[CVEResult]] = {}
+        failed_components: list[str] = []
 
         for component, version in software_stack.items():
-            # Search for CVEs mentioning this component
-            # Search by component name only, not version string
-            # NVD API uses AND logic for multiple keywords, so "java 21" searches for CVEs
-            # mentioning BOTH java AND "21", which is too restrictive.
-            # Instead, search for component name alone to get all CVEs affecting that component.
-            search_term = component  # Just component name, no version
-            cves = self.search_cves_by_keyword(search_term, max_results=5)
+            # Search by component name only, not version string.
+            # NVD API uses AND logic for multiple keywords, so "java 21" searches
+            # for CVEs mentioning BOTH "java" AND "21", which is too restrictive.
+            try:
+                cves = self.search_cves_by_keyword(component, max_results=5)
+            except NVDApiError:
+                failed_components.append(component)
+                logger.error(f"NVD API failed for component: {component}")
+                continue
 
             if cves:
                 results[component] = cves
                 logger.info(
                     f"Found {len(cves)} CVEs for {component} (version {version})"
                 )
+
+        if failed_components and not results:
+            raise NVDApiError(
+                f"NVD API unavailable. Failed to analyze: {', '.join(failed_components)}. "
+                "This may be due to rate limiting. Try again in a few minutes, "
+                "or configure an NVD API key for higher rate limits."
+            )
+
+        if failed_components:
+            logger.warning(
+                f"Partial NVD results: {len(failed_components)} components failed "
+                f"({', '.join(failed_components)}), {len(results)} succeeded"
+            )
 
         return results
 
@@ -250,15 +312,7 @@ class NVDService:
                 "resultsPerPage": VERSION_SEARCH_MAX_RESULTS,
             }
 
-            response = requests.get(
-                self.BASE_URL,
-                params=params,
-                headers=self.headers,
-                timeout=REQUEST_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
-
-            data = response.json()
+            data = self._request_with_retry(params)
             vulnerabilities = data.get("vulnerabilities", [])
 
             versions_set: set[str] = set()
@@ -315,8 +369,8 @@ class NVDService:
             )
             return top_versions
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"NVD API request failed for versions: {e}")
+        except NVDApiError:
+            logger.error(f"NVD API unavailable for version lookup: {component_name}")
             return []
         except Exception as e:
             logger.error(f"Error extracting versions from NVD: {e}")
@@ -351,15 +405,7 @@ class NVDService:
                 "keywordSearch": normalized_prefix,
                 "resultsPerPage": VERSION_SEARCH_MAX_RESULTS,
             }
-            response = requests.get(
-                self.BASE_URL,
-                params=params,
-                headers=self.headers,
-                timeout=REQUEST_TIMEOUT_SECONDS,
-            )
-            response.raise_for_status()
-
-            data = response.json()
+            data = self._request_with_retry(params)
             vulnerabilities = data.get("vulnerabilities", [])
 
             components: set[str] = set()
@@ -393,8 +439,10 @@ class NVDService:
             )
             return top_components
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"NVD API request failed for component suggestions: {e}")
+        except NVDApiError:
+            logger.error(
+                f"NVD API unavailable for component suggestions: {normalized_prefix}"
+            )
             return []
         except Exception as e:
             logger.error(f"Error extracting component suggestions from NVD: {e}")
