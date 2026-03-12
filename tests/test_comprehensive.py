@@ -937,49 +937,49 @@ class TestSanitizationUtilities:
         )
 
     def test_sanitize_url_rejects_javascript(self):
-        from src.utils import sanitize_url
-
         import pytest
+
+        from src.utils import sanitize_url
 
         with pytest.raises(ValueError, match="not allowed"):
             sanitize_url("javascript:alert(1)")
 
     def test_sanitize_url_rejects_data(self):
-        from src.utils import sanitize_url
-
         import pytest
+
+        from src.utils import sanitize_url
 
         with pytest.raises(ValueError, match="not allowed"):
             sanitize_url("data:text/html,<h1>test</h1>")
 
     def test_sanitize_url_rejects_file(self):
-        from src.utils import sanitize_url
-
         import pytest
+
+        from src.utils import sanitize_url
 
         with pytest.raises(ValueError, match="not allowed"):
             sanitize_url("file:///etc/passwd")
 
     def test_sanitize_url_rejects_empty(self):
-        from src.utils import sanitize_url
-
         import pytest
+
+        from src.utils import sanitize_url
 
         with pytest.raises(ValueError, match="empty"):
             sanitize_url("")
 
     def test_sanitize_url_rejects_no_host(self):
-        from src.utils import sanitize_url
-
         import pytest
+
+        from src.utils import sanitize_url
 
         with pytest.raises(ValueError, match="host"):
             sanitize_url("https://")
 
     def test_sanitize_url_rejects_oversized(self):
-        from src.utils import sanitize_url
-
         import pytest
+
+        from src.utils import sanitize_url
 
         with pytest.raises(ValueError, match="maximum length"):
             sanitize_url("https://example.com/" + "a" * 2100)
@@ -992,9 +992,9 @@ class TestSanitizationUtilities:
         assert "&lt;script&gt;" in result
 
     def test_sanitize_text_rejects_oversized(self):
-        from src.utils import sanitize_text
-
         import pytest
+
+        from src.utils import sanitize_text
 
         with pytest.raises(ValueError, match="maximum length"):
             sanitize_text("a" * 6000)
@@ -1014,17 +1014,17 @@ class TestSanitizationUtilities:
         assert ".." not in result
 
     def test_sanitize_filename_rejects_empty(self):
-        from src.utils import sanitize_filename
-
         import pytest
+
+        from src.utils import sanitize_filename
 
         with pytest.raises(ValueError):
             sanitize_filename("")
 
     def test_sanitize_filename_rejects_dots_only(self):
-        from src.utils import sanitize_filename
-
         import pytest
+
+        from src.utils import sanitize_filename
 
         with pytest.raises(ValueError, match="Invalid filename"):
             sanitize_filename("..")
