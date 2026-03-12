@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/metadata-profiles", tags=["metadata-profiles"])
 
 
-@router.get("/latest", response_model=MetadataProfileResponse)  # type: ignore[misc]
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")  # type: ignore[misc]
+@router.get("/latest", response_model=MetadataProfileResponse)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 def get_latest_metadata_profile_for_org(
     request: Request,
     organization_id: str,
@@ -37,8 +37,8 @@ def get_latest_metadata_profile_for_org(
     return profile
 
 
-@router.post("", response_model=MetadataProfileResponse, status_code=201)  # type: ignore[misc]
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")  # type: ignore[misc]
+@router.post("", response_model=MetadataProfileResponse, status_code=201)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 def create_metadata_profile(
     request: Request,
     profile_data: MetadataProfileCreate,
@@ -65,7 +65,7 @@ def create_metadata_profile(
         db.refresh(profile)
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to create metadata profile: {str(e)}", exc_info=True)
+        logger.error("Failed to create metadata profile: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="Failed to create metadata profile. Please try again.",
@@ -84,8 +84,8 @@ def create_metadata_profile(
     return profile
 
 
-@router.get("/{profile_id}", response_model=MetadataProfileResponse)  # type: ignore[misc]
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")  # type: ignore[misc]
+@router.get("/{profile_id}", response_model=MetadataProfileResponse)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 def get_metadata_profile(
     request: Request, profile_id: str, db: Session = Depends(get_db)
 ) -> MetadataProfile:

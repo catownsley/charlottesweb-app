@@ -1,5 +1,7 @@
 """Rules engine for mapping metadata to HIPAA controls and generating findings."""
+
 import logging
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -29,7 +31,9 @@ class RulesEngine:
         Returns list of findings (gaps and risks).
         """
         # Load assessment and metadata
-        assessment = self.db.query(Assessment).filter(Assessment.id == assessment_id).first()
+        assessment = (
+            self.db.query(Assessment).filter(Assessment.id == assessment_id).first()
+        )
         if not assessment:
             raise ValueError(f"Assessment {assessment_id} not found")
 
@@ -39,7 +43,9 @@ class RulesEngine:
             .first()
         )
         if not metadata:
-            raise ValueError(f"Metadata profile {assessment.metadata_profile_id} not found")
+            raise ValueError(
+                f"Metadata profile {assessment.metadata_profile_id} not found"
+            )
 
         # Get all controls
         controls = self.db.query(Control).all()
@@ -53,7 +59,9 @@ class RulesEngine:
 
         # Check software stack for vulnerabilities (if provided)
         if metadata.software_stack:
-            software_findings = self._check_software_vulnerabilities(assessment, metadata)
+            software_findings = self._check_software_vulnerabilities(
+                assessment, metadata
+            )
             findings.extend(software_findings)
 
         return findings
@@ -70,23 +78,38 @@ class RulesEngine:
         Returns a Finding if there's a gap, None if compliant.
         """
         # Rule 1: Access Control - Check if MFA is enabled
-        if control.id == "HIPAA.164.312(a)(1)" and control.framework == "HIPAA_Security_Rule":
+        if (
+            control.id == "HIPAA.164.312(a)(1)"
+            and control.framework == "HIPAA_Security_Rule"
+        ):
             return self._check_access_control(assessment, metadata, control)
 
         # Rule 2: Encryption at Rest - Check if encryption is enabled
-        if control.id == "HIPAA.164.312(a)(2)(iv)" and control.framework == "HIPAA_Security_Rule":
+        if (
+            control.id == "HIPAA.164.312(a)(2)(iv)"
+            and control.framework == "HIPAA_Security_Rule"
+        ):
             return self._check_encryption_at_rest(assessment, metadata, control)
 
         # Rule 3: Encryption in Transit - Check TLS/SSL
-        if control.id == "HIPAA.164.312(e)(1)" and control.framework == "HIPAA_Security_Rule":
+        if (
+            control.id == "HIPAA.164.312(e)(1)"
+            and control.framework == "HIPAA_Security_Rule"
+        ):
             return self._check_encryption_in_transit(assessment, metadata, control)
 
         # Rule 4: Audit Controls - Check logging is enabled
-        if control.id == "HIPAA.164.312(b)" and control.framework == "HIPAA_Security_Rule":
+        if (
+            control.id == "HIPAA.164.312(b)"
+            and control.framework == "HIPAA_Security_Rule"
+        ):
             return self._check_audit_controls(assessment, metadata, control)
 
         # Rule 5: Risk Analysis - Always required
-        if control.id == "HIPAA.164.308(a)(1)(ii)(A)" and control.framework == "HIPAA_Security_Rule":
+        if (
+            control.id == "HIPAA.164.308(a)(1)(ii)(A)"
+            and control.framework == "HIPAA_Security_Rule"
+        ):
             return self._check_risk_analysis(assessment, metadata, control)
 
         # No finding = compliant or not applicable
@@ -96,7 +119,7 @@ class RulesEngine:
         self, assessment: Assessment, metadata: MetadataProfile, control: Control
     ) -> Finding | None:
         """Check if access controls (MFA) are properly configured."""
-        access_controls = metadata.access_controls or {}
+        access_controls: dict[str, Any] = metadata.access_controls or {}
         mfa_enabled = access_controls.get("mfa_enabled", False)
 
         if not mfa_enabled:
@@ -126,7 +149,7 @@ class RulesEngine:
         self, assessment: Assessment, metadata: MetadataProfile, control: Control
     ) -> Finding | None:
         """Check if data at rest encryption is enabled."""
-        infrastructure = metadata.infrastructure or {}
+        infrastructure: dict[str, Any] = metadata.infrastructure or {}
         encryption_at_rest = infrastructure.get("encryption_at_rest", False)
 
         if not encryption_at_rest:
@@ -155,7 +178,7 @@ class RulesEngine:
         self, assessment: Assessment, metadata: MetadataProfile, control: Control
     ) -> Finding | None:
         """Check if data in transit encryption (TLS) is enabled."""
-        infrastructure = metadata.infrastructure or {}
+        infrastructure: dict[str, Any] = metadata.infrastructure or {}
         tls_enabled = infrastructure.get("tls_enabled", False)
 
         if not tls_enabled:
@@ -184,11 +207,13 @@ class RulesEngine:
         self, assessment: Assessment, metadata: MetadataProfile, control: Control
     ) -> Finding | None:
         """Check if audit logging is properly configured."""
-        infrastructure = metadata.infrastructure or {}
+        infrastructure: dict[str, Any] = metadata.infrastructure or {}
         logging_enabled = infrastructure.get("logging_enabled", False)
         log_retention_days = infrastructure.get("log_retention_days", 0)
 
-        if not logging_enabled or log_retention_days < 180:  # HIPAA recommends 6+ years, but 180 days minimum
+        if (
+            not logging_enabled or log_retention_days < 180
+        ):  # HIPAA recommends 6+ years, but 180 days minimum
             return Finding(
                 assessment_id=assessment.id,
                 control_id=control.id,
@@ -251,8 +276,8 @@ class RulesEngine:
         Returns:
             List of findings for vulnerable software components
         """
-        findings = []
-        software_stack = metadata.software_stack or {}
+        findings: list[Finding] = []
+        software_stack: dict[str, Any] = metadata.software_stack or {}
 
         if not software_stack:
             logger.info("No software stack provided, skipping NVD check")
@@ -265,9 +290,11 @@ class RulesEngine:
 
         # Look up relevant control for software vulnerabilities
         # We'll map to "Malware Protection" control as a proxy for vuln management
-        control = self.db.query(Control).filter(
-            Control.id == "HIPAA.164.308(a)(5)(ii)(B)"
-        ).first()
+        control = (
+            self.db.query(Control)
+            .filter(Control.id == "HIPAA.164.308(a)(5)(ii)(B)")
+            .first()
+        )
 
         if not control:
             # Fallback: create findings without control mapping
@@ -277,8 +304,12 @@ class RulesEngine:
 
         for component, cves in vulnerabilities.items():
             for cve_data in cves:
-                severity = self.nvd_service.get_severity_from_cvss(cve_data["cvss_score"])
-                priority_window = self.nvd_service.get_priority_window_from_cvss(cve_data["cvss_score"])
+                severity = self.nvd_service.get_severity_from_cvss(
+                    cve_data["cvss_score"]
+                )
+                priority_window = self.nvd_service.get_priority_window_from_cvss(
+                    cve_data["cvss_score"]
+                )
 
                 finding = Finding(
                     assessment_id=assessment.id,

@@ -16,8 +16,8 @@ router = APIRouter(prefix="/components", tags=["components"])
 nvd_service = NVDService(api_key=settings.nvd_api_key)
 
 
-@router.get("/suggest")  # type: ignore[misc]
-@limiter.limit(f"{settings.rate_limit_per_minute * 3}/minute")  # type: ignore[misc]
+@router.get("/suggest")
+@limiter.limit(f"{settings.rate_limit_per_minute * 3}/minute")
 def suggest_component_names(
     request: Request, prefix: str, limit: int = 10
 ) -> dict[str, list[str]]:
@@ -42,8 +42,8 @@ def suggest_component_names(
     return {"components": suggestions}
 
 
-@router.get("/{component_name}/versions")  # type: ignore[misc]
-@limiter.limit(f"{settings.rate_limit_per_minute * 3}/minute")  # type: ignore[misc]
+@router.get("/{component_name}/versions")
+@limiter.limit(f"{settings.rate_limit_per_minute * 3}/minute")
 def get_component_versions(
     request: Request, component_name: str
 ) -> dict[str, list[str]]:
@@ -74,8 +74,8 @@ def get_component_versions(
     return {"versions": versions}
 
 
-@router.post("/ingest-manifest", response_model=ManifestIngestResponse)  # type: ignore[misc]
-@limiter.limit(f"{settings.rate_limit_per_minute}/minute")  # type: ignore[misc]
+@router.post("/ingest-manifest", response_model=ManifestIngestResponse)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 def ingest_manifest(
     request: Request, payload: ManifestIngestRequest
 ) -> ManifestIngestResponse:

@@ -19,7 +19,7 @@ Architecture:
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, cast
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -140,7 +140,7 @@ async def app_lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title=settings.app_name,
     version=__version__,
-    description="HIPAA Compliance-as-Code Platform",
+    description="HIPAA Compliance Intelligence Platform",
     lifespan=app_lifespan,
     # Security: Disable API documentation in production
     # Interactive docs can leak API structure and be used for reconnaissance
@@ -154,9 +154,16 @@ app = FastAPI(
 # Required by slowapi for decorator-based rate limiting
 app.state.limiter = limiter
 
+
+# Custom rate limit exception handler with correct type signature
+async def rate_limit_exceeded_handler(request: Request, exc: Exception) -> Response:
+    """Wrapper for slowapi's rate limit handler with correct type signature."""
+    return _rate_limit_exceeded_handler(request, cast(RateLimitExceeded, exc))
+
+
 # Register rate limit exceeded exception handler
 # Returns 429 Too Many Requests with appropriate headers
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # ============================================================================
 # MIDDLEWARE STACK (Order is critical!)
@@ -190,12 +197,12 @@ app.add_middleware(ResponseTimeMiddleware)
 # CORS Middleware (Cross-Origin Resource Sharing)
 # Controls which web origins can access this API
 # Security considerations:
-#   - Development: Allow all origins (*) for convenience
+#   - Development: Allows localhost origins only
 #   - Production: Explicit whitelist required (set CORS_ORIGINS env var)
-#   - Allow credentials: Needed for cookie-based auth
+#   - Never uses wildcard (*) — explicit origins only
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_allowed_origins,  # ['*'] in dev, whitelist in prod
+    allow_origins=settings.cors_allowed_origins,  # Explicit origins, never '*'
     allow_credentials=settings.cors_allow_credentials,  # Allow cookies/auth headers
     allow_methods=settings.cors_allow_methods,  # HTTP methods allowed
     allow_headers=settings.cors_allow_headers,  # Headers allowed in requests
