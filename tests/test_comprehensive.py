@@ -603,8 +603,8 @@ class TestEvidence:
         )
         assert response.status_code == 404
 
-    def test_evidence_checklist(self, client, org_data, metadata_profile_data):
-        """Test evidence checklist generation."""
+    def test_action_plan(self, client, org_data, metadata_profile_data):
+        """Test action plan generation."""
         # Create assessment
         assess_response = client.post(
             "/api/v1/assessments",
@@ -615,15 +615,36 @@ class TestEvidence:
         )
         assessment_id = assess_response.json()["id"]
 
-        # Generate checklist
-        response = client.get(f"/api/v1/assessments/{assessment_id}/evidence-checklist")
+        # Generate action plan
+        response = client.get(f"/api/v1/assessments/{assessment_id}/action-plan")
         assert response.status_code == 200
         data = response.json()
         assert "items" in data
         assert "total_items" in data
         assert "completed" in data
 
-    def test_evidence_checklist_persists_progress_across_assessments(
+    def test_action_plan_items_include_frameworks_covered(
+        self, client, org_data, metadata_profile_data
+    ):
+        """Test that action plan items include the frameworks_covered field."""
+        assess_response = client.post(
+            "/api/v1/assessments",
+            json={
+                "organization_id": org_data["id"],
+                "metadata_profile_id": metadata_profile_data["id"],
+            },
+        )
+        assessment_id = assess_response.json()["id"]
+
+        response = client.get(f"/api/v1/assessments/{assessment_id}/action-plan")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) > 0
+        for item in data["items"]:
+            # frameworks_covered should be present as a key (may be null or a list)
+            assert "frameworks_covered" in item
+
+    def test_action_plan_persists_progress_across_assessments(
         self, client, org_data, metadata_profile_data
     ):
         """Evidence updates persist for same org across subsequent assessments."""
@@ -637,11 +658,11 @@ class TestEvidence:
         assert first_assessment_response.status_code == 201
         first_assessment_id = first_assessment_response.json()["id"]
 
-        first_checklist_response = client.get(
-            f"/api/v1/assessments/{first_assessment_id}/evidence-checklist"
+        first_plan_response = client.get(
+            f"/api/v1/assessments/{first_assessment_id}/action-plan"
         )
-        assert first_checklist_response.status_code == 200
-        first_items = first_checklist_response.json()["items"]
+        assert first_plan_response.status_code == 200
+        first_items = first_plan_response.json()["items"]
         assert len(first_items) > 0
 
         target_item = next(
@@ -661,11 +682,11 @@ class TestEvidence:
             )
             assert create_evidence_response.status_code == 201
 
-            refreshed_checklist_response = client.get(
-                f"/api/v1/assessments/{first_assessment_id}/evidence-checklist"
+            refreshed_plan_response = client.get(
+                f"/api/v1/assessments/{first_assessment_id}/action-plan"
             )
-            assert refreshed_checklist_response.status_code == 200
-            refreshed_items = refreshed_checklist_response.json()["items"]
+            assert refreshed_plan_response.status_code == 200
+            refreshed_items = refreshed_plan_response.json()["items"]
             target_item = next(
                 (
                     item
@@ -695,11 +716,11 @@ class TestEvidence:
         assert second_assessment_response.status_code == 201
         second_assessment_id = second_assessment_response.json()["id"]
 
-        second_checklist_response = client.get(
-            f"/api/v1/assessments/{second_assessment_id}/evidence-checklist"
+        second_plan_response = client.get(
+            f"/api/v1/assessments/{second_assessment_id}/action-plan"
         )
-        assert second_checklist_response.status_code == 200
-        second_items = second_checklist_response.json()["items"]
+        assert second_plan_response.status_code == 200
+        second_items = second_plan_response.json()["items"]
 
         matching_item = next(
             (
@@ -825,3 +846,17 @@ class TestHealth:
         response = client.get("/api/v1/health")
         assert "X-Request-ID" in response.headers
         assert "X-Process-Time" in response.headers
+
+
+# ========== Framework Tests ==========
+
+
+class TestFrameworks:
+    """Framework listing endpoint tests."""
+
+    def test_list_frameworks(self, client):
+        """Test GET /api/v1/frameworks returns a list of frameworks."""
+        response = client.get("/api/v1/frameworks")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)

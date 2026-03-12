@@ -4,7 +4,7 @@
 
 ## Document Purpose
 
-This document outlines the complete business plan for CharlottesWeb, a Compliance Intelligence platform initially targeting HIPAA compliance for AI-enabled health technology companies. Its core objective is to shift compliance from manual, checklist-based processes to automated, exploitability-driven regulatory intelligence.
+This document outlines the complete business plan for CharlottesWeb, a Compliance Intelligence platform initially targeting HIPAA compliance for AI-enabled health technology companies. Its core objective is to shift compliance from manual processes to automated, exploitability-driven regulatory intelligence with actionable remediation plans.
 
 ---
 
@@ -71,14 +71,14 @@ Most compliance tools map controls to frameworks. CharlottesWeb maps:
 - HIPAA enforcement carries real financial penalties
 - Startups underestimate breach exposure
 - Security leadership is expensive
-- Existing tools are checklist-based and do not correlate exploitability
+- Existing tools lack exploitability-aware action plans
 - Audit preparation is chaotic and manual
 
 ### Competitive Landscape
 
 | Competitor Type | Examples | Weakness | CharlottesWeb Edge |
 |----------------|----------|----------|-------------------|
-| **Checklist Compliance Platforms** | Drata, Vanta | Framework-based, not exploit-based | We correlate CVEs/CWEs to regulatory exposure |
+| **Static Compliance Platforms** | Drata, Vanta | Framework-based, not exploit-based | We correlate CVEs/CWEs to regulatory exposure |
 | **Traditional Consultants** | Boutique firms | Expensive, episodic, manual | Automated + optional advisory tier |
 | **Enterprise GRC Platforms** | Archer, ServiceNow | Heavy, enterprise-focused | Startup-focused, lightweight deployment |
 | **Security Scanners** | Snyk, Prisma, etc. | Findings lack compliance translation | We translate technical findings into HIPAA impact |
@@ -132,7 +132,7 @@ Most startups fail audits not due to lack of controls, but due to **lack of orga
 CharlottesWeb generates:
 
 - Control-to-evidence mapping
-- Required documentation checklist
+- Required documentation action plan
 - Logging retention verification report
 - Access review documentation templates
 - Incident response tabletop documentation templates
@@ -191,7 +191,7 @@ User uploads architecture metadata. Within minutes, they receive:
 
 - Mapped exploitable compliance gaps
 - Real CVE correlations
-- Audit preparation checklist
+- Audit preparation action plan
 
 ### Upsell Path
 

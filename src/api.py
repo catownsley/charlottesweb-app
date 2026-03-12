@@ -8,6 +8,7 @@ from src.routers import (
     controls,
     evidence,
     findings,
+    frameworks,
     health,
     metadata_profiles,
     organizations,
@@ -24,6 +25,7 @@ router.include_router(components.router)
 router.include_router(organizations.router)
 router.include_router(metadata_profiles.router)
 router.include_router(controls.router)
+router.include_router(frameworks.router)
 router.include_router(assessments.router)
 router.include_router(findings.router)
 router.include_router(reports.router)

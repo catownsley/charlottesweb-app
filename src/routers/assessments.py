@@ -1,4 +1,4 @@
-"""Assessment CRUD, compliance intelligence, and evidence checklist endpoints."""
+"""Assessment CRUD, compliance intelligence, and action plan endpoints."""
 
 import logging
 from collections.abc import Callable
@@ -19,17 +19,18 @@ from src.models import (
     Control,
     Evidence,
     Finding,
+    FrameworkRequirement,
     MetadataProfile,
     Organization,
 )
 from src.rules_engine import RulesEngine
 from src.schemas import (
+    ActionPlanItem,
+    ActionPlanResponse,
     AssessmentCreate,
     AssessmentResponse,
     AssessmentStatusResponse,
     ComplianceIntelligenceResponse,
-    EvidenceChecklistItem,
-    EvidenceChecklistResponse,
 )
 from src.utils import to_optional_str, to_str, to_str_list
 
@@ -337,7 +338,7 @@ def evaluate_compliance_intelligence(
 
 
 # ---------------------------------------------------------------------------
-# Evidence Checklist
+# Prioritized Action Plan
 # ---------------------------------------------------------------------------
 
 
@@ -367,16 +368,40 @@ def _evidence_rank(evidence: Evidence) -> tuple[int, int, int, int, float]:
     )
 
 
+def _build_framework_coverage_map(
+    db: Session, control_ids: list[str]
+) -> dict[str, list[str]]:
+    """Build a map of control_id → list of framework names that reference it."""
+    from src.models import Framework
+
+    rows = (
+        db.query(FrameworkRequirement.control_id, Framework.name)
+        .join(Framework, FrameworkRequirement.framework_id == Framework.id)
+        .filter(FrameworkRequirement.control_id.in_(control_ids))
+        .all()
+    )
+    coverage: dict[str, list[str]] = {}
+    for control_id, fw_name in rows:
+        coverage.setdefault(str(control_id), [])
+        if fw_name not in coverage[str(control_id)]:
+            coverage[str(control_id)].append(str(fw_name))
+    return coverage
+
+
+@router.get("/{assessment_id}/action-plan", response_model=ActionPlanResponse)
 @router.get(
-    "/{assessment_id}/evidence-checklist", response_model=EvidenceChecklistResponse
+    "/{assessment_id}/evidence-checklist",
+    response_model=ActionPlanResponse,
+    include_in_schema=False,
 )
-def generate_evidence_checklist(
+def generate_action_plan(
     assessment_id: str,
     db: Session = Depends(get_db),
-) -> EvidenceChecklistResponse:
-    """Generate evidence checklist for an assessment.
+) -> ActionPlanResponse:
+    """Generate prioritized action plan for an assessment.
 
     Shows ALL controls with evidence requirements, not just ones with findings.
+    Each item includes which regulatory frameworks it satisfies.
     Automatically creates evidence records so everything can be tracked.
     """
     assessment = get_or_404(db, Assessment, assessment_id, "Assessment not found")
@@ -386,6 +411,9 @@ def generate_evidence_checklist(
     )
 
     control_ids = [to_str(getattr(control, "id", None)) for control in controls]
+
+    # Build framework coverage map
+    framework_coverage = _build_framework_coverage_map(db, control_ids)
 
     existing_evidence: list[Evidence] = (
         db.query(Evidence)
@@ -445,7 +473,7 @@ def generate_evidence_checklist(
             db.rollback()
             logger.error("Failed to create evidence records: %s", e, exc_info=True)
 
-    checklist_items: list[EvidenceChecklistItem] = []
+    action_items: list[ActionPlanItem] = []
     for control in controls:
         evidence_types = to_str_list(getattr(control, "evidence_types", None))
         if not evidence_types:
@@ -453,11 +481,12 @@ def generate_evidence_checklist(
 
         control_id = to_str(getattr(control, "id", None))
         control_title = to_str(getattr(control, "title", None))
+        frameworks = framework_coverage.get(control_id, [])
 
         for evidence_type in evidence_types:
             evidence = evidence_map.get((control_id, evidence_type))
 
-            item = EvidenceChecklistItem(
+            item = ActionPlanItem(
                 control_id=control_id,
                 control_title=control_title,
                 evidence_type=evidence_type,
@@ -468,15 +497,16 @@ def generate_evidence_checklist(
                 collected_at=getattr(evidence, "collected_at", None),
                 notes=to_optional_str(getattr(evidence, "notes", None)),
                 evidence_id=to_optional_str(getattr(evidence, "id", None)),
+                frameworks_covered=frameworks if frameworks else None,
             )
-            checklist_items.append(item)
+            action_items.append(item)
 
-    total_items = len(checklist_items)
-    completed = sum(1 for item in checklist_items if item.status == "completed")
-    in_progress = sum(1 for item in checklist_items if item.status == "in_progress")
-    not_started = sum(1 for item in checklist_items if item.status == "not_started")
+    total_items = len(action_items)
+    completed = sum(1 for item in action_items if item.status == "completed")
+    in_progress = sum(1 for item in action_items if item.status == "in_progress")
+    not_started = sum(1 for item in action_items if item.status == "not_started")
 
-    return EvidenceChecklistResponse(
+    return ActionPlanResponse(
         assessment_id=assessment_id,
         organization_id=to_str(getattr(assessment, "organization_id", None)),
         generated_at=datetime.now(UTC).replace(tzinfo=None),
@@ -484,5 +514,5 @@ def generate_evidence_checklist(
         completed=completed,
         in_progress=in_progress,
         not_started=not_started,
-        items=checklist_items,
+        items=action_items,
     )

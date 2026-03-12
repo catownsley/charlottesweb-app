@@ -110,6 +110,31 @@ class ManifestIngestResponse(BaseModel):
     total_components: int
 
 
+# Framework schemas
+class FrameworkResponse(BaseModel):
+    """Schema for regulatory framework response."""
+
+    id: str
+    code: str
+    name: str
+    version: str | None = None
+    jurisdiction: str | None = None
+    source_url: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class FrameworkRequirementResponse(BaseModel):
+    """Schema for a control's mapping to a specific framework citation."""
+
+    framework_code: str
+    framework_name: str
+    citation: str
+    citation_title: str | None = None
+    baseline: str | None = None
+    required: str = "true"
+
+
 # Control schemas
 class ControlResponse(BaseModel):
     """Schema for control response."""
@@ -120,6 +145,7 @@ class ControlResponse(BaseModel):
     requirement: str
     category: str | None = None
     evidence_types: list[str] | None = None
+    framework_coverage: list[FrameworkRequirementResponse] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -291,8 +317,8 @@ class EvidenceResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class EvidenceChecklistItem(BaseModel):
-    """Schema for a single evidence checklist item."""
+class ActionPlanItem(BaseModel):
+    """Schema for a single action plan item (evidence requirement)."""
 
     control_id: str
     control_title: str
@@ -304,10 +330,11 @@ class EvidenceChecklistItem(BaseModel):
     collected_at: datetime | None = None
     notes: str | None = None
     evidence_id: str | None = None
+    frameworks_covered: list[str] | None = None
 
 
-class EvidenceChecklistResponse(BaseModel):
-    """Schema for evidence checklist response."""
+class ActionPlanResponse(BaseModel):
+    """Schema for prioritized action plan response."""
 
     assessment_id: str
     organization_id: str
@@ -316,7 +343,12 @@ class EvidenceChecklistResponse(BaseModel):
     completed: int
     in_progress: int
     not_started: int
-    items: list[EvidenceChecklistItem]
+    items: list[ActionPlanItem]
+
+
+# Backward-compatible aliases
+EvidenceChecklistItem = ActionPlanItem
+EvidenceChecklistResponse = ActionPlanResponse
 
 
 class ComplianceRuleResult(BaseModel):

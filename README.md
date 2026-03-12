@@ -89,7 +89,7 @@ charlottesweb-app/
 |-------|-------|--------|
 | **Phase 0** | Foundation (domain model, backend skeleton, schema) | **Complete** |
 | **Phase 1** | HIPAA Intelligence Engine (intake, mapping, correlation, scoring) | **Complete** |
-| **Phase 2** | Audit Evidence Automation (templates, checklists, binder export) | **In Progress** (50%) |
+| **Phase 2** | Audit Evidence Automation (templates, action plans, binder export) | **In Progress** (50%) |
 | **Phase 3** | Web App Workflows (auth, UI, dashboard, reports) | **In Progress** (CW-301/CW-302/CW-303 complete; CW-304 next) |
 | **Phase 4** | Pilot Readiness (isolation, observability, onboarding) | Not Started |
 | **Phase 5** | Continuous Monitoring (scheduled jobs, delta alerts, trends) | Not Started |
@@ -114,9 +114,9 @@ charlottesweb-app/
 ### Phase 2 - Audit Evidence (In Progress)
 - Evidence model with artifact tracking and status workflow
 - Evidence CRUD API endpoints with audit logging
-- Evidence checklist generation endpoint (24 evidence requirements across controls)
+- Action plan generation endpoint (24 evidence requirements across controls)
 - Evidence persistence across assessments for the same organization (status updates carry over)
-- UI integration: clickable evidence checklist link with inline panel rendering
+- UI integration: clickable action plan link with inline panel rendering
 - Policy templates (CW-203 - not started)
 - Audit binder export to PDF/ZIP (CW-204 - not started)
 
@@ -125,7 +125,7 @@ charlottesweb-app/
 Digital health startups face a compliance paradox:
 - HIPAA violations carry real financial penalties
 - Security leadership is expensive
-- Existing tools are checklist-based, not exploitability-aware
+- Existing tools lack exploitability-aware action plans
 - Audit preparation is manual and chaotic
 
 CharlottesWeb automates the hard parts: vulnerability correlation, risk prioritization, and evidence generation—turning compliance from a manual burden into automated intelligence.

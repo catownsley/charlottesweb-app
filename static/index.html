@@ -2421,20 +2421,20 @@
                 <div style="background: #e8f5e9; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #28a745;">
                     <h4 style="margin-top: 0; color: #2e7d32;">Evidence Automation Ready</h4>
                     <p style="margin-bottom: 0; font-size: 14px;">
-                        Evidence checklists are now available for this organization's assessments.
+                        Action plans are now available for this organization's assessments.
                         Use the API endpoints to track audit evidence collection and generate compliance reports.
                     </p>
                     <a
                         href="#"
-                        id="viewEvidenceChecklistLink"
+                        id="viewActionPlanLink"
                         class="evidence-link"
                         data-assessment-id="${assessmentId}"
-                        aria-controls="evidenceChecklistPanel"
+                        aria-controls="actionPlanPanel"
                         aria-expanded="false"
                     >
-                        View Evidence Collection Checklist
+                        View Action Plan
                     </a>
-                    <div id="evidenceChecklistPanel" class="evidence-panel hidden" aria-live="polite"></div>
+                    <div id="actionPlanPanel" class="evidence-panel hidden" aria-live="polite"></div>
                 </div>
             `;
 
@@ -2514,34 +2514,34 @@
             resultDiv.classList.add('success');
             resultDiv.innerHTML = html;
 
-            const checklistLink = document.getElementById('viewEvidenceChecklistLink');
-            if (checklistLink) {
-                checklistLink.addEventListener('click', async (event) => {
+            const actionPlanLink = document.getElementById('viewActionPlanLink');
+            if (actionPlanLink) {
+                actionPlanLink.addEventListener('click', async (event) => {
                     event.preventDefault();
-                    const assessmentIdForChecklist = checklistLink.dataset.assessmentId || '';
-                    const checklistPanel = document.getElementById('evidenceChecklistPanel');
-                    if (!checklistPanel || !assessmentIdForChecklist) {
+                    const assessmentIdForPlan = actionPlanLink.dataset.assessmentId || '';
+                    const actionPlanPanel = document.getElementById('actionPlanPanel');
+                    if (!actionPlanPanel || !assessmentIdForPlan) {
                         return;
                     }
 
-                    const panelHidden = checklistPanel.classList.contains('hidden');
-                    const alreadyLoadedForAssessment = checklistPanel.dataset.loadedAssessmentId === assessmentIdForChecklist;
+                    const panelHidden = actionPlanPanel.classList.contains('hidden');
+                    const alreadyLoadedForAssessment = actionPlanPanel.dataset.loadedAssessmentId === assessmentIdForPlan;
 
                     if (panelHidden && alreadyLoadedForAssessment) {
-                        checklistPanel.classList.remove('hidden');
-                        checklistLink.setAttribute('aria-expanded', 'true');
-                        checklistLink.textContent = 'Hide Evidence Collection Checklist';
+                        actionPlanPanel.classList.remove('hidden');
+                        actionPlanLink.setAttribute('aria-expanded', 'true');
+                        actionPlanLink.textContent = 'Hide Action Plan';
                         return;
                     }
 
                     if (!panelHidden && alreadyLoadedForAssessment) {
-                        checklistPanel.classList.add('hidden');
-                        checklistLink.setAttribute('aria-expanded', 'false');
-                        checklistLink.textContent = 'View Evidence Collection Checklist';
+                        actionPlanPanel.classList.add('hidden');
+                        actionPlanLink.setAttribute('aria-expanded', 'false');
+                        actionPlanLink.textContent = 'View Action Plan';
                         return;
                     }
 
-                    await loadEvidenceChecklist(assessmentIdForChecklist);
+                    await loadActionPlan(assessmentIdForPlan);
                 });
             }
 
@@ -2560,21 +2560,21 @@
             }
         }
 
-        async function loadEvidenceChecklist(assessmentId) {
-            const checklistPanel = document.getElementById('evidenceChecklistPanel');
-            const checklistLink = document.getElementById('viewEvidenceChecklistLink');
+        async function loadActionPlan(assessmentId) {
+            const actionPlanPanel = document.getElementById('actionPlanPanel');
+            const actionPlanLink = document.getElementById('viewActionPlanLink');
 
-            if (!checklistPanel || !checklistLink || !assessmentId) {
+            if (!actionPlanPanel || !actionPlanLink || !assessmentId) {
                 return;
             }
 
-            checklistPanel.classList.remove('hidden');
-            checklistPanel.innerHTML = '<p>⏳ Loading evidence checklist...</p>';
+            actionPlanPanel.classList.remove('hidden');
+            actionPlanPanel.innerHTML = '<p>⏳ Loading action plan...</p>';
 
             try {
-                const response = await fetch(`/api/v1/assessments/${encodeURIComponent(assessmentId)}/evidence-checklist`);
+                const response = await fetch(`/api/v1/assessments/${encodeURIComponent(assessmentId)}/action-plan`);
                 if (!response.ok) {
-                    throw new Error('Unable to load checklist');
+                    throw new Error('Unable to load action plan');
                 }
 
                 const checklist = await response.json();
@@ -2584,6 +2584,9 @@
                     const collectedAtText = item.collected_at ? new Date(item.collected_at).toLocaleDateString() : 'Not collected';
                     const notesDisplay = item.notes ? `<div style="font-size: 12px; color: #555; margin-top: 4px; padding: 6px; background: #f5f5f5; border-left: 3px solid #667eea; border-radius: 2px;"><strong>Notes:</strong> ${item.notes}</div>` : '';
                     const hasEvidence = item.evidence_id !== null && item.evidence_id !== undefined;
+                    const frameworkBadges = (item.frameworks_covered && item.frameworks_covered.length > 0)
+                        ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">${item.frameworks_covered.map(fw => `<span style="display: inline-block; padding: 2px 8px; font-size: 11px; background: #e8eaf6; color: #3949ab; border-radius: 12px; border: 1px solid #c5cae9;">${fw}</span>`).join('')}</div>`
+                        : '';
                     const buttonHtml = hasEvidence
                         ? `<button class="edit-evidence-btn" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" data-notes="${(item.notes || '').replace(/"/g, '&quot;')}" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>`
                         : `<button disabled style="padding: 6px 12px; background: #ccc; color: #666; border: none; border-radius: 4px; cursor: not-allowed; font-size: 12px;" title="Create evidence record first">No Record</button>`;
@@ -2598,6 +2601,7 @@
                                         : `<span class="status-pill ${item.status}" style="color: #999;">${item.status.replace('_', ' ')}</span>`
                                     }
                                     <div>${item.required_evidence}${ownerLabel}</div>
+                                    ${frameworkBadges}
                                     <div style="font-size: 12px; color: #666; margin-top: 4px;">📅 ${collectedAtText}</div>
                                     ${notesDisplay}
                                 </div>
@@ -2607,9 +2611,9 @@
                     `;
                 }).join('');
 
-                checklistPanel.innerHTML = `
+                actionPlanPanel.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="margin: 0;">Evidence Collection Checklist</h4>
+                        <h4 style="margin: 0;">Action Plan</h4>
                         <button id="toggleEvidenceBtn" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Collapse</button>
                     </div>
                     <div id="evidenceContent">
@@ -2619,7 +2623,7 @@
                         In Progress: <strong>${checklist.in_progress}</strong> •
                         Not Started: <strong>${checklist.not_started}</strong>
                     </p>
-                    <ul class="evidence-list">${itemsHtml || '<li class="evidence-item">No checklist items yet for this assessment.</li>'}</ul>
+                    <ul class="evidence-list">${itemsHtml || '<li class="evidence-item">No action plan items yet for this assessment.</li>'}</ul>
                     ${checklist.items.length > 15 ? `<p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">Showing first 15 of ${checklist.items.length} items.</p>` : ''}
                     </div>
                     <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; flex-direction: column; justify-content: center; align-items: center;">
@@ -2650,10 +2654,10 @@
                     </div>
                 `;
 
-                checklistPanel.dataset.loadedAssessmentId = assessmentId;
+                actionPlanPanel.dataset.loadedAssessmentId = assessmentId;
 
-                checklistLink.setAttribute('aria-expanded', 'true');
-                checklistLink.textContent = 'Hide Evidence Collection Checklist';
+                actionPlanLink.setAttribute('aria-expanded', 'true');
+                actionPlanLink.textContent = 'Hide Action Plan';
 
                 // Attach event handler for collapse/expand button
                 const toggleBtn = document.getElementById('toggleEvidenceBtn');
@@ -2692,9 +2696,9 @@
                     });
                 });
             } catch (error) {
-                checklistPanel.innerHTML = `<p style="color: #b00020; margin: 0;">❌ Could not load evidence checklist. Please try again.</p>`;
-                checklistLink.setAttribute('aria-expanded', 'false');
-                checklistLink.textContent = 'View Evidence Collection Checklist';
+                actionPlanPanel.innerHTML = `<p style="color: #b00020; margin: 0;">❌ Could not load action plan. Please try again.</p>`;
+                actionPlanLink.setAttribute('aria-expanded', 'false');
+                actionPlanLink.textContent = 'View Action Plan';
             }
         }
 
@@ -2754,9 +2758,9 @@
                 }
 
                 closeEditModal();
-                const checklistLink = document.getElementById('viewEvidenceChecklistLink');
-                if (checklistLink && checklistLink.dataset.assessmentId) {
-                    await loadEvidenceChecklist(checklistLink.dataset.assessmentId);
+                const actionPlanLink = document.getElementById('viewActionPlanLink');
+                if (actionPlanLink && actionPlanLink.dataset.assessmentId) {
+                    await loadActionPlan(actionPlanLink.dataset.assessmentId);
                 }
             } catch (error) {
                 alert('❌ Failed to save update: ' + error.message);
