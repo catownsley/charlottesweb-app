@@ -478,6 +478,7 @@ class TestEvidence:
         response = client.post(
             "/api/v1/evidence",
             json={
+                "organization_id": org_data["id"],
                 "control_id": "HIPAA.164.312(a)(1)",
                 "evidence_type": "policy_document",
                 "title": "Access Control Policy",
@@ -489,6 +490,7 @@ class TestEvidence:
         data = response.json()
         assert data["control_id"] == "HIPAA.164.312(a)(1)"
         assert data["title"] == "Access Control Policy"
+        assert data["organization_id"] == org_data["id"]
 
     def test_create_evidence_with_assessment(
         self, client, org_data, metadata_profile_data
@@ -530,11 +532,12 @@ class TestEvidence:
         )
         assert response.status_code == 404
 
-    def test_create_evidence_nonexistent_assessment(self, client):
+    def test_create_evidence_nonexistent_assessment(self, client, org_data):
         """Test 404 when assessment does not exist."""
         response = client.post(
             "/api/v1/evidence",
             json={
+                "organization_id": org_data["id"],
                 "control_id": "HIPAA.164.312(a)(1)",
                 "assessment_id": "nonexistent",
                 "evidence_type": "policy",
@@ -543,12 +546,13 @@ class TestEvidence:
         )
         assert response.status_code == 404
 
-    def test_get_evidence(self, client):
+    def test_get_evidence(self, client, org_data):
         """Test retrieving evidence."""
         # Create evidence
         create_response = client.post(
             "/api/v1/evidence",
             json={
+                "organization_id": org_data["id"],
                 "control_id": "HIPAA.164.312(a)(1)",
                 "evidence_type": "policy",
                 "title": "Test Evidence",
@@ -567,12 +571,13 @@ class TestEvidence:
         response = client.get("/api/v1/evidence/nonexistent")
         assert response.status_code == 404
 
-    def test_update_evidence(self, client):
+    def test_update_evidence(self, client, org_data):
         """Test updating evidence."""
         # Create evidence
         create_response = client.post(
             "/api/v1/evidence",
             json={
+                "organization_id": org_data["id"],
                 "control_id": "HIPAA.164.312(a)(1)",
                 "evidence_type": "policy",
                 "title": "Original Title",
@@ -742,11 +747,12 @@ class TestEvidence:
 class TestEvidenceAttachments:
     """Tests for evidence URL attachment and input sanitization."""
 
-    def test_attach_url_to_evidence(self, client):
+    def test_attach_url_to_evidence(self, client, org_data):
         """Test attaching a valid URL to an evidence record."""
         create_response = client.post(
             "/api/v1/evidence",
             json={
+                "organization_id": org_data["id"],
                 "control_id": "HIPAA.164.312(a)(1)",
                 "evidence_type": "policy",
                 "title": "Test Evidence",
@@ -768,11 +774,12 @@ class TestEvidenceAttachments:
         assert data["uploaded_at"] is not None
         assert data["status"] == "in_progress"  # auto-advanced from not_started
 
-    def test_attach_url_rejects_javascript_scheme(self, client):
+    def test_attach_url_rejects_javascript_scheme(self, client, org_data):
         """Test that javascript: URLs are rejected."""
         create_response = client.post(
             "/api/v1/evidence",
             json={
+                "organization_id": org_data["id"],
                 "control_id": "HIPAA.164.312(a)(1)",
                 "evidence_type": "policy",
                 "title": "Test Evidence",
@@ -787,11 +794,12 @@ class TestEvidenceAttachments:
         assert response.status_code == 400
         assert "not allowed" in response.json()["detail"].lower()
 
-    def test_attach_url_rejects_data_scheme(self, client):
+    def test_attach_url_rejects_data_scheme(self, client, org_data):
         """Test that data: URLs are rejected."""
         create_response = client.post(
             "/api/v1/evidence",
             json={
+                "organization_id": org_data["id"],
                 "control_id": "HIPAA.164.312(a)(1)",
                 "evidence_type": "policy",
                 "title": "Test Evidence",
@@ -805,11 +813,12 @@ class TestEvidenceAttachments:
         )
         assert response.status_code == 400
 
-    def test_attach_url_rejects_empty_url(self, client):
+    def test_attach_url_rejects_empty_url(self, client, org_data):
         """Test that empty URLs are rejected."""
         create_response = client.post(
             "/api/v1/evidence",
             json={
+                "organization_id": org_data["id"],
                 "control_id": "HIPAA.164.312(a)(1)",
                 "evidence_type": "policy",
                 "title": "Test Evidence",
@@ -900,11 +909,12 @@ class TestEvidenceAttachments:
         org_slug = org_data["name"].replace(" ", "")
         assert org_slug in title
 
-    def test_update_evidence_rejects_javascript_url(self, client):
+    def test_update_evidence_rejects_javascript_url(self, client, org_data):
         """Test that PATCH rejects javascript: URLs."""
         create_response = client.post(
             "/api/v1/evidence",
             json={
+                "organization_id": org_data["id"],
                 "control_id": "HIPAA.164.312(a)(1)",
                 "evidence_type": "policy",
                 "title": "Test Evidence",
@@ -1154,3 +1164,112 @@ class TestFrameworks:
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
+
+
+# ========== Tenant Isolation Tests ==========
+
+
+class TestTenantIsolation:
+    """Verify evidence is properly scoped per organization."""
+
+    def _create_org_with_assessment(self, client, name):
+        """Helper: create org, profile, and assessment."""
+        org = client.post(
+            "/api/v1/organizations",
+            json={"name": name, "industry": "digital_health", "stage": "seed"},
+        ).json()
+        profile = client.post(
+            "/api/v1/metadata-profiles",
+            json={
+                "organization_id": org["id"],
+                "phi_types": ["demographic"],
+                "cloud_provider": "aws",
+                "infrastructure": {"encryption_at_rest": False, "tls_enabled": True},
+                "access_controls": {"mfa_enabled": False},
+            },
+        ).json()
+        assessment = client.post(
+            "/api/v1/assessments",
+            json={
+                "organization_id": org["id"],
+                "metadata_profile_id": profile["id"],
+            },
+        ).json()
+        return org, assessment
+
+    def test_evidence_requires_org_id_or_assessment_id(self, client):
+        """Evidence creation fails without organization_id or assessment_id."""
+        response = client.post(
+            "/api/v1/evidence",
+            json={
+                "control_id": "HIPAA.164.312(a)(1)",
+                "evidence_type": "policy",
+                "title": "Orphan Evidence",
+            },
+        )
+        assert response.status_code == 400
+        assert "organization_id" in response.json()["detail"].lower()
+
+    def test_evidence_inherits_org_from_assessment(self, client):
+        """Evidence created with assessment_id inherits the org."""
+        org, assessment = self._create_org_with_assessment(client, "Inherit Org")
+        response = client.post(
+            "/api/v1/evidence",
+            json={
+                "control_id": "HIPAA.164.312(a)(1)",
+                "assessment_id": assessment["id"],
+                "evidence_type": "policy",
+                "title": "Inherited Org Evidence",
+            },
+        )
+        assert response.status_code == 201
+        assert response.json()["organization_id"] == org["id"]
+
+    def test_evidence_rejects_mismatched_org_and_assessment(self, client):
+        """Providing org_id that differs from assessment's org is rejected."""
+        org_a, assessment_a = self._create_org_with_assessment(client, "Org A")
+        org_b, _ = self._create_org_with_assessment(client, "Org B")
+
+        response = client.post(
+            "/api/v1/evidence",
+            json={
+                "organization_id": org_b["id"],
+                "control_id": "HIPAA.164.312(a)(1)",
+                "assessment_id": assessment_a["id"],
+                "evidence_type": "policy",
+                "title": "Mismatch Evidence",
+            },
+        )
+        assert response.status_code == 400
+        assert "does not match" in response.json()["detail"]
+
+    def test_action_plan_does_not_leak_cross_tenant_evidence(self, client):
+        """Org A's completed evidence must not appear in Org B's action plan."""
+        org_a, assessment_a = self._create_org_with_assessment(client, "Isolated A")
+        org_b, assessment_b = self._create_org_with_assessment(client, "Isolated B")
+
+        # Generate action plans to auto-create evidence for both orgs
+        plan_a = client.get(
+            f"/api/v1/assessments/{assessment_a['id']}/action-plan"
+        ).json()
+
+        # Mark Org A's first evidence item as completed
+        target = next((i for i in plan_a["items"] if i.get("evidence_id")), None)
+        assert target is not None
+        client.patch(
+            f"/api/v1/evidence/{target['evidence_id']}",
+            json={"status": "completed", "notes": "Done by Org A"},
+        )
+
+        # Get Org B's action plan
+        plan_b = client.get(
+            f"/api/v1/assessments/{assessment_b['id']}/action-plan"
+        ).json()
+
+        # Org B should have NO completed items (all should be not_started)
+        for item in plan_b["items"]:
+            assert item["status"] != "completed", (
+                f"Org B's action plan has a completed item that leaked from Org A: "
+                f"{item['control_id']} / {item['evidence_type']}"
+            )
+        assert plan_b["completed"] == 0

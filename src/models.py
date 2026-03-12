@@ -251,6 +251,9 @@ class Evidence(Base):
     __tablename__ = "evidence"
 
     id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(
+        String, ForeignKey("organizations.id"), nullable=False, index=True
+    )
     control_id = Column(String, ForeignKey("controls.id"), nullable=False, index=True)
     assessment_id = Column(
         String, ForeignKey("assessments.id"), nullable=True, index=True
@@ -289,11 +292,13 @@ class Evidence(Base):
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
 
     # Relationships
+    organization = relationship("Organization")
     control = relationship("Control")
     assessment = relationship("Assessment")
 
     # Indexes for query performance
     __table_args__ = (
+        Index("idx_evidence_organization_id", "organization_id"),
         Index("idx_evidence_control_id", "control_id"),
         Index("idx_evidence_assessment_id", "assessment_id"),
         Index("idx_evidence_status", "status"),
