@@ -380,8 +380,8 @@ def _generate_stride_analysis(
         "Elevation of Privilege": [],
     }
 
-    # Collect CWE IDs from all findings
-    processed_cwes: set[str] = set()
+    # Cache MITRE lookups per CWE to avoid redundant API calls
+    mitre_cache: dict[str, dict[str, list[str]]] = {}
 
     for finding in findings:
         cwe_ids = getattr(finding, "cwe_ids", None) or []
@@ -389,26 +389,32 @@ def _generate_stride_analysis(
         finding_id = to_str(getattr(finding, "id", ""))
         title = to_str(getattr(finding, "title", ""))
 
-        for cwe_id in cwe_ids:
-            if cwe_id in processed_cwes:
-                continue
-            processed_cwes.add(cwe_id)
+        matched_any_stride = False
 
+        for cwe_id in cwe_ids:
             stride_cats = CWE_TO_STRIDE.get(cwe_id, [])
             if not stride_cats:
                 continue
+            matched_any_stride = True
 
-            # Get MITRE techniques for this CWE
-            technique_ids = mitre.get_techniques_for_cwe(cwe_id)
-            technique_names = []
-            mitigations = []
-            for tech_id in technique_ids[:2]:
-                tech = mitre.get_technique_by_id(tech_id)
-                if tech:
-                    technique_names.append(f"{tech_id}: {tech['name']}")
-                tech_mitigations = mitre.get_mitigations_for_technique(tech_id)
-                for m in tech_mitigations[:1]:
-                    mitigations.append(m.get("name", ""))
+            # Get MITRE techniques (cached per CWE)
+            if cwe_id not in mitre_cache:
+                technique_ids = mitre.get_techniques_for_cwe(cwe_id)
+                technique_names = []
+                mitigations = []
+                for tech_id in technique_ids[:2]:
+                    tech = mitre.get_technique_by_id(tech_id)
+                    if tech:
+                        technique_names.append(f"{tech_id}: {tech['name']}")
+                    tech_mitigations = mitre.get_mitigations_for_technique(tech_id)
+                    for m in tech_mitigations[:1]:
+                        mitigations.append(m.get("name", ""))
+                mitre_cache[cwe_id] = {
+                    "techniques": technique_names,
+                    "mitigations": mitigations,
+                }
+
+            cached = mitre_cache[cwe_id]
 
             for cat in stride_cats:
                 stride_categories[cat].append(
@@ -417,14 +423,29 @@ def _generate_stride_analysis(
                         "severity": severity,
                         "finding_ids": [finding_id],
                         "cwe_ids": [cwe_id],
-                        "mitre_techniques": technique_names,
+                        "mitre_techniques": cached["techniques"],
                         "recommended_actions": (
-                            mitigations
-                            if mitigations
+                            cached["mitigations"]
+                            if cached["mitigations"]
                             else ["Review and remediate per finding guidance"]
                         ),
                     }
                 )
+
+        # Findings with no mapped CWEs still appear under Tampering as a catch-all
+        if not matched_any_stride and (cwe_ids or title):
+            stride_categories["Tampering"].append(
+                {
+                    "description": title or "Unclassified finding",
+                    "severity": severity,
+                    "finding_ids": [finding_id],
+                    "cwe_ids": cwe_ids,
+                    "mitre_techniques": [],
+                    "recommended_actions": [
+                        "Review and remediate per finding guidance"
+                    ],
+                }
+            )
 
     # If no findings map to DoS, add a generic one based on infrastructure
     if not stride_categories["Denial of Service"]:
