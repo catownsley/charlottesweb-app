@@ -166,7 +166,71 @@ python -c "import secrets; print(secrets.token_urlsafe(24))"
 | `DATABASE_URL` | SQLite | PostgreSQL | Use strong password in prod |
 | `CORS_ORIGINS` | localhost | **Whitelist only** | Never use `*` in production |
 
-See [SECURITY_KEYS.md](SECURITY_KEYS.md) for complete key management guide.
+### Hosting Platform Examples
+
+#### AWS Lambda / API Gateway
+Use AWS Secrets Manager:
+```python
+import boto3
+client = boto3.client('secretsmanager')
+secret = client.get_secret_value(SecretId='charlottesweb/prod')
+```
+
+#### Docker / Docker Compose
+```yaml
+services:
+  app:
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      VALID_API_KEYS: ${VALID_API_KEYS}
+      DATABASE_URL: ${DATABASE_URL}
+```
+
+#### Cloudflare Pages / Workers
+```toml
+# wrangler.toml
+[env.production]
+vars = { APP_ENV = "production", DEBUG = "false" }
+secrets = ["SECRET_KEY", "VALID_API_KEYS"]
+```
+
+#### Google Cloud Run
+```bash
+gcloud run deploy charlottesweb \
+  --set-env-vars APP_ENV=production,DEBUG=false \
+  --set-secrets SECRET_KEY=secret-manager-secret-version,VALID_API_KEYS=secret-manager-secret-version
+```
+
+### Secret Rotation & Revocation
+
+**When to Rotate:**
+- Quarterly (policy)
+- After suspected compromise
+- After employee departure
+- After code disclosure
+- When logs show suspicious activity
+
+**How to Rotate:**
+1. Generate new secret
+2. Add to environment (keep old one temporarily)
+3. Update code to accept both (if token-based)
+4. Wait 24 hours for in-flight requests to complete
+5. Remove old secret from environment
+6. Monitor logs for failures
+
+### Audit Logging for Secrets
+
+**What to Log:**
+- API key creation/deletion (with owner)
+- Authentication failures (rate limit if >5 failures)
+- Key rotation events
+- Unauthorized access attempts
+
+**What NOT to Log:**
+- Secret key values (ever)
+- API keys (ever)
+- Database passwords (ever)
+- Session tokens (only hash if necessary)
 
 ### API Key Authentication
 
@@ -232,12 +296,13 @@ grep "assessment_created" audit.log | python -m json.tool
 - □ Use PostgreSQL (not SQLite)
 - □ Enable HTTPS/TLS
 - □ Rotate secrets quarterly
+- □ No hardcoded secrets in Python files
+- □ Audit logging enabled
+- □ Secret rotation policy documented
 
-See [SECURITY_KEYS.md](SECURITY_KEYS.md) and [SECURITY.md](SECURITY.md) for complete hardening checklists.
+See [SECURITY.md](SECURITY.md) for complete hardening checklists.
 
 ---
-
-## Testing the Vertical Slice
 
 ## Risk-Convergence API
 
