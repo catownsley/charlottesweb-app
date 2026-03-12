@@ -452,11 +452,46 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
     print(f"Seeded {len(mappings)} cross-framework requirement mappings.")
 
 
+def _migrate_evidence_org_column() -> None:
+    """Add organization_id column to evidence table and backfill from assessments."""
+    inspector = inspect(engine)
+    if "evidence" not in inspector.get_table_names():
+        return
+    existing = {col["name"] for col in inspector.get_columns("evidence")}
+    if "organization_id" in existing:
+        return
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE evidence ADD COLUMN organization_id TEXT "
+                "REFERENCES organizations(id)"
+            )
+        )
+        # Backfill from linked assessments
+        conn.execute(
+            text(
+                "UPDATE evidence SET organization_id = "
+                "(SELECT a.organization_id FROM assessments a "
+                "WHERE a.id = evidence.assessment_id) "
+                "WHERE assessment_id IS NOT NULL"
+            )
+        )
+        # Delete orphaned evidence with no org — these are the tenant leak vectors
+        result = conn.execute(
+            text("DELETE FROM evidence WHERE organization_id IS NULL")
+        )
+        deleted = result.rowcount
+        if deleted:
+            print(f"  Deleted {deleted} orphaned evidence records (no organization).")
+    print("Migrated evidence table: added organization_id column and backfilled data.")
+
+
 def seed_controls() -> None:
     """Seed database with frameworks, controls, and sample evidence."""
     # Create all tables
     Base.metadata.create_all(bind=engine)
     _migrate_control_columns()
+    _migrate_evidence_org_column()
 
     db = SessionLocal()
 
@@ -933,6 +968,7 @@ def seed_controls() -> None:
     # Create sample evidence records (what auditor would collect)
     sample_evidence = [
         Evidence(
+            organization_id=org.id,
             assessment_id=assessment.id,
             control_id="HC.SC-2.1",
             evidence_type="api_key_rotation_logs",
@@ -944,6 +980,7 @@ def seed_controls() -> None:
             notes="Need CloudTrail logs showing API key creation/rotation events from last 90 days",
         ),
         Evidence(
+            organization_id=org.id,
             assessment_id=assessment.id,
             control_id="HC.SC-2.1",
             evidence_type="mfa_enforcement_policy",
@@ -956,6 +993,7 @@ def seed_controls() -> None:
             notes="Draft policy created, awaiting CISO sign-off",
         ),
         Evidence(
+            organization_id=org.id,
             assessment_id=assessment.id,
             control_id="HC.SC-7.1",
             evidence_type="tls_certificate_configuration",
@@ -969,6 +1007,7 @@ def seed_controls() -> None:
             notes="TLS 1.2+ enforced on all ALB listeners. Certificate pinning in client SDK.",
         ),
         Evidence(
+            organization_id=org.id,
             assessment_id=assessment.id,
             control_id="HC.SC-4.1",
             evidence_type="rds_encryption_configuration",
@@ -980,6 +1019,7 @@ def seed_controls() -> None:
             notes="Need to verify RDS encryption status and get screenshot from AWS console",
         ),
         Evidence(
+            organization_id=org.id,
             assessment_id=assessment.id,
             control_id="HC.SC-4.1",
             evidence_type="kms_key_rotation_audit_logs",
@@ -991,6 +1031,7 @@ def seed_controls() -> None:
             notes="CloudTrail logs for KMS key operations (create, rotate, schedule deletion)",
         ),
         Evidence(
+            organization_id=org.id,
             assessment_id=assessment.id,
             control_id="HC.SC-12.1",
             evidence_type="kms_key_rotation_schedule",
@@ -1002,6 +1043,7 @@ def seed_controls() -> None:
             notes="Configuration review in progress. Automatic rotation to be enabled next sprint.",
         ),
         Evidence(
+            organization_id=org.id,
             assessment_id=assessment.id,
             control_id="HC.SC-7.2",
             evidence_type="kubernetes_pod_configuration_audit",
@@ -1014,6 +1056,7 @@ def seed_controls() -> None:
             notes="Need to verify no persistent volumes in audio processing pods",
         ),
         Evidence(
+            organization_id=org.id,
             assessment_id=assessment.id,
             control_id="HC.AU-6.1",
             evidence_type="model_api_access_logs",
@@ -1025,6 +1068,7 @@ def seed_controls() -> None:
             notes="API logs being aggregated to CloudWatch; query templates being documented",
         ),
         Evidence(
+            organization_id=org.id,
             assessment_id=assessment.id,
             control_id="HC.SC-13.1",
             evidence_type="audio_deletion_audit_logs",
@@ -1036,6 +1080,7 @@ def seed_controls() -> None:
             notes="Need logs from past 90 days showing successful audio deletion with timestamps",
         ),
         Evidence(
+            organization_id=org.id,
             assessment_id=assessment.id,
             control_id="HC.UI-1.1",
             evidence_type="de_identification_ruleset",
