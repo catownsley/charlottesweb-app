@@ -1,6 +1,6 @@
 # CharlottesWeb
 
-> **HIPAA Compliance Intelligence Platform for AI-enabled health applications**
+> **Intelligent Compliance for Applications that Protect Regulated Data**
 
 CharlottesWeb automates regulatory mapping by correlating HIPAA requirements with real-world exploitable vulnerabilities (CVE/CWE), producing prioritized remediation roadmaps and audit-ready evidence packages.
 
