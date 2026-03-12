@@ -54,7 +54,7 @@ def get_threat_model(
             assessment_id=assessment_id,
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from None
 
     log_audit_event(
         action=AuditAction.DATA_READ,
