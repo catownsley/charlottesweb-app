@@ -1,6 +1,6 @@
 # CharlottesWeb
 
-> **Intelligent Compliance for Applications that Protect Regulated Data**
+> Intelligent Compliance for Applications that Protect Regulated Data
 
 CharlottesWeb automates regulatory mapping by correlating compliance requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) with real-world exploitable vulnerabilities (CVE/CWE), producing prioritized remediation roadmaps and audit-ready evidence packages.
 
@@ -19,7 +19,7 @@ See [SECURITY.md](SECURITY.md) for complete security documentation.
 ## Quick Links
 
 - **[Business Plan](BUSINESS_PLAN.md)** - Market strategy, competitive landscape, go-to-market, team hiring
-- ️**[Architecture & Product Vision](ARCHITECTURE.md)** - Technical design, domain model, system architecture, API design
+- ️[Architecture & Product Vision](ARCHITECTURE.md) - Technical design, domain model, system architecture, API design
 - **[Security Documentation](SECURITY.md)** - Security features, configuration, and best practices
 - **[Threat Model](THREAT_MODEL.md)** - STRIDE threat analysis, trust boundaries, and prioritized mitigations
 - **[Operations Guide](OPERATIONS.md)** - Delivery status, performance strategy, operational priorities
