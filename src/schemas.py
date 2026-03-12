@@ -382,6 +382,77 @@ EvidenceChecklistItem = ActionPlanItem
 EvidenceChecklistResponse = ActionPlanResponse
 
 
+# Threat Model schemas
+class ThreatModelNode(BaseModel):
+    """Schema for a node in the threat model graph."""
+
+    id: str
+    label: str
+    type: str  # boundary, component, user, external, infrastructure
+    parent: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ThreatModelEdge(BaseModel):
+    """Schema for a data flow edge in the threat model graph."""
+
+    id: str
+    source: str
+    target: str
+    label: str
+    data_classification: str  # phi, credentials, public, internal
+    crosses_boundary: bool = False
+
+
+class ThreatModelGraph(BaseModel):
+    """Schema for the threat model graph structure."""
+
+    nodes: list[ThreatModelNode]
+    edges: list[ThreatModelEdge]
+
+
+class StrideThreat(BaseModel):
+    """Schema for a single STRIDE threat entry."""
+
+    description: str
+    severity: str
+    finding_ids: list[str] = Field(default_factory=list)
+    cwe_ids: list[str] = Field(default_factory=list)
+    mitre_techniques: list[str] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
+
+
+class StrideCategory(BaseModel):
+    """Schema for a STRIDE category with its threats."""
+
+    category: str
+    threat_count: int
+    threats: list[StrideThreat]
+
+
+class ThreatModelSummary(BaseModel):
+    """Schema for threat model summary statistics."""
+
+    total_components: int
+    trust_boundaries: int
+    data_flows: int
+    stride_threats: int
+    critical_boundary_crossings: int
+    has_phi: bool = False
+    findings_count: int = 0
+
+
+class ThreatModelResponse(BaseModel):
+    """Schema for complete threat model response."""
+
+    organization_id: str
+    assessment_id: str
+    generated_at: str
+    graph: ThreatModelGraph
+    stride_analysis: list[StrideCategory]
+    summary: ThreatModelSummary
+
+
 class ComplianceRuleResult(BaseModel):
     """Schema for a single compliance intelligence rule evaluation result."""
 

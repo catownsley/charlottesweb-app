@@ -14,6 +14,7 @@ from src.routers import (
     organizations,
     reports,
     risk,
+    threat_model,
     vulnerability_analysis,
 )
 
@@ -32,3 +33,4 @@ router.include_router(reports.router)
 router.include_router(vulnerability_analysis.router)
 router.include_router(evidence.router)
 router.include_router(risk.router)
+router.include_router(threat_model.router)

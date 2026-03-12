@@ -130,6 +130,26 @@ residual_risk = threat_pressure × (1 - control_confidence/100) × blast_radius
 - System infers applicable regulations and required controls automatically.
 - Multi-framework mapping (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) is supported in current releases.
 
+#### 4.3 Interactive Threat Modeling
+**Purpose:** Generate STRIDE-based threat models with interactive data flow diagrams from assessment data.
+
+**How it works:**
+- Derives graph nodes from the organization's software stack, cloud provider, and infrastructure metadata
+- Assigns components to trust boundaries (End User, Application, Persistence, External Services, Operational)
+- Generates data flow edges with PHI sensitivity classification
+- Maps findings to STRIDE categories (Spoofing, Tampering, Repudiation, Information Disclosure, DoS, Elevation of Privilege) via CWE mappings
+- Enriches each STRIDE threat with MITRE ATT&CK techniques and recommended mitigations
+
+**Frontend visualization:**
+- Interactive Cytoscape.js graph with drag, zoom, pan
+- Nodes color-coded by severity (red=critical, orange=high, yellow=medium, green=clean)
+- Trust boundaries as dashed compound nodes
+- Click any node for finding details, severity, and PHI exposure
+- STRIDE analysis table with technique-level detail
+- PNG export for reports and presentations
+
+**No new database tables.** The threat model is computed on the fly from existing Assessment, MetadataProfile, and Finding records.
+
 #### 5. Evidence Automation Layer
 **Purpose:** Generate audit-ready documentation.
 
