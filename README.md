@@ -19,7 +19,7 @@ See [SECURITY.md](SECURITY.md) for complete security documentation.
 ## Quick Links
 
 - **[Business Plan](BUSINESS_PLAN.md)** - Market strategy, competitive landscape, go-to-market, team hiring
-- ️ **[Architecture & Product Vision](ARCHITECTURE.md)** - Technical design, domain model, system architecture, API design
+- ️**[Architecture & Product Vision](ARCHITECTURE.md)** - Technical design, domain model, system architecture, API design
 - **[Security Documentation](SECURITY.md)** - Security features, configuration, and best practices
 - **[Threat Model](THREAT_MODEL.md)** - STRIDE threat analysis, trust boundaries, and prioritized mitigations
 - **[Operations Guide](OPERATIONS.md)** - Delivery status, performance strategy, operational priorities
