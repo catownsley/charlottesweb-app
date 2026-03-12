@@ -751,6 +751,17 @@
     </div>
 
     <script>
+        // --- Security: HTML escaping for safe innerHTML interpolation ---
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         // Tab switching logic
         document.querySelectorAll('.tab-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -1855,9 +1866,9 @@
             findings.slice(0, 10).forEach((finding, index) => {
                 const severityClass = getFindingSeverityClass(finding);
                 const remediationId = `remediation-${index}`;
-                const externalId = finding.external_id || 'Internal finding';
-                const guidanceText = finding.remediation_guidance || 'No remediation guidance available.';
-                const controlDomain = finding.control_domain ? ` • Domain: ${finding.control_domain}` : '';
+                const externalId = escapeHtml(finding.external_id || 'Internal finding');
+                const guidanceText = escapeHtml(finding.remediation_guidance || 'No remediation guidance available.');
+                const controlDomain = finding.control_domain ? ` • Domain: ${escapeHtml(finding.control_domain)}` : '';
 
                 findingsHtml += `
                     <li class="finding-item ${severityClass}">
@@ -1865,16 +1876,16 @@
                             <div>
                                 <span class="cve-id">${externalId}</span>
                                 <span class="cvss-score ${severityClass}">
-                                    CVSS ${finding.cvss_score || 'N/A'}
+                                    CVSS ${escapeHtml(finding.cvss_score || 'N/A')}
                                 </span>
                             </div>
                             <div style="text-align: right; font-size: 12px; color: #8b7faa;">
-                                Action: <strong>${finding.priority_window || 'n/a'}</strong>${controlDomain}
+                                Action: <strong>${escapeHtml(finding.priority_window || 'n/a')}</strong>${controlDomain}
                             </div>
                         </div>
-                        <p style="margin: 8px 0 4px 0;"><strong>${finding.title}</strong></p>
+                        <p style="margin: 8px 0 4px 0;"><strong>${escapeHtml(finding.title)}</strong></p>
                         <p style="margin: 0; font-size: 13px; color: #555;">
-                            ${finding.description.substring(0, 150)}${finding.description.length > 150 ? '...' : ''}
+                            ${escapeHtml(finding.description.substring(0, 150))}${finding.description.length > 150 ? '...' : ''}
                         </p>
                         <p style="margin: 6px 0 0 0; font-size: 12px;">
                             <a href="#${remediationId}" style="color: #c4b5fd;">Jump to remediation guidance</a>
@@ -1885,16 +1896,16 @@
                     findingsHtml += `<div class="threat-context">`;
 
                     if (finding.threat_context.summary) {
-                        findingsHtml += `<div class="threat-summary">${finding.threat_context.summary}</div>`;
+                        findingsHtml += `<div class="threat-summary">${escapeHtml(finding.threat_context.summary)}</div>`;
                     }
 
                     finding.threat_context.techniques.forEach(technique => {
                         findingsHtml += `
-                            <a href="https://attack.mitre.org/techniques/${technique.id}/"
+                            <a href="https://attack.mitre.org/techniques/${encodeURIComponent(technique.id)}/"
                                target="_blank"
                                class="mitre-technique"
                                rel="noopener noreferrer">
-                                ${technique.id}: ${technique.name}
+                                ${escapeHtml(technique.id)}: ${escapeHtml(technique.name)}
                             </a>
                         `;
 
@@ -1902,9 +1913,9 @@
                             const breach = technique.breach_example;
                             findingsHtml += `
                                 <div class="breach-example">
-                                    <strong>Real-World Impact:</strong> ${breach.breach}
+                                    <strong>Real-World Impact:</strong> ${escapeHtml(breach.breach)}
                                     <div class="breach-impact">
-                                        ${breach.impact} (${breach.date})
+                                        ${escapeHtml(breach.impact)} (${escapeHtml(breach.date)})
                                     </div>
                                 </div>
                             `;
@@ -1914,7 +1925,7 @@
                             const mitigation = technique.primary_mitigation;
                             findingsHtml += `
                                 <div class="mitigation-hint">
-                                    <strong>Recommended Action:</strong> ${mitigation.name}
+                                    <strong>Recommended Action:</strong> ${escapeHtml(mitigation.name)}
                                 </div>
                             `;
                         }
@@ -2209,28 +2220,32 @@
                 const checklist = await response.json();
                 const visibleItems = checklist.items.slice(0, 15);
                 const itemsHtml = visibleItems.map((item) => {
-                    const ownerLabel = item.owner ? ` • Owner: ${item.owner}` : '';
+                    const ownerLabel = item.owner ? ` • Owner: ${escapeHtml(item.owner)}` : '';
                     const collectedAtText = item.collected_at ? new Date(item.collected_at).toLocaleDateString() : 'Not collected';
-                    const notesDisplay = item.notes ? `<div style="font-size: 12px; color: #8b7faa; margin-top: 4px; padding: 6px; background: #2d2145; border-left: 3px solid #9333ea; border-radius: 2px;"><strong>Notes:</strong> ${item.notes}</div>` : '';
+                    const notesDisplay = item.notes ? `<div style="font-size: 12px; color: #8b7faa; margin-top: 4px; padding: 6px; background: #2d2145; border-left: 3px solid #9333ea; border-radius: 2px;"><strong>Notes:</strong> ${escapeHtml(item.notes)}</div>` : '';
                     const hasEvidence = item.evidence_id !== null && item.evidence_id !== undefined;
                     const frameworkBadges = (item.frameworks_covered && item.frameworks_covered.length > 0)
-                        ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">${item.frameworks_covered.map(fw => `<span style="display: inline-block; padding: 2px 8px; font-size: 11px; background: #3b2d60; color: #c4b5fd; border-radius: 12px; border: 1px solid #5b4a8a;">${fw}</span>`).join('')}</div>`
+                        ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">${item.frameworks_covered.map(fw => `<span style="display: inline-block; padding: 2px 8px; font-size: 11px; background: #3b2d60; color: #c4b5fd; border-radius: 12px; border: 1px solid #5b4a8a;">${escapeHtml(fw)}</span>`).join('')}</div>`
+                        : '';
+                    const attachmentHtml = item.artifact_url
+                        ? `<div style="margin-top: 4px;"><a href="${escapeHtml(item.artifact_url)}" target="_blank" rel="noopener noreferrer" style="color: #7c3aed; text-decoration: underline; font-size: 12px;">📎 ${escapeHtml(item.artifact_description || 'Attached Evidence')}</a></div>`
                         : '';
                     const buttonHtml = hasEvidence
-                        ? `<button class="edit-evidence-btn" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" data-notes="${(item.notes || '').replace(/"/g, '&quot;')}" style="padding: 6px 12px; background: #7c3aed; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>`
+                        ? `<button class="edit-evidence-btn" data-evidence-id="${escapeHtml(item.evidence_id)}" data-status="${escapeHtml(item.status)}" data-required-evidence="${escapeHtml(item.required_evidence)}" data-control-title="${escapeHtml(item.control_title)}" data-collected-at="${item.collected_at || ''}" data-notes="${escapeHtml(item.notes || '')}" data-artifact-url="${escapeHtml(item.artifact_url || '')}" style="padding: 6px 12px; background: #7c3aed; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Edit</button>`
                         : `<button disabled style="padding: 6px 12px; background: #3d3556; color: #6b6080; border: none; border-radius: 4px; cursor: not-allowed; font-size: 12px;" title="Create evidence record first">No Record</button>`;
 
                     return `
                         <li class="evidence-item" data-evidence-id="${item.evidence_id || 'none'}">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div style="flex: 1;">
-                                    <strong>${item.control_title}</strong>
+                                    <strong>${escapeHtml(item.control_title)}</strong>
                                     ${hasEvidence
-                                        ? `<span class="status-pill ${item.status} edit-status-pill" data-evidence-id="${item.evidence_id}" data-status="${item.status}" data-required-evidence="${item.required_evidence.replace(/"/g, '&quot;')}" data-control-title="${item.control_title.replace(/"/g, '&quot;')}" data-collected-at="${item.collected_at || ''}" data-notes="${(item.notes || '').replace(/"/g, '&quot;')}" style="cursor: pointer;">${item.status.replace('_', ' ')}</span>`
-                                        : `<span class="status-pill ${item.status}" style="color: #6b6080;">${item.status.replace('_', ' ')}</span>`
+                                        ? `<span class="status-pill ${escapeHtml(item.status)} edit-status-pill" data-evidence-id="${escapeHtml(item.evidence_id)}" data-status="${escapeHtml(item.status)}" data-required-evidence="${escapeHtml(item.required_evidence)}" data-control-title="${escapeHtml(item.control_title)}" data-collected-at="${item.collected_at || ''}" data-notes="${escapeHtml(item.notes || '')}" data-artifact-url="${escapeHtml(item.artifact_url || '')}" style="cursor: pointer;">${escapeHtml(item.status.replace('_', ' '))}</span>`
+                                        : `<span class="status-pill ${escapeHtml(item.status)}" style="color: #6b6080;">${escapeHtml(item.status.replace('_', ' '))}</span>`
                                     }
-                                    <div>${item.required_evidence}${ownerLabel}</div>
+                                    <div>${escapeHtml(item.required_evidence)}${ownerLabel}</div>
                                     ${frameworkBadges}
+                                    ${attachmentHtml}
                                     <div style="font-size: 12px; color: #8b7faa; margin-top: 4px;">📅 ${collectedAtText}</div>
                                     ${notesDisplay}
                                 </div>
@@ -2272,6 +2287,12 @@
                                 <input type="date" id="editCollectedAt" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; background: #2a2440; color: #e0d8f0;">
                             </div>
                             <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 4px; font-weight: bold;">Evidence URL</label>
+                                <input type="url" id="editArtifactUrl" placeholder="https://..."
+                                       style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; background: #2a2440; color: #e0d8f0; box-sizing: border-box;">
+                                <div style="font-size: 11px; color: #6b6080; margin-top: 2px;">Link to a document, screenshot, or external evidence</div>
+                            </div>
+                            <div style="margin-bottom: 16px;">
                                 <label style="display: block; margin-bottom: 4px; font-weight: bold;">Notes</label>
                                 <textarea id="editNotes" placeholder="Add any notes..." style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; min-height: 80px; font-family: inherit; background: #2a2440; color: #e0d8f0;"></textarea>
                             </div>
@@ -2302,26 +2323,14 @@
                 // Attach event listeners to Edit buttons
                 document.querySelectorAll('.edit-evidence-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
-                        const evidenceId = btn.dataset.evidenceId;
-                        const status = btn.dataset.status;
-                        const requiredEvidence = btn.dataset.requiredEvidence;
-                        const controlTitle = btn.dataset.controlTitle;
-                        const collectedAt = btn.dataset.collectedAt;
-                        const notes = btn.dataset.notes;
-                        showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt, notes);
+                        showEditModal(btn.dataset.evidenceId, btn.dataset.status, btn.dataset.requiredEvidence, btn.dataset.controlTitle, btn.dataset.collectedAt, btn.dataset.notes, btn.dataset.artifactUrl);
                     });
                 });
 
                 // Attach event listeners to Status pills
                 document.querySelectorAll('.edit-status-pill').forEach(pill => {
                     pill.addEventListener('click', () => {
-                        const evidenceId = pill.dataset.evidenceId;
-                        const status = pill.dataset.status;
-                        const requiredEvidence = pill.dataset.requiredEvidence;
-                        const controlTitle = pill.dataset.controlTitle;
-                        const collectedAt = pill.dataset.collectedAt;
-                        const notes = pill.dataset.notes;
-                        showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt, notes);
+                        showEditModal(pill.dataset.evidenceId, pill.dataset.status, pill.dataset.requiredEvidence, pill.dataset.controlTitle, pill.dataset.collectedAt, pill.dataset.notes, pill.dataset.artifactUrl);
                     });
                 });
             } catch (error) {
@@ -2333,13 +2342,14 @@
 
         let currentEditingEvidenceId = null;
 
-        function showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt, notes) {
+        function showEditModal(evidenceId, status, requiredEvidence, controlTitle, collectedAt, notes, artifactUrl) {
             currentEditingEvidenceId = evidenceId;
             const modal = document.getElementById('editModal');
             if (!modal) return;
 
             document.getElementById('editStatus').value = status || 'not_started';
             document.getElementById('editNotes').value = notes || '';
+            document.getElementById('editArtifactUrl').value = artifactUrl || '';
 
             if (collectedAt) {
                 const date = new Date(collectedAt);
@@ -2365,6 +2375,7 @@
             const status = document.getElementById('editStatus').value;
             const collectedAtValue = document.getElementById('editCollectedAt').value;
             const notes = document.getElementById('editNotes').value;
+            const artifactUrl = document.getElementById('editArtifactUrl').value.trim();
 
             const payload = {
                 status: status,
@@ -2375,7 +2386,26 @@
                 payload.collected_at = `${collectedAtValue}T00:00:00`;
             }
 
+            if (artifactUrl) {
+                payload.artifact_url = artifactUrl;
+            }
+
             try {
+                // If a URL was provided, also call the dedicated attach endpoint
+                // for server-side URL validation and sanitization
+                if (artifactUrl) {
+                    const attachResponse = await fetch(`/api/v1/evidence/${encodeURIComponent(currentEditingEvidenceId)}/attach`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ artifact_url: artifactUrl })
+                    });
+                    if (!attachResponse.ok) {
+                        const errorData = await attachResponse.json().catch(() => ({}));
+                        throw new Error(errorData.detail || 'Invalid evidence URL');
+                    }
+                }
+
+                // Update status, notes, collected_at via PATCH
                 const response = await fetch(`/api/v1/evidence/${encodeURIComponent(currentEditingEvidenceId)}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
@@ -2392,7 +2422,7 @@
                     await loadActionPlan(actionPlanLink.dataset.assessmentId);
                 }
             } catch (error) {
-                alert('❌ Failed to save update: ' + error.message);
+                alert('Failed to save update: ' + error.message);
             }
         }
 

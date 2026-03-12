@@ -8,26 +8,8 @@ This file consolidates runtime status, performance strategy, and operational pri
 - Project is about **52% complete**.
 - Foundation and core intelligence paths are operational.
 
-### Phase Snapshot
-| Phase | Focus | Status |
-|---|---|---|
-| Phase 0 | Foundation | Complete |
-| Phase 1 | Multi-framework intelligence engine | Complete |
-| Phase 1.5 | Compliance + threat convergence | Complete |
-| Phase 2 | Audit evidence automation | In progress (40–50%) |
-| Phase 3 | Web app workflows | In progress (30–40%) |
-| Phase 4 | Pilot readiness | In progress (10–20%) |
-| Phase 5 | Continuous monitoring | Not started |
-
-### Current Blockers
-1. **CW-301 User authentication** (blocking pilot onboarding)
-2. **CW-203 Policy/document templates**
-3. **CW-204 Audit binder export**
-
-### Immediate Priorities
-- Implement user login and role-based access control.
-- Complete document/template generation.
-- Package audit evidence export workflow.
+### Phase Status
+See [Ticket Index](docs/tickets/TICKET_INDEX.md) for current phase status and ticket details.
 
 ---
 

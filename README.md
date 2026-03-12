@@ -18,11 +18,12 @@ See [SECURITY.md](SECURITY.md) for complete security documentation.
 
 ## Quick Links
 
-- **[Business Plan](BUSINESS_PLAN.md)** - Market strategy, competitive landscape, go-to-market, team hiring
+- [Business Plan](BUSINESS_PLAN.md)** - Market strategy, competitive landscape, go-to-market, team hiring
 - ️[Architecture & Product Vision](ARCHITECTURE.md) - Technical design, domain model, system architecture, API design
+- **[Documentation Index](docs/INDEX.md)** - Full navigation guide to all project docs
+- **[DEV_GUIDE](DEV_GUIDE.md)** - Setup, security configuration, API examples
+- **[Architecture & Product Vision](ARCHITECTURE.md)** - Technical design, domain model, API design
 - **[Security Documentation](SECURITY.md)** - Security features, configuration, and best practices
-- **[Threat Model](THREAT_MODEL.md)** - STRIDE threat analysis, trust boundaries, and prioritized mitigations
-- **[Operations Guide](OPERATIONS.md)** - Delivery status, performance strategy, operational priorities
 - **[Ticket Index](docs/tickets/TICKET_INDEX.md)** - Phased execution roadmap with detailed tickets
 - **[GitHub Issues](https://github.com/catownsley/charlottesweb-app/issues)** - Active implementation backlog
 
@@ -49,9 +50,9 @@ charlottesweb-app/
 ├── OPERATIONS.md # Consolidated status + performance + runbook notes
 ├── README.md # This file
 ├── docs/
+│ ├── INDEX.md # Documentation navigation guide
 │ └── tickets/ # Phased execution backlog
-│ ├── TICKET_INDEX.md
-│ └── README.md
+│   └── TICKET_INDEX.md
 ├── src/ # Application code
 ├── scripts/ # Automation scripts
 └── .github/
@@ -86,40 +87,9 @@ charlottesweb-app/
 
 ## Development Phases
 
-| Phase | Focus | Status |
-|-------|-------|--------|
-| **Phase 0** | Foundation (domain model, backend skeleton, schema) | **Complete** |
-| **Phase 1** | Compliance Intelligence Engine (intake, multi-framework mapping, correlation, scoring) | **Complete** |
-| **Phase 2** | Audit Evidence Automation (templates, action plans, binder export) | **In Progress** (50%) |
-| **Phase 3** | Web App Workflows (auth, UI, dashboard, reports) | **In Progress** (CW-301/CW-302/CW-303 complete; CW-304 next) |
-| **Phase 4** | Pilot Readiness (isolation, observability, onboarding) | Not Started |
-| **Phase 5** | Continuous Monitoring (scheduled jobs, delta alerts, trends) | Not Started |
+See [Ticket Index](docs/tickets/TICKET_INDEX.md) for detailed phase status and individual tickets.
 
-### Phase 0 - Foundation (Complete)
-- FastAPI application with health check and CRUD endpoints
-- SQLite database with SQLAlchemy models (Organization, MetadataProfile, Control, Assessment, Finding, Evidence)
-- Pydantic schemas for API validation
-- Security controls: API key auth, rate limiting, audit logging, HTTPS
-- Development guide and E2E test scripts
-
-### Phase 1 - Intelligence Engine (Complete)
-- 23 canonical controls seeded across 7 regulatory frameworks (87 cross-framework mappings)
-- Rules engine with NVD vulnerability correlation
-- Finding generation with CVSS scores, CWE IDs, and prioritization
-- Metadata intake workflow (no PHI ingestion)
-- Remediation guidance and priority windows (immediate/30_days/quarterly)
-- Metadata-driven compliance evaluation endpoint (JSON policy rules → deterministic pass/fail)
-- Optional finding persistence via `GET /api/v1/assessments/{assessment_id}/compliance-intelligence?persist_findings=true`
-- Auto-resolve: findings automatically removed when policy rules pass (`auto_resolve=true` by default)
-
-### Phase 2 - Audit Evidence (In Progress)
-- Evidence model with artifact tracking and status workflow
-- Evidence CRUD API endpoints with audit logging
-- Action plan generation endpoint (24 evidence requirements across controls)
-- Evidence persistence across assessments for the same organization (status updates carry over)
-- UI integration: clickable action plan link with inline panel rendering
-- Policy templates (CW-203 - not started)
-- Audit binder export to PDF/ZIP (CW-204 - not started)
+**Current focus:** Phase 2 (Audit Evidence) and Phase 3 (Web App Workflows) are in progress. Phases 0 and 1 are complete.
 
 ## Why This Exists
 
