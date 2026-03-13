@@ -965,6 +965,13 @@
             submitBtn: !!submitBtn
         });
 
+        // Clear all forms and session data on page load (prevent data leakage)
+        sessionStorage.removeItem('manifestContentByOrg');
+        if (orgNameInput) orgNameInput.value = '';
+        if (manifestContentInput) manifestContentInput.value = '';
+        if (manifestFileInput) manifestFileInput.value = '';
+        if (componentsContainer) componentsContainer.innerHTML = '';
+
         // Counter for unique component IDs
         let componentCounter = 0;
 
@@ -1465,9 +1472,9 @@
                     await syncManifestForSelectedOrg();
                 }, 500);
             });
-            // Sync on initial page load if org name is pre-filled
-            if (orgNameInput.value.trim()) {
-                syncManifestForSelectedOrg();
+            // Add an empty component row on load
+            if (document.querySelectorAll('.component-row').length === 0) {
+                addComponentRow();
             }
         }
 
@@ -2735,6 +2742,9 @@
         const generateTmBtn = document.getElementById('generateThreatModelBtn');
         const exportTmPngBtn = document.getElementById('exportThreatModelPng');
         const tmResultDiv = document.getElementById('threatModelResult');
+
+        // Clear threat model input on page load
+        if (tmOrgInput) tmOrgInput.value = '';
 
         generateTmBtn.addEventListener('click', generateThreatModel);
 
