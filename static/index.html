@@ -2768,7 +2768,13 @@
             generateTmBtn.disabled = true;
             generateTmBtn.textContent = 'Generating...';
             tmResultDiv.classList.remove('hidden');
-            tmResultDiv.innerHTML = '<div style="text-align:center; color:#a78bfa; padding:40px;">Generating threat model...</div>';
+            // Show loading state without destroying child elements
+            document.getElementById('tmSummary').innerHTML = '<div style="text-align:center; color:#a78bfa; padding:40px;">Generating threat model...</div>';
+            document.getElementById('tmLegend').style.display = 'none';
+            document.getElementById('threatModelGraph').innerHTML = '';
+            document.getElementById('tmNodeDetails').innerHTML = '';
+            document.getElementById('tmNodeDetails').classList.remove('visible');
+            document.getElementById('tmStrideTable').innerHTML = '';
 
             try {
                 // Look up org by name (returns a list, take first match)
@@ -2794,7 +2800,7 @@
                 exportTmPngBtn.disabled = false;
 
             } catch (error) {
-                tmResultDiv.innerHTML = `<div style="color: #f0abfc; padding: 20px; background: #2d1b2e; border-left: 4px solid #d946ef; border-radius: 4px;">${escapeHtml(error.message)}</div>`;
+                document.getElementById('tmSummary').innerHTML = `<div style="color: #f0abfc; padding: 20px; background: #2d1b2e; border-left: 4px solid #d946ef; border-radius: 4px;">${escapeHtml(error.message)}</div>`;
             } finally {
                 generateTmBtn.disabled = false;
                 generateTmBtn.textContent = 'Generate Threat Model';
