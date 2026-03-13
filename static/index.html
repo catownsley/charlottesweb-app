@@ -648,20 +648,28 @@
         /* AI Threat Model Styles */
         .ai-tm-section { margin-bottom: 24px; }
         .ai-tm-section h3 { color: #c9b8e8; margin-bottom: 12px; border-bottom: 1px solid #3d3556; padding-bottom: 8px; }
-        .ai-tm-exec-summary { background: #252038; padding: 16px; border-radius: 8px; border-left: 4px solid #a78bfa; line-height: 1.6; color: #e0d6f2; }
+        .ai-tm-exec-summary { background: #252038; padding: 16px; border-radius: 8px; border-left: 4px solid #a78bfa; line-height: 1.7; color: #e0d6f2; font-size: 14px; }
         .ai-tm-severity { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
         .ai-tm-severity.CRITICAL { background: #7f1d1d; color: #fca5a5; }
         .ai-tm-severity.HIGH { background: #78350f; color: #fcd34d; }
         .ai-tm-severity.MEDIUM { background: #713f12; color: #fde68a; }
         .ai-tm-severity.LOW { background: #14532d; color: #86efac; }
-        .ai-tm-compound { background: #2d1b2e; border: 1px solid #d946ef; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+        .ai-tm-compound { background: #2d1b2e; border: 1px solid #d946ef; border-radius: 8px; padding: 16px; margin-bottom: 12px; line-height: 1.6; }
         .ai-tm-compound h4 { color: #f0abfc; margin: 0 0 8px 0; }
         .ai-tm-roadmap-item { display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-start; }
         .ai-tm-priority { background: #7c3aed; color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
         .ai-tm-roadmap-text { flex: 1; }
         .ai-tm-roadmap-text strong { color: #c9b8e8; }
-        .ai-tm-roadmap-text p { color: #8b7faa; margin: 4px 0 0 0; font-size: 13px; }
+        .ai-tm-roadmap-text p { color: #9b8fba; margin: 4px 0 0 0; font-size: 13px; line-height: 1.5; }
         .ai-tm-meta { display: flex; gap: 16px; flex-wrap: wrap; color: #8b7faa; font-size: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #3d3556; }
+
+        /* STRIDE / Dependency tables */
+        .stride-table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.5; }
+        .stride-table th { background: #252038; color: #c9b8e8; text-align: left; padding: 10px 12px; border-bottom: 2px solid #7c3aed; font-weight: 600; white-space: nowrap; }
+        .stride-table td { padding: 10px 12px; border-bottom: 1px solid #2d2545; color: #d4c8ee; vertical-align: top; }
+        .stride-table tr:hover td { background: #1e1833; }
+        .stride-table td:first-child { color: #a78bfa; font-weight: 600; white-space: nowrap; }
+        .stride-table td:last-child { color: #b8a0d8; font-size: 12px; }
 
         /* Threat Model Styles */
         .threat-model-container {
@@ -3516,6 +3524,58 @@
             for (const r of m.remediation_roadmap) {
                 lines.push(`  ${r.priority}. ${r.action}`);
                 lines.push(`     Rationale: ${r.rationale}`);
+            }
+
+            // Data Flow Diagram as Mermaid
+            if (m.diagram && m.diagram.nodes && m.diagram.edges) {
+                lines.push('');
+                lines.push('DATA FLOW DIAGRAM (Mermaid)');
+                lines.push(subsep);
+                lines.push('Paste this into any Mermaid renderer (e.g., mermaid.live) to view the diagram.');
+                lines.push('');
+                lines.push('```mermaid');
+                lines.push('graph LR');
+
+                // Group nodes into subgraphs by boundary
+                const boundaryGroups = {};
+                const unbounded = [];
+                for (const node of m.diagram.nodes) {
+                    if (node.boundary) {
+                        if (!boundaryGroups[node.boundary]) boundaryGroups[node.boundary] = [];
+                        boundaryGroups[node.boundary].push(node);
+                    } else {
+                        unbounded.push(node);
+                    }
+                }
+
+                // Render subgraphs for each trust boundary
+                for (const [boundary, nodes] of Object.entries(boundaryGroups)) {
+                    lines.push(`    subgraph ${boundary.replace(/"/g, "'")}`);
+                    for (const node of nodes) {
+                        const shape = node.type === 'infrastructure' ? `[("${node.label}")]`
+                            : node.type === 'external' ? `{"${node.label}"}`
+                            : node.type === 'user' ? `(("${node.label}"))`
+                            : `["${node.label}"]`;
+                        lines.push(`        ${node.id}${shape}`);
+                    }
+                    lines.push('    end');
+                }
+
+                // Render unbounded nodes
+                for (const node of unbounded) {
+                    lines.push(`    ${node.id}["${node.label}"]`);
+                }
+
+                // Render edges with labels and data classification markers
+                for (const edge of m.diagram.edges) {
+                    const classMarker = edge.data_classification === 'phi' ? ' ⚠PHI'
+                        : edge.data_classification === 'credentials' ? ' 🔑'
+                        : '';
+                    const label = (edge.label || '') + classMarker;
+                    lines.push(`    ${edge.source} -->|${label}| ${edge.target}`);
+                }
+
+                lines.push('```');
             }
 
             lines.push('');
