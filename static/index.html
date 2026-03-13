@@ -866,7 +866,7 @@
                     </select>
 
                     <label style="font-size: 13px; color: #c9b8e8; margin-bottom: 4px; display: block;">Or upload / paste your own:</label>
-                    <input type="file" id="manifestFile" accept=".xml,.pom" style="margin-bottom: 8px; width: 100%;">
+                    <input type="file" id="manifestFile" accept=".xml,.pom,.sample" style="margin-bottom: 8px; width: 100%;">
                     <textarea id="manifestContent" rows="6" placeholder="Paste pom.xml content here (optional if file or sample selected)" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; resize: vertical; background: #2a2440; color: #e0d8f0;"></textarea>
 
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
@@ -920,9 +920,6 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 16px; align-items: center;">
-                    <button type="button" id="generateDiagramBtn">
-                        Generate Diagram
-                    </button>
                     <button type="button" id="generateAiThreatModelBtn" style="background: linear-gradient(135deg, #7c3aed, #a78bfa);">
                         AI Threat Model
                     </button>
@@ -2397,7 +2394,9 @@
                         <div class="stat-label">Evidence<br>Automation</div>
                     </div>
                 </div>
-                <p><strong>Organization:</strong> ${org.name} (ID: ${org.id})</p>
+                <p><strong>Organization:</strong> ${org.name} (ID: ${org.id})
+                    <button onclick="deleteOrganization('${org.id}', '${escapeHtml(org.name)}')" style="margin-left: 12px; background: #4a1c1c; color: #f0a0a0; border: 1px solid #6b3535; padding: 2px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;" title="Delete this organization and all associated data">Delete Org</button>
+                </p>
                 <p><strong>Components:</strong> ${Object.keys(stack).map(k => `${k} ${stack[k]}`).join(', ')}</p>
 
                 <div style="background: #1a2e25; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #10b981;">
@@ -2788,6 +2787,35 @@
             }
         });
 
+        // Delete organization and all associated data
+        async function deleteOrganization(orgId, orgName) {
+            if (!confirm(`Delete "${orgName}" and ALL associated data?\n\nThis will permanently remove:\n- Metadata profiles\n- Assessments\n- Findings\n- Evidence\n- Organization members\n\nThis cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/organizations/${encodeURIComponent(orgId)}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Failed to delete organization');
+                }
+
+                const result = await response.json();
+                alert(result.detail);
+
+                // Clear results and reset form
+                document.getElementById('results').classList.add('hidden');
+                document.getElementById('results').innerHTML = '';
+                document.getElementById('aiThreatModelResult').classList.add('hidden');
+                window.currentAssessment = null;
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
         // Export functions for report generation
         function exportJSON() {
             if (!window.currentAssessment) return;
@@ -2903,10 +2931,7 @@
         let diagramNodeCounter = 0;
         let diagramBoundaryCounter = 0;
 
-        const generateDiagramBtn = document.getElementById('generateDiagramBtn');
         const diagramSection = document.getElementById('diagramSection');
-
-        generateDiagramBtn.addEventListener('click', generateDiagram);
 
         // Mode buttons
         document.getElementById('diagramModeSelect').addEventListener('click', () => setDiagramMode('select'));
@@ -3059,46 +3084,86 @@
             e.target.value = '';
         });
 
-        async function generateDiagram() {
-            const orgName = tmOrgInput.value.trim();
-            if (!orgName) { alert('Please enter an organization name.'); return; }
-
-            generateDiagramBtn.disabled = true;
-            generateDiagramBtn.textContent = 'Generating...';
+        /**
+         * Render an AI-generated data flow diagram using Cytoscape.js.
+         *
+         * The AI threat model returns a diagram object with nodes, edges, and
+         * trust boundary names. This function:
+         *   1. Creates Cytoscape parent nodes for each trust boundary
+         *   2. Maps AI nodes into boundary groups via parent references
+         *   3. Generates unique edge IDs (AI edges don't carry IDs)
+         *   4. Validates node types against the allowed enum before rendering
+         *
+         * After rendering, all editing capabilities remain available (drag,
+         * draw edges, delete, add nodes/boundaries, export).
+         */
+        function renderAiDiagram(diagram) {
+            if (!diagram || !Array.isArray(diagram.nodes) || !Array.isArray(diagram.edges)) return;
             diagramSection.classList.remove('hidden');
 
-            try {
-                const orgResponse = await fetch(`/api/v1/organizations?name=${encodeURIComponent(orgName)}`);
-                if (!orgResponse.ok) throw new Error('Organization not found.');
-                const orgs = await orgResponse.json();
-                if (!Array.isArray(orgs) || orgs.length === 0) throw new Error('Organization not found.');
-                const org = orgs[0];
+            // Allowed node types — reject anything unexpected from the AI
+            const allowedTypes = new Set(['user', 'application', 'infrastructure', 'external']);
 
-                const tmResponse = await fetch(`/api/v1/threat-model/organizations/${encodeURIComponent(org.id)}`);
-                if (!tmResponse.ok) {
-                    const err = await tmResponse.json().catch(() => ({}));
-                    throw new Error(err.detail || 'Failed to generate diagram');
-                }
+            // Build boundary parent nodes from AI boundaries list
+            const boundaryNodes = (diagram.boundaries || []).map((b, i) => ({
+                id: 'boundary_' + i,
+                label: String(b),
+                type: 'boundary'
+            }));
 
-                const model = await tmResponse.json();
-                initDiagramCytoscape(model.graph.nodes, model.graph.edges);
+            // Map boundary names to IDs for Cytoscape parent assignment
+            const boundaryMap = {};
+            boundaryNodes.forEach(bn => { boundaryMap[bn.label] = bn.id; });
 
-            } catch (error) {
-                document.getElementById('diagramContainer').innerHTML = `<div style="color: #f0abfc; padding: 20px; background: #2d1b2e; border-left: 4px solid #d946ef; border-radius: 4px; margin: 20px;">${escapeHtml(error.message)}</div>`;
-            } finally {
-                generateDiagramBtn.disabled = false;
-                generateDiagramBtn.textContent = 'Generate Diagram';
-            }
+            // Convert AI nodes to Cytoscape format, filtering invalid types
+            const cyNodes = diagram.nodes
+                .filter(n => n.id && n.label && allowedTypes.has(n.type))
+                .map(n => ({
+                    id: String(n.id),
+                    label: String(n.label),
+                    type: n.type,
+                    parent: boundaryMap[n.boundary] || null
+                }));
+
+            const allNodes = [...boundaryNodes, ...cyNodes];
+
+            // Build a set of valid node IDs for edge validation
+            const validNodeIds = new Set(allNodes.map(n => n.id));
+
+            // Convert AI edges, filtering out any that reference nonexistent nodes
+            const cyEdges = diagram.edges
+                .filter(e => e.source && e.target && validNodeIds.has(String(e.source)) && validNodeIds.has(String(e.target)))
+                .map((e, i) => ({
+                    id: 'edge_' + i,
+                    source: String(e.source),
+                    target: String(e.target),
+                    label: String(e.label || ''),
+                    data_classification: e.data_classification || 'internal'
+                }));
+
+            initDiagramCytoscape(allNodes, cyEdges);
         }
 
         function initDiagramCytoscape(nodes, edges) {
             const container = document.getElementById('diagramContainer');
             container.innerHTML = '';
 
+            // Map AI node types → Cytoscape selector values used in the style block.
+            // The AI returns "application" but Cytoscape styles target [nodeType="component"].
+            const typeMap = {
+                'application': 'component',
+                'user': 'user',
+                'external': 'external',
+                'infrastructure': 'infrastructure',
+                'boundary': 'boundary',
+                'component': 'component'
+            };
+
             const elements = [];
             for (const node of nodes) {
-                const el = { data: { id: node.id, label: node.label, nodeType: node.type, metadata: node.metadata || {} } };
-                if (node.parent && node.type !== 'boundary') el.data.parent = node.parent;
+                const mappedType = typeMap[node.type] || 'component';
+                const el = { data: { id: node.id, label: node.label, nodeType: mappedType, metadata: node.metadata || {} } };
+                if (node.parent && mappedType !== 'boundary') el.data.parent = node.parent;
                 elements.push(el);
             }
             for (const edge of edges) {
@@ -3310,6 +3375,7 @@
                 const model = await tmResponse.json();
                 lastAiThreatModel = model;
                 renderAiThreatModel(model);
+                if (model.diagram) { renderAiDiagram(model.diagram); }
                 exportAiTmBtn.disabled = false;
             } catch (error) {
                 document.getElementById('aiTmContent').innerHTML = `<div style="color: #f0abfc; padding: 20px; background: #2d1b2e; border-left: 4px solid #d946ef; border-radius: 4px;">${escapeHtml(error.message)}</div>`;

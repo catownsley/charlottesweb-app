@@ -44,10 +44,21 @@ class Organization(Base):
     stage = Column(String, nullable=True)  # seed, series_a, series_b, etc.
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
-    # Relationships
-    metadata_profiles = relationship("MetadataProfile", back_populates="organization")
-    assessments = relationship("Assessment", back_populates="organization")
-    members = relationship("OrganizationMember", back_populates="organization")
+    # Relationships — cascade delete ensures data sovereignty: removing an org
+    # cleans up all child records so no customer data lingers in the system.
+    # Note: Evidence has a direct FK (not cascaded here) and must be deleted
+    # explicitly in the delete endpoint before the org is removed.
+    metadata_profiles = relationship(
+        "MetadataProfile", back_populates="organization", cascade="all, delete-orphan"
+    )
+    assessments = relationship(
+        "Assessment", back_populates="organization", cascade="all, delete-orphan"
+    )
+    members = relationship(
+        "OrganizationMember",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+    )
 
 
 class OrganizationMember(Base):
@@ -96,7 +107,9 @@ class MetadataProfile(Base):
 
     # Relationships
     organization = relationship("Organization", back_populates="metadata_profiles")
-    assessments = relationship("Assessment", back_populates="metadata_profile")
+    assessments = relationship(
+        "Assessment", back_populates="metadata_profile", cascade="all, delete-orphan"
+    )
 
     # Indexes for query performance
     __table_args__ = (
@@ -200,7 +213,9 @@ class Assessment(Base):
     # Relationships
     organization = relationship("Organization", back_populates="assessments")
     metadata_profile = relationship("MetadataProfile", back_populates="assessments")
-    findings = relationship("Finding", back_populates="assessment")
+    findings = relationship(
+        "Finding", back_populates="assessment", cascade="all, delete-orphan"
+    )
 
     # Indexes for query performance
     __table_args__ = (

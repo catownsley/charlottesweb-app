@@ -1,4 +1,16 @@
-"""Organization management endpoints."""
+"""Organization management endpoints.
+
+Provides CRUD operations for organizations. The DELETE endpoint supports
+data sovereignty requirements — customers can remove all their data from
+the system after completing their analysis.
+
+Security:
+- All endpoints are rate-limited and audit-logged.
+- Delete cascades through ORM relationships (members, profiles, assessments,
+  findings) and explicitly removes evidence records (direct FK, not covered
+  by ORM cascade).
+- No organization data is retained after deletion.
+"""
 
 import logging
 
@@ -10,7 +22,7 @@ from src.audit import AuditAction, log_audit_event
 from src.config import settings
 from src.database import get_db, get_or_404
 from src.middleware import get_api_key_optional, limiter
-from src.models import Organization, OrganizationMember
+from src.models import CacheEntry, Evidence, Organization, OrganizationMember
 from src.schemas import (
     OrganizationCreate,
     OrganizationOnboardingCreate,
@@ -165,3 +177,57 @@ def get_organization(
     )
 
     return org
+
+
+@router.delete("/{org_id}", status_code=200)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+def delete_organization(
+    request: Request,
+    org_id: str,
+    db: Session = Depends(get_db),
+    api_key: str = Depends(get_api_key_optional),
+) -> dict[str, str]:
+    """Delete an organization and all associated data (data sovereignty).
+
+    This is a complete data removal — after deletion, no organization data
+    remains in the system. Intended for customers who have completed their
+    analysis and want their data purged.
+
+    Cascade order:
+      1. Evidence records (direct FK to organizations, not ORM-cascaded)
+      2. Cached AI threat models and NVD results for this org
+      3. Organization + ORM-cascaded children (members, profiles, assessments, findings)
+    """
+    org = get_or_404(db, Organization, org_id, "Organization not found")
+    org_name = org.name
+
+    try:
+        # Evidence has a direct FK to organizations (not covered by ORM cascade)
+        db.query(Evidence).filter(Evidence.organization_id == org_id).delete()
+
+        # Purge cached AI threat models / NVD results for this org so no
+        # stale data lingers after the org is removed.
+        db.query(CacheEntry).filter(CacheEntry.key.contains(org_id)).delete(
+            synchronize_session="fetch"
+        )
+
+        db.delete(org)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error("Failed to delete organization %s: %s", org_id, e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete organization. Please try again.",
+        ) from e
+
+    log_audit_event(
+        action=AuditAction.ORG_DELETED,
+        request=request,
+        api_key=api_key,
+        resource_type="organization",
+        resource_id=org_id,
+        details={"name": org_name},
+    )
+
+    return {"detail": f"Organization '{org_name}' and all associated data deleted."}

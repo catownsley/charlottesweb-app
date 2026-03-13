@@ -9,6 +9,13 @@ refine. Produces:
 - One consolidated dependency finding (not a line item per CVE)
 - Compound risk callouts only when a specific vulnerability clearly
   escalates an architectural risk
+- AI-generated data flow diagram with trust boundaries and data classification
+
+Security notes:
+- The AI model never receives PHI — only metadata about what types of PHI exist.
+- API key is loaded from environment/config, never hardcoded.
+- Structured JSON output is enforced via json_schema to prevent prompt injection
+  from producing malformed responses that could bypass client-side rendering.
 """
 
 from __future__ import annotations
@@ -57,6 +64,15 @@ RULES:
    1.2.3 to 1.4.0" is good. "Review and remediate" is not.
 7. Include a brief executive summary (3-5 sentences) at the top.
 8. End with a prioritized remediation roadmap: what to fix first, second, third.
+9. Generate a DATA FLOW DIAGRAM representing the most likely architecture \
+   based on the software stack and metadata provided. Model realistic data \
+   flows — users connect to application components (web servers, APIs), which \
+   connect to databases and external services. Users should NEVER connect \
+   directly to databases. Group nodes into trust boundaries (e.g., "End User \
+   Environment", "Application Tier", "Data Layer", "External Services"). \
+   Include edge labels describing the protocol or data type (e.g., "HTTPS", \
+   "JDBC/SQL", "REST API"). Classify edge data as: internal, phi, credentials, \
+   or public.
 
 OUTPUT FORMAT:
 Return valid JSON with this structure:
@@ -101,7 +117,26 @@ Return valid JSON with this structure:
       "action": "what to do",
       "rationale": "why this is first"
     }
-  ]
+  ],
+  "diagram": {
+    "nodes": [
+      {
+        "id": "unique_id",
+        "label": "Display Name",
+        "type": "user|application|infrastructure|external",
+        "boundary": "trust boundary name this node belongs to"
+      }
+    ],
+    "edges": [
+      {
+        "source": "source_node_id",
+        "target": "target_node_id",
+        "label": "protocol or data description",
+        "data_classification": "internal|phi|credentials|public"
+      }
+    ],
+    "boundaries": ["End User Environment", "Application Tier", "Data Layer"]
+  }
 }
 """
 
@@ -328,7 +363,13 @@ def generate_ai_threat_model(
 
 
 def _output_schema() -> dict[str, Any]:
-    """JSON schema for structured output from Claude."""
+    """JSON schema for structured output from Claude.
+
+    Enforces strict typing via additionalProperties: False on every object
+    to prevent the AI from injecting unexpected fields. The diagram schema
+    constrains node types and data classifications to known enums so the
+    frontend can safely render without additional validation.
+    """
     return {
         "type": "object",
         "properties": {
@@ -438,6 +479,66 @@ def _output_schema() -> dict[str, Any]:
                     "additionalProperties": False,
                 },
             },
+            "diagram": {
+                "type": "object",
+                "properties": {
+                    "nodes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "label": {"type": "string"},
+                                "type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "user",
+                                        "application",
+                                        "infrastructure",
+                                        "external",
+                                    ],
+                                },
+                                "boundary": {"type": "string"},
+                            },
+                            "required": ["id", "label", "type", "boundary"],
+                            "additionalProperties": False,
+                        },
+                    },
+                    "edges": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "source": {"type": "string"},
+                                "target": {"type": "string"},
+                                "label": {"type": "string"},
+                                "data_classification": {
+                                    "type": "string",
+                                    "enum": [
+                                        "internal",
+                                        "phi",
+                                        "credentials",
+                                        "public",
+                                    ],
+                                },
+                            },
+                            "required": [
+                                "source",
+                                "target",
+                                "label",
+                                "data_classification",
+                            ],
+                            "additionalProperties": False,
+                        },
+                    },
+                    "boundaries": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                },
+                "required": ["nodes", "edges", "boundaries"],
+                "additionalProperties": False,
+            },
         },
         "required": [
             "executive_summary",
@@ -445,6 +546,7 @@ def _output_schema() -> dict[str, Any]:
             "dependency_finding",
             "compound_risks",
             "remediation_roadmap",
+            "diagram",
         ],
         "additionalProperties": False,
     }
