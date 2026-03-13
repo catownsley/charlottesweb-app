@@ -95,7 +95,7 @@ See [Ticket Index](docs/tickets/TICKET_INDEX.md) for detailed phase status and i
 ## Why This Exists
 
 Digital health startups face a compliance paradox:
-- HIPAA violations carry real financial penalties
+- Regulatory violations carry real financial penalties
 - Security leadership is expensive
 - Existing tools lack exploitability-aware action plans
 - Audit preparation is manual and chaotic
