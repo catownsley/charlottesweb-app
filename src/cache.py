@@ -99,7 +99,7 @@ class TTLCache:
             logger.info("Cache cleared")
         else:
             self.cache.pop(key, None)
-            logger.debug(f"Cache invalidated for key: {key}")
+            logger.debug("Cache invalidated for key: %s", key)
 
     def clear(self) -> None:
         """Clear entire cache."""
@@ -126,12 +126,12 @@ def cached(
         def wrapper(*args: Any, **kwargs: Any) -> T:
             cached_value = cache.get(key)
             if cached_value is not None:
-                logger.debug(f"Cache hit for key: {key}")
+                logger.debug("Cache hit for key: %s", key)
                 return cached_value
 
             result = func(*args, **kwargs)
             cache.set(key, result)
-            logger.debug(f"Cache set for key: {key}")
+            logger.debug("Cache set for key: %s", key)
             return result
 
         return wrapper

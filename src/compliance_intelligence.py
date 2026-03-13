@@ -131,3 +131,4 @@ class ComplianceIntelligenceEvaluator:
                     f"Unsupported operator: {operator}. "
                     f"Supported operators: {', '.join(SUPPORTED_OPERATORS)}"
                 )
+        return False  # unreachable, but satisfies static analysis

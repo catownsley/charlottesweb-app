@@ -89,8 +89,10 @@ class NVDService:
                 if response.status_code == 429:
                     wait = RATE_LIMIT_BACKOFF_SECONDS * (attempt + 1)
                     logger.warning(
-                        f"NVD rate limit hit (attempt {attempt + 1}/{attempts}), "
-                        f"retrying in {wait}s"
+                        "NVD rate limit hit (attempt %d/%d), retrying in %ds",
+                        attempt + 1,
+                        attempts,
+                        wait,
                     )
                     time.sleep(wait)
                     continue
@@ -101,7 +103,10 @@ class NVDService:
             except requests.exceptions.RequestException as e:
                 last_error = e
                 logger.warning(
-                    f"NVD API request failed (attempt {attempt + 1}/{attempts}): {e}"
+                    "NVD API request failed (attempt %d/%d): %s",
+                    attempt + 1,
+                    attempts,
+                    e,
                 )
                 if attempt < attempts - 1:
                     time.sleep(RATE_LIMIT_BACKOFF_SECONDS)
@@ -129,7 +134,7 @@ class NVDService:
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
             if datetime.now(UTC) - cached_time < self._cache_ttl:
-                logger.info(f"Cache hit for keyword: {keyword}")
+                logger.info("Cache hit for keyword: %s", keyword)
                 return cached_data  # type: ignore[return-value]
 
         params: dict[str, str | int] = {
@@ -187,7 +192,7 @@ class NVDService:
 
         # Only cache successful results (never cache failures)
         self._cache[cache_key] = (results, datetime.now(UTC))
-        logger.info(f"Fetched {len(results)} CVEs for keyword: {keyword}")
+        logger.info("Fetched %d CVEs for keyword: %s", len(results), keyword)
         return results
 
     def analyze_software_stack(
@@ -218,13 +223,16 @@ class NVDService:
                 cves = self.search_cves_by_keyword(component, max_results=5)
             except NVDApiError:
                 failed_components.append(component)
-                logger.error(f"NVD API failed for component: {component}")
+                logger.error("NVD API failed for component: %s", component)
                 continue
 
             if cves:
                 results[component] = cves
                 logger.info(
-                    f"Found {len(cves)} CVEs for {component} (version {version})"
+                    "Found %d CVEs for %s (version %s)",
+                    len(cves),
+                    component,
+                    version,
                 )
 
         if failed_components and not results:
@@ -236,8 +244,10 @@ class NVDService:
 
         if failed_components:
             logger.warning(
-                f"Partial NVD results: {len(failed_components)} components failed "
-                f"({', '.join(failed_components)}), {len(results)} succeeded"
+                "Partial NVD results: %d components failed (%s), %d succeeded",
+                len(failed_components),
+                ", ".join(failed_components),
+                len(results),
             )
 
         return results
@@ -303,7 +313,7 @@ class NVDService:
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
             if datetime.now(UTC) - cached_time < self._cache_ttl:
-                logger.info(f"Cache hit for component versions: {component_name}")
+                logger.info("Cache hit for component versions: %s", component_name)
                 return cached_data  # type: ignore[return-value]
 
         try:
@@ -367,22 +377,24 @@ class NVDService:
 
             # Sort versions (try numeric sort, fallback to string sort)
             sorted_versions = sorted(
-                list(versions_set), key=lambda v: self._parse_version(v), reverse=True
+                list(versions_set), key=self._parse_version, reverse=True
             )
             top_versions = sorted_versions[:max_versions]
 
             # Cache results
             self._cache[cache_key] = (top_versions, datetime.now(UTC))
             logger.info(
-                f"Extracted {len(top_versions)} versions for {component_name} from NVD"
+                "Extracted %d versions for %s from NVD",
+                len(top_versions),
+                component_name,
             )
             return top_versions
 
         except NVDApiError:
-            logger.error(f"NVD API unavailable for version lookup: {component_name}")
+            logger.error("NVD API unavailable for version lookup: %s", component_name)
             return []
         except Exception as e:
-            logger.error(f"Error extracting versions from NVD: {e}")
+            logger.error("Error extracting versions from NVD: %s", e)
             return []
 
     def get_component_suggestions(
@@ -406,7 +418,9 @@ class NVDService:
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
             if datetime.now(UTC) - cached_time < self._cache_ttl:
-                logger.info(f"Cache hit for component suggestions: {normalized_prefix}")
+                logger.info(
+                    "Cache hit for component suggestions: %s", normalized_prefix
+                )
                 return cached_data  # type: ignore[return-value]
 
         try:
@@ -444,17 +458,20 @@ class NVDService:
 
             self._cache[cache_key] = (top_components, datetime.now(UTC))
             logger.info(
-                f"Extracted {len(top_components)} component suggestions for prefix: {normalized_prefix}"
+                "Extracted %d component suggestions for prefix: %s",
+                len(top_components),
+                normalized_prefix,
             )
             return top_components
 
         except NVDApiError:
             logger.error(
-                f"NVD API unavailable for component suggestions: {normalized_prefix}"
+                "NVD API unavailable for component suggestions: %s",
+                normalized_prefix,
             )
             return []
         except Exception as e:
-            logger.error(f"Error extracting component suggestions from NVD: {e}")
+            logger.error("Error extracting component suggestions from NVD: %s", e)
             return []
 
     def _collect_component_names_from_nodes(

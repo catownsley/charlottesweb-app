@@ -76,7 +76,7 @@ class DependabotService:
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
             if datetime.now(UTC) - cached_time < self._cache_ttl:
-                logger.info(f"Cache hit for dependabot alerts: {state}")
+                logger.info("Cache hit for dependabot alerts: %s", state)
                 return cached_data
 
         try:
@@ -109,19 +109,19 @@ class DependabotService:
                     if parsed:
                         results.append(parsed)
                 except Exception as e:
-                    logger.warning(f"Failed to parse dependabot alert: {e}")
+                    logger.warning("Failed to parse dependabot alert: %s", e)
                     continue
 
             # Cache results
             self._cache[cache_key] = (results, datetime.now(UTC))
-            logger.info(f"Fetched {len(results)} Dependabot alerts (state: {state})")
+            logger.info("Fetched %s Dependabot alerts (state: %s)", len(results), state)
             return results
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"GitHub API request failed: {e}")
+            logger.error("GitHub API request failed: %s", e)
             return []
         except Exception as e:
-            logger.error(f"Error processing Dependabot response: {e}")
+            logger.error("Error processing Dependabot response: %s", e)
             return []
 
     def _parse_alert(self, alert: dict[str, Any]) -> dict[str, Any] | None:
@@ -178,7 +178,7 @@ class DependabotService:
             }
 
         except Exception as e:
-            logger.warning(f"Error parsing dependabot alert: {e}")
+            logger.warning("Error parsing dependabot alert: %s", e)
             return None
 
     def _infer_cwes(self, package_name: str, description: str) -> list[str]:
