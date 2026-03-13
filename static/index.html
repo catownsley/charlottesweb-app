@@ -1838,6 +1838,7 @@
                 const stack = {};
                 const componentRows = document.querySelectorAll('.component-row');
                 const defaultedVersions = [];  // Track versions we auto-selected
+                const droppedComponents = [];  // Components skipped due to missing version
 
                 // Validation patterns (match backend)
                 // Allow dots for names like "node.js", "vue.js", "ASP.NET"
@@ -1917,17 +1918,16 @@
                                 versionInput.value = version;
                                 console.log(`  → Auto-selected version ${version} for ${name}`);
                             } else {
-                                // No versions found even with variations
-                                throw new Error(
-                                    `No versions found. Please specify "${name}" version manually ` +
-                                    `or try the full component name (e.g., "tomcat" instead of "apache-tomcat").`
-                                );
+                                // No version found — skip this component instead of failing
+                                droppedComponents.push(name);
+                                console.log(`  → Skipping "${name}": no version found in NVD`);
+                                continue;
                             }
                         } catch (err) {
-                            throw new Error(
-                                `Component "${name}" requires a version. ` +
-                                `${err.message}`
-                            );
+                            // Network/API error — skip rather than fail the whole query
+                            droppedComponents.push(name);
+                            console.warn(`  → Skipping "${name}": ${err.message}`);
+                            continue;
                         }
                     }
 
@@ -2070,7 +2070,7 @@
                 }
 
                 // Display results with notification about auto-selected versions
-                displayResults(stack, findings, org, assess.id, defaultedVersions, runStatus, orgReused);
+                displayResults(stack, findings, org, assess.id, defaultedVersions, runStatus, orgReused, droppedComponents);
 
             } catch (err) {
                 showError(err.message);
@@ -2337,12 +2337,22 @@
             applyFindingsFilters(assessmentId);
         }
 
-        function displayResults(stack, findings, org, assessmentId, defaultedVersions = [], runStatus = null, orgReused = false) {
+        function displayResults(stack, findings, org, assessmentId, defaultedVersions = [], runStatus = null, orgReused = false, droppedComponents = []) {
             // Store data for export
             window.currentAssessment = { stack, findings, org, assessmentId, orgReused };
 
             let html = `
                 <h3>Analysis Complete</h3>`;
+
+            // Show notification if components were dropped
+            if (droppedComponents && droppedComponents.length > 0) {
+                const droppedList = droppedComponents.map(c => `<strong>${escapeHtml(c)}</strong>`).join(', ');
+                html += `
+                <div style="background: #2d1f1f; border: 1px solid #6b3535; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #f0a0a0;">
+                    <strong>Skipped (no version found):</strong> ${droppedList}
+                    <div style="font-size: 12px; margin-top: 6px; color: #c08080;">These components were excluded because no version could be determined from NVD. Add a version manually and re-run to include them.</div>
+                </div>`;
+            }
 
             // Show notification if versions were auto-selected
             if (defaultedVersions && defaultedVersions.length > 0) {

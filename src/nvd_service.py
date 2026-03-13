@@ -307,8 +307,11 @@ class NVDService:
                 return cached_data  # type: ignore[return-value]
 
         try:
+            # CPE product names use underscores (e.g., "sql_server") but NVD
+            # keyword search matches description text which uses spaces.
+            search_term = component_name.replace("_", " ")
             params: dict[str, str | int] = {
-                "keywordSearch": component_name,
+                "keywordSearch": search_term,
                 "resultsPerPage": VERSION_SEARCH_MAX_RESULTS,
             }
 
@@ -334,10 +337,16 @@ class NVDService:
                             if cpe23uri:
                                 parts = cpe23uri.split(":")
                                 if len(parts) >= 6:
+                                    # Only extract versions from CPE entries whose
+                                    # product field matches the requested component.
+                                    # This avoids pulling in unrelated versions when
+                                    # a keyword search returns CVEs for multiple products.
+                                    cpe_product = parts[4].lower()
+                                    if cpe_product != component_name:
+                                        continue
+
                                     version = parts[5]
                                     # Filter out wildcards, generic versions, and invalid formats
-                                    # Valid versions should contain dots (e.g., "21.0.1") or be simple numbers
-                                    # This filters out update/build numbers that aren't valid versions
                                     if version and version not in ["*", "-", ""]:
                                         # Accept versions with dots or reasonable single numbers
                                         if "." in version or (
