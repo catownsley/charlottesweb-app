@@ -702,12 +702,24 @@
             text-align: left;
             font-weight: 600;
             border-bottom: 2px solid #3d3556;
+            white-space: nowrap;
         }
 
         .stride-table td {
             padding: 10px 12px;
             border-bottom: 1px solid #2d2545;
             vertical-align: top;
+            max-width: 300px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .stride-table td:first-child {
+            white-space: nowrap;
+        }
+
+        .stride-table .cvss-score {
+            margin-left: 0;
         }
 
         .stride-table tr:hover td {
@@ -942,6 +954,15 @@
                 document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
                 btn.classList.add('active');
                 document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+
+                // Sync org name from Vulnerability Analyzer to Threat Model tab
+                if (btn.dataset.tab === 'threat-model') {
+                    const analyzerOrgName = document.getElementById('orgName');
+                    const tmOrgName = document.getElementById('tmOrgName');
+                    if (analyzerOrgName && tmOrgName && analyzerOrgName.value.trim()) {
+                        tmOrgName.value = analyzerOrgName.value.trim();
+                    }
+                }
             });
         });
 
@@ -970,6 +991,7 @@
         if (orgNameInput) orgNameInput.value = '';
         if (manifestContentInput) manifestContentInput.value = '';
         if (manifestFileInput) manifestFileInput.value = '';
+        if (sampleManifestSelect) sampleManifestSelect.value = '';
         if (componentsContainer) componentsContainer.innerHTML = '';
 
         // Counter for unique component IDs
@@ -1248,7 +1270,40 @@
             // Delete button handler
             row.querySelector('.delete-component').addEventListener('click', (e) => {
                 e.preventDefault();
+                const deletedName = (row.querySelector('.component-name')?.value || '').trim().toLowerCase();
                 row.remove();
+
+                // Filter deleted component out of displayed findings
+                if (deletedName && window.currentAssessment) {
+                    const ca = window.currentAssessment;
+                    ca.findings = ca.findings.filter(f => {
+                        const title = (f.title || '').toLowerCase();
+                        return !title.includes(deletedName);
+                    });
+                    // Remove from stack
+                    for (const key of Object.keys(ca.stack)) {
+                        if (key.toLowerCase() === deletedName) {
+                            delete ca.stack[key];
+                        }
+                    }
+                    // Re-render results
+                    displayResults(ca.stack, ca.findings, ca.org, ca.assessmentId, [], null, ca.orgReused);
+                }
+
+                // Clear threat model since it's now stale
+                const tmSummary = document.getElementById('tmSummary');
+                const tmGraph = document.getElementById('threatModelGraph');
+                const tmStride = document.getElementById('tmStrideTable');
+                const tmLegend = document.getElementById('tmLegend');
+                const tmNodeDetails = document.getElementById('tmNodeDetails');
+                if (tmSummary) tmSummary.innerHTML = '';
+                if (tmGraph) tmGraph.innerHTML = '';
+                if (tmStride) tmStride.innerHTML = '';
+                if (tmLegend) tmLegend.style.display = 'none';
+                if (tmNodeDetails) { tmNodeDetails.innerHTML = ''; tmNodeDetails.classList.remove('visible'); }
+                if (tmCyInstance) { tmCyInstance.destroy(); tmCyInstance = null; }
+                const exportBtn = document.getElementById('exportThreatModelPng');
+                if (exportBtn) exportBtn.disabled = true;
             });
 
             // Version suggestions handler
@@ -2062,6 +2117,15 @@
             if (!findings || findings.length === 0) {
                 return '<p style="color: #6ee7b7; font-weight: 600;">No findings match the selected filters.</p>';
             }
+
+            // Sort by priority: immediate > 30_days > quarterly > annual, then by CVSS desc
+            const priorityRank = { 'immediate': 0, '30_days': 1, 'quarterly': 2, 'annual': 3 };
+            findings = [...findings].sort((a, b) => {
+                const pa = priorityRank[a.priority_window] ?? 99;
+                const pb = priorityRank[b.priority_window] ?? 99;
+                if (pa !== pb) return pa - pb;
+                return (parseFloat(b.cvss_score) || 0) - (parseFloat(a.cvss_score) || 0);
+            });
 
             let findingsHtml = '<h4>Vulnerabilities Found:</h4><ul class="findings-list">';
 
@@ -3099,11 +3163,9 @@
                 <thead>
                     <tr>
                         <th>Category</th>
-                        <th>Threats</th>
                         <th>Description</th>
                         <th>Severity</th>
                         <th>MITRE Techniques</th>
-                        <th>Recommended Actions</th>
                     </tr>
                 </thead>
                 <tbody>`;
@@ -3114,21 +3176,17 @@
                 if (category.threats.length === 0) {
                     html += `<tr>
                         <td><span class="stride-category-badge ${badgeClass}">${escapeHtml(category.category)}</span></td>
-                        <td>0</td>
-                        <td colspan="4" style="color: #8b7faa;">No threats identified</td>
+                        <td colspan="3" style="color: #8b7faa;">No threats identified</td>
                     </tr>`;
                     continue;
                 }
 
-                for (let i = 0; i < category.threats.length; i++) {
-                    const threat = category.threats[i];
+                for (const threat of category.threats) {
                     html += `<tr>
-                        ${i === 0 ? `<td rowspan="${category.threats.length}"><span class="stride-category-badge ${badgeClass}">${escapeHtml(category.category)}</span></td>
-                        <td rowspan="${category.threats.length}" style="text-align:center; font-weight:600;">${category.threat_count}</td>` : ''}
+                        <td><span class="stride-category-badge ${badgeClass}">${escapeHtml(category.category)}</span></td>
                         <td>${escapeHtml(threat.description)}</td>
                         <td><span class="cvss-score ${threat.severity}">${escapeHtml(threat.severity)}</span></td>
                         <td style="font-size: 11px;">${threat.mitre_techniques.map(t => escapeHtml(t)).join('<br>') || '<span style="color:#8b7faa;">None</span>'}</td>
-                        <td style="font-size: 11px;">${threat.recommended_actions.map(a => escapeHtml(a)).join('<br>') || '<span style="color:#8b7faa;">Review finding</span>'}</td>
                     </tr>`;
                 }
             }
