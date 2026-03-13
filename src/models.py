@@ -3,7 +3,17 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Index, String, Text
+from sqlalchemy import (
+    JSON,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 
 from src.database import Base
@@ -303,4 +313,25 @@ class Evidence(Base):
         Index("idx_evidence_assessment_id", "assessment_id"),
         Index("idx_evidence_status", "status"),
         Index("idx_evidence_created_at", "created_at"),
+    )
+
+
+class CacheEntry(Base):
+    """Persistent cache for API responses (NVD, AI threat model, etc.).
+
+    Designed with a clean key/value interface so the backing store can be
+    swapped to Redis in production without changing callers.
+    """
+
+    __tablename__ = "cache_entries"
+
+    key = Column(String, primary_key=True)
+    namespace = Column(String, nullable=False, index=True)  # "nvd", "ai_threat_model"
+    value = Column(JSON, nullable=False)
+    ttl_seconds = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("idx_cache_namespace", "namespace"),
+        Index("idx_cache_created_at", "created_at"),
     )

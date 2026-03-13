@@ -165,6 +165,9 @@ python -c "import secrets; print(secrets.token_urlsafe(24))"
 | `DEBUG` | true | **false** | Disable debug info |
 | `DATABASE_URL` | SQLite | PostgreSQL | Use strong password in prod |
 | `CORS_ORIGINS` | localhost | **Whitelist only** | Never use `*` in production |
+| `ANTHROPIC_API_KEY` | Optional | Optional | Required for AI threat model |
+| `ANTHROPIC_MODEL` | claude-sonnet-4-6 | claude-sonnet-4-6 | Claude model for AI threat model |
+| `NVD_API_KEY` | Optional | Recommended | Higher NVD rate limits |
 
 ### Hosting Platform Examples
 
@@ -613,6 +616,50 @@ See [docs/tickets/TICKET_INDEX.md](docs/tickets/TICKET_INDEX.md) for the full ro
 - React/Next.js frontend
 - Dashboard for findings visualization
 - Assessment history
+
+---
+
+## AI Threat Model
+
+CharlottesWeb includes an AI-powered threat model generator that produces comprehensive STRIDE analysis, compound risk detection, and prioritized remediation roadmaps in minutes.
+
+### Setup
+
+1. Get an API key from [Anthropic Console](https://console.anthropic.com/settings/keys)
+2. Purchase API credits (prepaid billing — separate from Claude Pro subscription)
+3. Add to your `.env` file:
+   ```
+   ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
+   ANTHROPIC_MODEL=claude-sonnet-4-6
+   ```
+
+### Usage
+
+1. Run an assessment first (the AI threat model analyzes assessment findings)
+2. Go to the **Threat Model** tab
+3. Enter the organization name and click **AI Threat Model**
+4. Generation takes 1-2 minutes
+5. Click **Export Report** to download a text file sorted by severity
+
+### What It Produces
+
+- **Executive summary** — 3-5 sentence security posture overview
+- **STRIDE threat analysis** — Architectural threats with specific mitigations (not per-CVE)
+- **Consolidated dependency finding** — One finding for all outdated dependencies
+- **Compound risks** — Where a CVE escalates an architectural threat (only when causal chain exists)
+- **Remediation roadmap** — Prioritized action items
+
+### API Endpoint
+
+```
+GET /api/v1/threat-model/ai/organizations/{organization_id}
+```
+
+Without an API key configured, this endpoint returns HTTP 503.
+
+### Cost
+
+The AI threat model uses the Claude API (Sonnet 4.6 by default). Typical cost per generation is $0.05-0.15 depending on the number of findings and components analyzed.
 
 ---
 

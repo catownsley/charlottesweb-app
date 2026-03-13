@@ -252,6 +252,15 @@ class Settings(BaseSettings):
     # EXTERNAL SERVICES
     # ========================================================================
 
+    # Anthropic API key for AI-powered threat model generation
+    # Optional: Required for /threat-model/ai endpoint
+    # Get key from: https://console.anthropic.com/settings/keys
+    anthropic_api_key: str = ""
+
+    # Claude model for threat model generation
+    # Default: claude-sonnet-4-6 (good balance of quality and cost for structured analysis)
+    anthropic_model: str = "claude-sonnet-4-6"
+
     # NVD (National Vulnerability Database) API key
     # Optional: Provides higher rate limits for CVE data
     # Get key from: https://nvd.nist.gov/developers/request-an-api-key
