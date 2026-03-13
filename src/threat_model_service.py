@@ -70,7 +70,7 @@ TRUST_BOUNDARIES = {
     },
     "TB4": {
         "label": "External Services",
-        "description": "NVD, MITRE ATT&CK, third-party APIs",
+        "description": "Third-party APIs, external integrations",
     },
     "TB5": {
         "label": "Operational Layer",
@@ -104,7 +104,7 @@ _OPS_KEYWORDS = (
     "datadog",
     "grafana",
 )
-_EXTERNAL_KEYWORDS = ("nvd", "mitre", "cve", "nist")
+_EXTERNAL_KEYWORDS = ("api", "webhook", "oauth", "saml", "ldap", "smtp")
 
 
 def _assign_trust_boundary(component_name: str) -> str:
@@ -238,24 +238,6 @@ def _derive_nodes(
                         "findings_count": 0,
                         "max_severity": None,
                         "phi_exposure": has_phi,
-                    },
-                }
-            )
-
-    # Add external services
-    for ext_id, ext_label in [("ext-nvd", "NVD API"), ("ext-mitre", "MITRE ATT&CK")]:
-        if ext_id not in component_ids:
-            component_ids.add(ext_id)
-            nodes.append(
-                {
-                    "id": ext_id,
-                    "label": ext_label,
-                    "type": "external",
-                    "parent": "TB4",
-                    "metadata": {
-                        "findings_count": 0,
-                        "max_severity": None,
-                        "phi_exposure": False,
                     },
                 }
             )
