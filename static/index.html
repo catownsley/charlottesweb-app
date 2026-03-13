@@ -965,6 +965,13 @@
             submitBtn: !!submitBtn
         });
 
+        // Clear all forms and session data on page load (prevent data leakage)
+        sessionStorage.removeItem('manifestContentByOrg');
+        if (orgNameInput) orgNameInput.value = '';
+        if (manifestContentInput) manifestContentInput.value = '';
+        if (manifestFileInput) manifestFileInput.value = '';
+        if (componentsContainer) componentsContainer.innerHTML = '';
+
         // Counter for unique component IDs
         let componentCounter = 0;
 
@@ -1008,9 +1015,15 @@
 
             componentsContainer.innerHTML = '';
 
-            entries.forEach(([name, version]) => {
+            entries.forEach(([name, versionOrObj]) => {
                 const componentName = String(name || '').trim();
-                const componentVersion = String(version || '').trim();
+                // software_stack values can be a string ("1.0") or object ({"version": "1.0"})
+                let componentVersion = '';
+                if (typeof versionOrObj === 'object' && versionOrObj !== null) {
+                    componentVersion = String(versionOrObj.version || '').trim();
+                } else {
+                    componentVersion = String(versionOrObj || '').trim();
+                }
                 if (!componentName || !componentVersion) {
                     return;
                 }
@@ -1443,12 +1456,26 @@
         });
 
         if (orgNameInput) {
+            let syncDebounceTimer = null;
             orgNameInput.addEventListener('change', async () => {
                 await syncManifestForSelectedOrg();
             });
             orgNameInput.addEventListener('blur', async () => {
                 await syncManifestForSelectedOrg();
             });
+            // Clear manifest immediately as user types a new org name
+            orgNameInput.addEventListener('input', () => {
+                manifestContentInput.value = '';
+                manifestFileInput.value = '';
+                clearTimeout(syncDebounceTimer);
+                syncDebounceTimer = setTimeout(async () => {
+                    await syncManifestForSelectedOrg();
+                }, 500);
+            });
+            // Add an empty component row on load
+            if (document.querySelectorAll('.component-row').length === 0) {
+                addComponentRow();
+            }
         }
 
         // Sample pom.xml manifests
@@ -2716,6 +2743,9 @@
         const exportTmPngBtn = document.getElementById('exportThreatModelPng');
         const tmResultDiv = document.getElementById('threatModelResult');
 
+        // Clear threat model input on page load
+        if (tmOrgInput) tmOrgInput.value = '';
+
         generateTmBtn.addEventListener('click', generateThreatModel);
 
         exportTmPngBtn.addEventListener('click', () => {
@@ -2741,12 +2771,16 @@
             tmResultDiv.innerHTML = '<div style="text-align:center; color:#a78bfa; padding:40px;">Generating threat model...</div>';
 
             try {
-                // Look up org by name
-                const orgResponse = await fetch(`/api/v1/organizations/by-name/${encodeURIComponent(orgName)}`);
+                // Look up org by name (returns a list, take first match)
+                const orgResponse = await fetch(`/api/v1/organizations?name=${encodeURIComponent(orgName)}`);
                 if (!orgResponse.ok) {
                     throw new Error('Organization not found. Run an assessment first.');
                 }
-                const org = await orgResponse.json();
+                const orgs = await orgResponse.json();
+                if (!Array.isArray(orgs) || orgs.length === 0) {
+                    throw new Error('Organization not found. Run an assessment first.');
+                }
+                const org = orgs[0];
 
                 // Generate threat model
                 const tmResponse = await fetch(`/api/v1/threat-model/organizations/${encodeURIComponent(org.id)}`);
