@@ -1,8 +1,8 @@
-# CharlottesWeb
+# Charlotte's Web
 
 > Intelligent Compliance for Applications that Protect Regulated Data
 
-CharlottesWeb automates regulatory mapping by correlating compliance requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) with real-world exploitable vulnerabilities (CVE/CWE), producing prioritized remediation roadmaps and audit-ready evidence packages.
+Charlotte's Web automates regulatory mapping by correlating compliance requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) with real-world exploitable vulnerabilities (CVE/CWE), producing prioritized remediation roadmaps and audit-ready evidence packages.
 
 ## Security First
 
