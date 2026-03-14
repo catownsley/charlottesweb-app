@@ -79,6 +79,11 @@ class MetadataProfileCreate(BaseModel):
     def validate_component_names(
         cls, v: dict[str, Any] | None
     ) -> dict[str, Any] | None:
+        """Validate component names in software_stack.
+
+        Accepts both legacy flat format {"name": "version"} and new
+        ecosystem-aware format {"name": {"version": "x", "ecosystem": "Y"}}.
+        """
         if v is None:
             return v
         for name in v:
@@ -116,10 +121,11 @@ class ManifestIngestRequest(BaseModel):
 
 
 class ManifestComponent(BaseModel):
-    """Schema for a parsed component/version pair."""
+    """Schema for a parsed component/version pair with ecosystem."""
 
     name: str
     version: str
+    ecosystem: str = ""
 
 
 class ManifestIngestResponse(BaseModel):

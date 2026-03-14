@@ -167,7 +167,7 @@ python -c "import secrets; print(secrets.token_urlsafe(24))"
 | `CORS_ORIGINS` | localhost | **Whitelist only** | Never use `*` in production |
 | `ANTHROPIC_API_KEY` | Optional | Optional | Required for AI threat model |
 | `ANTHROPIC_MODEL` | claude-sonnet-4-6 | claude-sonnet-4-6 | Claude model for AI threat model |
-| `NVD_API_KEY` | Optional | Recommended | Higher NVD rate limits |
+| `NVD_API_KEY` | Optional | Recommended | Higher NVD rate limits (CPE lookups only) |
 
 ### Hosting Platform Examples
 
@@ -604,7 +604,7 @@ See [docs/tickets/TICKET_INDEX.md](docs/tickets/TICKET_INDEX.md) for the full ro
 ### Immediate Enhancements (Phase 1 completion)
 - Expand canonical controls and cross-framework mappings
 - Expand rules engine logic
-- Add real CVE/NVD integration (currently mocked)
+* ~~Add real CVE/NVD integration~~ Done: OSV.dev integrated for ecosystem aware vulnerability scanning
 - Implement remediation roadmap grouping endpoint
 
 ### Phase 2: Audit Evidence

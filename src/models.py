@@ -237,7 +237,7 @@ class Finding(Base):
     )
     control_id = Column(
         String, ForeignKey("controls.id"), nullable=True, index=True
-    )  # nullable for NVD findings
+    )  # nullable for vulnerability findings
 
     title = Column(String, nullable=False)
     description = Column(Text, nullable=False)
@@ -245,7 +245,7 @@ class Finding(Base):
         String, nullable=False, index=True
     )  # immediate, high, medium, low
     cvss_score = Column(Float, nullable=True)
-    external_id = Column(String, nullable=True)  # CVE ID for NVD findings
+    external_id = Column(String, nullable=True)  # CVE/advisory ID for OSV findings
     cve_ids = Column(JSON, nullable=True)  # list of CVE IDs
     cwe_ids = Column(JSON, nullable=True)  # list of CWE IDs
 
@@ -332,7 +332,7 @@ class Evidence(Base):
 
 
 class CacheEntry(Base):
-    """Persistent cache for API responses (NVD, AI threat model, etc.).
+    """Persistent cache for API responses (OSV, AI threat model, etc.).
 
     Designed with a clean key/value interface so the backing store can be
     swapped to Redis in production without changing callers.
@@ -341,7 +341,9 @@ class CacheEntry(Base):
     __tablename__ = "cache_entries"
 
     key = Column(String, primary_key=True)
-    namespace = Column(String, nullable=False, index=True)  # "nvd", "ai_threat_model"
+    namespace = Column(
+        String, nullable=False, index=True
+    )  # "nvd" (legacy), "ai_threat_model"
     value = Column(JSON, nullable=False)
     ttl_seconds = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=utcnow, nullable=False)

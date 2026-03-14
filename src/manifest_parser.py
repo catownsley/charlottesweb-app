@@ -111,7 +111,10 @@ def parse_pom_xml(content: str) -> list[dict[str, str]]:
 
         by_name[name] = version
 
-    components = [{"name": name, "version": by_name[name]} for name in sorted(by_name)]
+    components = [
+        {"name": name, "version": by_name[name], "ecosystem": "Maven"}
+        for name in sorted(by_name)
+    ]
 
     if not components:
         raise ValueError(

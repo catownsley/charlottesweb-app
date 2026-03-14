@@ -56,7 +56,7 @@ Control:
 **Purpose:** Correlate stack components with known exploitable vulnerabilities.
 
 **Data Sources:**
-- **NVD (National Vulnerability Database):** CVE feeds
+* **OSV.dev:** Ecosystem aware vulnerability advisories (PyPI, Maven, npm, etc.)
 - **CWE (Common Weakness Enumeration):** Vulnerability patterns
 - **CIS Benchmarks:** Configuration baselines
 - **NIST CSF:** Framework crosswalk
@@ -276,7 +276,8 @@ RemediationTask:
 - **Observability:** Sentry (errors) + Datadog/Grafana (metrics)
 
 ### Data Sources
-- **NVD:** REST API (rate-limited, cache locally). Integrated.
+* **OSV.dev:** REST API (no auth required, ecosystem aware queries). Integrated for vulnerability scanning.
+* **NVD:** REST API (rate limited, cache locally). Integrated for CPE based component suggestions and version autocomplete only.
 - **CWE:** XML dataset (periodic sync). Integrated.
 - **MITRE ATT&CK:** STIX data via GitHub. Translates technical weaknesses (CWEs) into real-world attack techniques with healthcare breach examples. Integrated.
 - **CIS Benchmarks:** Manual ingestion (licensed content). Planned.
@@ -332,7 +333,7 @@ GET /api/v1/controls/{control_id}
 
 ### Rate Limiting
 - Per-org assessment runs (prevent abuse)
-- NVD API caching (respect upstream limits)
+* OSV.dev and NVD API caching (respect upstream limits)
 
 ---
 
@@ -358,8 +359,8 @@ GET /api/v1/controls/{control_id}
 └──────┬──────┘
 │
 ┌──────▼──────┐
-│ NVD/CWE API │
-│ Ingestion │
+│ OSV.dev/CWE │
+│ Ingestion  │
 └─────────────┘
 ```
 
@@ -441,7 +442,8 @@ GET /api/v1/controls/{control_id}
 - [FedRAMP](https://www.fedramp.gov/)
 - [APRA CPS 234](https://www.apra.gov.au/information-security)
 - [CCPA](https://oag.ca.gov/privacy/ccpa)
-- [NVD (National Vulnerability Database)](https://nvd.nist.gov/)
+* [OSV.dev (Open Source Vulnerabilities)](https://osv.dev/)
+* [NVD (National Vulnerability Database)](https://nvd.nist.gov/)
 - [CWE (Common Weakness Enumeration)](https://cwe.mitre.org/)
 - [MITRE ATT&CK Framework](https://attack.mitre.org/)
 - [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework)
