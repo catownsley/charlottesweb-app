@@ -12,7 +12,6 @@ from src.database import Base, get_db
 from src.main import app
 from src.models import Assessment, Control, Finding, MetadataProfile, Organization
 
-
 # --- Sample AI response matching the expected schema ---
 
 SAMPLE_AI_RESPONSE = {
@@ -241,8 +240,8 @@ class TestAIThreatModelService:
         """Test that the service produces a structured threat model."""
         from sqlalchemy.orm import sessionmaker
 
-        Session = sessionmaker(bind=test_db)
-        db = Session()
+        db_session_factory = sessionmaker(bind=test_db)
+        db = db_session_factory()
 
         mock_settings.anthropic_api_key = "test-key"
         mock_settings.anthropic_model = "claude-sonnet-4-6"
@@ -293,8 +292,8 @@ class TestAIThreatModelService:
         """Test that missing API key raises a clear error."""
         from sqlalchemy.orm import sessionmaker
 
-        Session = sessionmaker(bind=test_db)
-        db = Session()
+        db_session_factory = sessionmaker(bind=test_db)
+        db = db_session_factory()
 
         mock_settings.anthropic_api_key = ""
 
@@ -310,8 +309,8 @@ class TestAIThreatModelService:
         """Test error when no assessment exists for org."""
         from sqlalchemy.orm import sessionmaker
 
-        Session = sessionmaker(bind=test_db)
-        db = Session()
+        db_session_factory = sessionmaker(bind=test_db)
+        db = db_session_factory()
 
         mock_settings.anthropic_api_key = "test-key"
 
