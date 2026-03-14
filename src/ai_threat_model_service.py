@@ -141,6 +141,43 @@ Return valid JSON with this structure:
 """
 
 
+def _classify_findings(
+    findings: list[Finding],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Separate findings into CVE-based and control-based categories."""
+    cve_findings: list[dict[str, Any]] = []
+    control_findings: list[dict[str, Any]] = []
+
+    for f in findings:
+        finding_data: dict[str, Any] = {
+            "title": to_str(getattr(f, "title", "")),
+            "severity": to_str(getattr(f, "severity", "medium")),
+            "description": to_str(getattr(f, "description", "")),
+        }
+
+        cve_ids = getattr(f, "cve_ids", None) or []
+        cwe_ids = getattr(f, "cwe_ids", None) or []
+        cvss = getattr(f, "cvss_score", None)
+        remediation = to_str(getattr(f, "remediation_guidance", "") or "")
+
+        if cve_ids:
+            finding_data["cve_ids"] = cve_ids
+            finding_data["cwe_ids"] = cwe_ids
+            if cvss is not None:
+                finding_data["cvss_score"] = cvss
+            if remediation:
+                finding_data["remediation_guidance"] = remediation
+            cve_findings.append(finding_data)
+        else:
+            if cwe_ids:
+                finding_data["cwe_ids"] = cwe_ids
+            if remediation:
+                finding_data["remediation_guidance"] = remediation
+            control_findings.append(finding_data)
+
+    return cve_findings, control_findings
+
+
 def _build_architecture_context(
     profile: MetadataProfile,
     findings: list[Finding],
@@ -191,36 +228,7 @@ def _build_architecture_context(
             sections.append(f"- {ctrl_id}: {title}")
 
     # --- Assessment findings ---
-    # Separate CVE findings from control-based findings
-    cve_findings: list[dict[str, Any]] = []
-    control_findings: list[dict[str, Any]] = []
-
-    for f in findings:
-        finding_data: dict[str, Any] = {
-            "title": to_str(getattr(f, "title", "")),
-            "severity": to_str(getattr(f, "severity", "medium")),
-            "description": to_str(getattr(f, "description", "")),
-        }
-
-        cve_ids = getattr(f, "cve_ids", None) or []
-        cwe_ids = getattr(f, "cwe_ids", None) or []
-        cvss = getattr(f, "cvss_score", None)
-        remediation = to_str(getattr(f, "remediation_guidance", "") or "")
-
-        if cve_ids:
-            finding_data["cve_ids"] = cve_ids
-            finding_data["cwe_ids"] = cwe_ids
-            if cvss is not None:
-                finding_data["cvss_score"] = cvss
-            if remediation:
-                finding_data["remediation_guidance"] = remediation
-            cve_findings.append(finding_data)
-        else:
-            if cwe_ids:
-                finding_data["cwe_ids"] = cwe_ids
-            if remediation:
-                finding_data["remediation_guidance"] = remediation
-            control_findings.append(finding_data)
+    cve_findings, control_findings = _classify_findings(findings)
 
     if control_findings:
         sections.append("\n## Compliance Findings (control gaps)")
