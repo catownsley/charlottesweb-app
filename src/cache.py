@@ -285,7 +285,9 @@ controls_cache = TTLCache(ttl=3600)  # 1 hour
 assessments_cache = TTLCache(ttl=1800)  # 30 minutes
 
 # Global cache instances — persistent (for external API responses)
-nvd_cache = PersistentCache(namespace="nvd", default_ttl=86400)  # 24 hours
+nvd_cache = PersistentCache(
+    namespace="nvd", default_ttl=0
+)  # Disabled during development
 ai_threat_model_cache = PersistentCache(
     namespace="ai_threat_model", default_ttl=604800
 )  # 7 days

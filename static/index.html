@@ -1323,6 +1323,7 @@
                         title="Version string"
                         value="${initialVersion.replace(/"/g, '&quot;')}"
                     >
+                    <div class="version-suggestions"></div>
                 </div>
                 <button type="button" class="delete-component">
                     ×
@@ -1362,7 +1363,9 @@
             const componentNameInput = row.querySelector('.component-name');
             const versionInput = row.querySelector('.component-version');
             const componentSuggestionsBox = row.querySelector('.component-suggestions');
+            const versionSuggestionsBox = row.querySelector('.version-suggestions');
             let suggestionTimeout;
+            let lastLoadedVersionComponent = '';
 
             componentNameInput.addEventListener('input', async function(e) {
                 const componentName = e.target.value.trim();
@@ -1410,10 +1413,12 @@
                                 e.stopPropagation();
                                 componentNameInput.value = component;
                                 componentSuggestionsBox.classList.remove('show');
+                                // Clear stale versions when component changes
+                                lastLoadedVersionComponent = '';
+                                versionSuggestionsBox.classList.remove('show');
                                 versionInput.focus();
                             });
                             suggestionEl.addEventListener('mouseenter', () => {
-                                // Visual feedback on hover
                                 componentSuggestionsBox.querySelectorAll('.suggestion').forEach(el => {
                                     el.classList.remove('selected');
                                 });
@@ -1431,10 +1436,83 @@
                 }, 300);  // 300ms debounce delay
             });
 
+            // Load version suggestions when version input is focused
+            let versionTimeout;
+
+            async function fetchAndShowVersions(componentName, prefix) {
+                const url = `/api/v1/components/${encodeURIComponent(componentName)}/versions`
+                    + (prefix ? `?prefix=${encodeURIComponent(prefix)}` : '');
+
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        versionSuggestionsBox.classList.remove('show');
+                        return;
+                    }
+
+                    const data = await response.json();
+                    const versions = data.versions || [];
+
+                    if (versions.length === 0) {
+                        versionSuggestionsBox.classList.remove('show');
+                        return;
+                    }
+
+                    versionSuggestionsBox.innerHTML = '';
+                    versions.forEach((version) => {
+                        const suggestionEl = document.createElement('div');
+                        suggestionEl.className = 'suggestion';
+                        suggestionEl.textContent = version;
+                        suggestionEl.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            versionInput.value = version;
+                            versionSuggestionsBox.classList.remove('show');
+                        });
+                        suggestionEl.addEventListener('mouseenter', () => {
+                            versionSuggestionsBox.querySelectorAll('.suggestion').forEach(el => {
+                                el.classList.remove('selected');
+                            });
+                            suggestionEl.classList.add('selected');
+                        });
+                        versionSuggestionsBox.appendChild(suggestionEl);
+                    });
+                    versionSuggestionsBox.classList.add('show');
+
+                } catch (err) {
+                    console.warn('Failed to fetch version suggestions:', err);
+                    versionSuggestionsBox.classList.remove('show');
+                }
+            }
+
+            versionInput.addEventListener('focus', async function() {
+                // Only show suggestions on focus if user already started typing
+                const componentName = componentNameInput.value.trim();
+                const typed = versionInput.value.trim();
+                if (!componentName || componentName.length < 2 || !typed) return;
+                await fetchAndShowVersions(componentName, typed);
+            });
+
+            versionInput.addEventListener('input', function() {
+                const componentName = componentNameInput.value.trim();
+                if (!componentName || componentName.length < 2) {
+                    versionSuggestionsBox.classList.remove('show');
+                    return;
+                }
+
+                clearTimeout(versionTimeout);
+                versionTimeout = setTimeout(() => {
+                    fetchAndShowVersions(componentName, versionInput.value.trim());
+                }, 200);
+            });
+
             // Close suggestions when clicking outside
             document.addEventListener('click', (e) => {
                 if (!componentSuggestionsBox.contains(e.target) && e.target !== componentNameInput) {
                     componentSuggestionsBox.classList.remove('show');
+                }
+                if (!versionSuggestionsBox.contains(e.target) && e.target !== versionInput) {
+                    versionSuggestionsBox.classList.remove('show');
                 }
             }, true);
 

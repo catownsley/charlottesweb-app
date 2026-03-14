@@ -28,7 +28,7 @@ class CVEResult(TypedDict):
 
 
 # Configuration constants
-CACHE_TTL_HOURS = 24
+CACHE_TTL_HOURS = 0  # Disabled during development; re-enable with Redis in production
 DEFAULT_MAX_RESULTS = 10
 VERSION_SEARCH_MAX_RESULTS = 100
 REQUEST_TIMEOUT_SECONDS = 30
@@ -48,6 +48,7 @@ class NVDService:
     """Service for querying NVD API for CVE information."""
 
     BASE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+    CPE_URL = "https://services.nvd.nist.gov/rest/json/cpes/2.0"
 
     def __init__(
         self, api_key: str | None = None, max_retries: int = RATE_LIMIT_RETRY_ATTEMPTS
@@ -68,19 +69,22 @@ class NVDService:
         self._cache: dict[str, tuple[list[CVEResult] | list[str], datetime]] = {}
         self._cache_ttl = timedelta(hours=CACHE_TTL_HOURS)
 
-    def _request_with_retry(self, params: dict[str, str | int]) -> dict[str, Any]:
+    def _request_with_retry(
+        self, params: dict[str, str | int], *, url: str | None = None
+    ) -> dict[str, Any]:
         """Make an NVD API request with retry on rate limit (429).
 
         Retries up to self.max_retries times with backoff.
         Raises NVDApiError on persistent failure so callers can handle it.
         """
+        base = url or self.BASE_URL
         last_error: Exception | None = None
         attempts = max(self.max_retries, 1)
 
         for attempt in range(attempts):
             try:
                 response = requests.get(
-                    self.BASE_URL,
+                    base,
                     params=params,
                     headers=self.headers,
                     timeout=REQUEST_TIMEOUT_SECONDS,
@@ -113,8 +117,11 @@ class NVDService:
 
         raise NVDApiError(f"NVD API failed after {attempts} attempts: {last_error}")
 
-    # Common CPE naming mismatches: user-friendly names → NVD vendor:product
+    # Common CPE naming mismatches: user-friendly names → NVD vendor:product.
+    # NVD virtualMatchString does NOT support wildcard vendors, so we must
+    # map common names to their exact NVD vendor:product pairs.
     _CPE_ALIASES: dict[str, list[tuple[str, str, str]]] = {
+        # Operating systems
         "ubuntu": [("o", "canonical", "ubuntu_linux")],
         "debian": [("o", "debian", "debian_linux")],
         "centos": [("o", "centos", "centos")],
@@ -127,9 +134,49 @@ class NVDService:
         ],
         "macos": [("o", "apple", "macos")],
         "linux": [("o", "linux", "linux_kernel")],
-        "node": [("a", "*", "node.js")],
-        "nodejs": [("a", "*", "node.js")],
-        "node.js": [("a", "*", "node.js")],
+        # Languages / runtimes
+        "python": [("a", "python", "python")],
+        "php": [("a", "php", "php")],
+        "ruby": [("a", "ruby", "ruby")],
+        "perl": [("a", "perl", "perl")],
+        "go": [("a", "golang", "go")],
+        "golang": [("a", "golang", "go")],
+        "rust": [("a", "rust-lang", "rust")],
+        "java": [("a", "oracle", "jdk"), ("a", "oracle", "jre")],
+        "openjdk": [("a", "oracle", "openjdk")],
+        "node": [("a", "nodejs", "node.js")],
+        "nodejs": [("a", "nodejs", "node.js")],
+        "node.js": [("a", "nodejs", "node.js")],
+        # Databases
+        "postgresql": [("a", "postgresql", "postgresql")],
+        "postgres": [("a", "postgresql", "postgresql")],
+        "mysql": [("a", "oracle", "mysql")],
+        "mariadb": [("a", "mariadb", "mariadb")],
+        "sqlite": [("a", "sqlite", "sqlite")],
+        "redis": [("a", "redis", "redis")],
+        "mongodb": [("a", "mongodb", "mongodb")],
+        # Web servers / frameworks
+        "nginx": [("a", "f5", "nginx")],
+        "apache": [("a", "apache", "http_server")],
+        "httpd": [("a", "apache", "http_server")],
+        "tomcat": [("a", "apache", "tomcat")],
+        "django": [("a", "djangoproject", "django")],
+        "flask": [("a", "palletsprojects", "flask")],
+        "rails": [("a", "rubyonrails", "rails")],
+        "spring": [("a", "vmware", "spring_framework")],
+        "express": [("a", "expressjs", "express")],
+        # Other common software
+        "openssl": [("a", "openssl", "openssl")],
+        "curl": [("a", "haxx", "curl")],
+        "git": [("a", "git-scm", "git")],
+        "docker": [("a", "docker", "docker")],
+        "kubernetes": [("a", "kubernetes", "kubernetes")],
+        "wordpress": [("a", "wordpress", "wordpress")],
+        "jquery": [("a", "jquery", "jquery")],
+        "react": [("a", "facebook", "react")],
+        "angular": [("a", "google", "angular")],
+        "vue": [("a", "vuejs", "vue.js")],
+        "vue.js": [("a", "vuejs", "vue.js")],
     }
 
     @staticmethod
@@ -180,7 +227,10 @@ class NVDService:
         """Search NVD for CVEs matching a specific component and version via CPE."""
         ver_candidates = self._version_candidates(version)
         comp_lower = component.lower()
-        cpe_candidates = self._CPE_ALIASES.get(comp_lower, [("a", "*", comp_lower)])
+        # Default: try vendor=product (most common NVD pattern), then wildcard
+        cpe_candidates = self._CPE_ALIASES.get(
+            comp_lower, [("a", comp_lower, comp_lower), ("a", "*", comp_lower)]
+        )
 
         cache_key = f"cpe:{comp_lower}:{version}:{max_results}"
         if cache_key in self._cache:
@@ -570,21 +620,20 @@ class NVDService:
     def get_known_versions(
         self, component_name: str, max_versions: int = DEFAULT_MAX_RESULTS
     ) -> list[str]:
-        """Get known versions of a component from NVD CVE records.
+        """Get known versions of a component from NVD CPE dictionary.
 
-        Queries NVD for CVEs affecting the component and extracts all unique versions
-        mentioned in the vulnerability data.
+        Uses a two-step approach: first gets the total CPE count, then fetches
+        the last page to get the newest versions.
 
         Args:
-            component_name: Name of the component (e.g., 'postgresql', 'nginx')
+            component_name: Name of the component (e.g., 'python', 'postgresql')
             max_versions: Maximum number of versions to return
 
         Returns:
-            List of version strings found in NVD records, sorted by recency
+            List of version strings, newest first
         """
         cache_key = f"versions:{component_name}"
 
-        # Check cache
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
             if datetime.now(UTC) - cached_time < self._cache_ttl:
@@ -592,31 +641,43 @@ class NVDService:
                 return cached_data  # type: ignore[return-value]
 
         try:
-            # CPE product names use underscores (e.g., "sql_server") but NVD
-            # keyword search matches description text which uses spaces.
-            search_term = component_name.replace("_", " ")
+            # Resolve CPE type/vendor/product using alias map
+            comp_lower = component_name.lower()
+            aliases = self._CPE_ALIASES.get(comp_lower)
+            if aliases:
+                cpe_type, cpe_vendor, cpe_product = aliases[0]
+            else:
+                cpe_type, cpe_vendor, cpe_product = "a", comp_lower, comp_lower
+
+            cpe_match = f"cpe:2.3:{cpe_type}:{cpe_vendor}:{cpe_product}:*"
+
+            # Fetch all CPE entries for this product (max 10000 per page,
+            # most products have far fewer — e.g. Python has ~600)
             params: dict[str, str | int] = {
-                "keywordSearch": search_term,
-                "resultsPerPage": VERSION_SEARCH_MAX_RESULTS,
+                "cpeMatchString": cpe_match,
+                "resultsPerPage": 10000,
             }
+            data = self._request_with_retry(params, url=self.CPE_URL)
+            products = data.get("products", [])
 
-            data = self._request_with_retry(params)
-            vulnerabilities = data.get("vulnerabilities", [])
+            # Extract unique versions from CPE names
+            versions_set: set[str] = set()
+            for product in products:
+                cpe_name = product.get("cpe", {}).get("cpeName", "")
+                parts = cpe_name.split(":")
+                if len(parts) >= 6:
+                    ver = parts[5]
+                    if ver and ver not in ("*", "-", ""):
+                        versions_set.add(ver)
 
-            versions_set = self._extract_versions_from_vulns(
-                vulnerabilities, component_name
-            )
-
-            # Sort versions (try numeric sort, fallback to string sort)
             sorted_versions = sorted(
                 list(versions_set), key=self._parse_version, reverse=True
             )
             top_versions = sorted_versions[:max_versions]
 
-            # Cache results
             self._cache[cache_key] = (top_versions, datetime.now(UTC))
             logger.info(
-                "Extracted %d versions for %s from NVD",
+                "Found %d versions for %s from CPE dictionary",
                 len(top_versions),
                 component_name,
             )
@@ -626,7 +687,7 @@ class NVDService:
             logger.error("NVD API unavailable for version lookup: %s", component_name)
             return []
         except Exception as e:
-            logger.error("Error extracting versions from NVD: %s", e)
+            logger.error("Error fetching versions from NVD: %s", e)
             return []
 
     def get_component_suggestions(
