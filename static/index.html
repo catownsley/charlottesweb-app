@@ -865,9 +865,10 @@
                 <div style="margin-top: 14px; padding: 12px; border: 1px solid #3d3556; border-radius: 6px; background: #252038;">
                     <div style="font-weight: 600; margin-bottom: 8px;">Import Manifest (pom.xml)</div>
 
-                    <label style="font-size: 13px; color: #c9b8e8; margin-bottom: 4px; display: block;">Load a sample pom.xml:</label>
+                    <label style="font-size: 13px; color: #c9b8e8; margin-bottom: 4px; display: block;">Load a sample stack:</label>
                     <select id="sampleManifestSelect" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; margin-bottom: 8px; background: #2a2440; color: #e0d8f0;">
-                        <option value="">-- Select a sample manifest --</option>
+                        <option value="">-- Select a sample stack --</option>
+                        <option value="charlottesweb">Charlotte's Web (Python, FastAPI, SQLAlchemy)</option>
                         <option value="spring-legacy">Spring Legacy App (Log4j, Jackson, PostgreSQL)</option>
                         <option value="healthcare-api">Healthcare API (Spring Boot, Hibernate, MySQL)</option>
                         <option value="microservices">Microservices Stack (Netty, gRPC, Redis, Kafka)</option>
@@ -1293,7 +1294,7 @@
         /**
          * Add a new component input row
          */
-        function addComponentRow(initialName = '', initialVersion = '') {
+        function addComponentRow(initialName = '', initialVersion = '', autoFocus = false) {
             componentCounter++;
 
             const row = document.createElement('div');
@@ -1518,15 +1519,16 @@
 
             componentsContainer.appendChild(row);
 
-            // Focus on the new component name field
-            componentNameInput.focus();
+            if (autoFocus) {
+                componentNameInput.focus();
+            }
         }
 
         addComponentBtn.addEventListener('click', function(e) {
             console.log('Add Component button clicked');
             e.preventDefault();
             e.stopPropagation();
-            addComponentRow();
+            addComponentRow('', '', true);
         });
 
         document.getElementById('clearComponentsBtn').addEventListener('click', function(e) {
@@ -1602,6 +1604,23 @@
                 addComponentRow();
             }
         }
+
+        // Sample stacks with direct component lists (non-pom.xml)
+        const SAMPLE_COMPONENT_STACKS = {
+            'charlottesweb': {
+                orgName: "Charlotte's Web",
+                components: [
+                    {name: 'Python', version: '3.14.3'},
+                    {name: 'FastAPI', version: '0.135.1'},
+                    {name: 'Uvicorn', version: '0.41.0'},
+                    {name: 'Pydantic', version: '2.12.5'},
+                    {name: 'SQLAlchemy', version: '2.0.48'},
+                    {name: 'PyJWT', version: '2.12.1'},
+                    {name: 'python-requests', version: '2.32.5'},
+                    {name: 'SQLite', version: '3.50.4'}
+                ]
+            }
+        };
 
         // Sample pom.xml manifests
         const SAMPLE_MANIFESTS = {
@@ -1731,12 +1750,41 @@
 </project>`
         };
 
-        // Load sample manifest into textarea when dropdown changes (does not auto-populate list)
+        // Load sample stack: direct component list or pom.xml into textarea
         sampleManifestSelect.addEventListener('change', () => {
             const selectedKey = sampleManifestSelect.value;
-            if (!selectedKey || !SAMPLE_MANIFESTS[selectedKey]) {
+            if (!selectedKey) return;
+
+            // Check if this is a direct component stack (non-pom.xml)
+            if (SAMPLE_COMPONENT_STACKS[selectedKey]) {
+                const stack = SAMPLE_COMPONENT_STACKS[selectedKey];
+                componentsContainer.innerHTML = '';
+                componentCounter = 0;
+                if (stack.orgName) orgNameInput.value = stack.orgName;
+                manifestContentInput.value = '';
+
+                let idx = 0;
+                function addNext() {
+                    if (idx >= stack.components.length) {
+                        sampleManifestSelect.value = '';
+                        return;
+                    }
+                    const comp = stack.components[idx++];
+                    addComponentBtn.click();
+                    setTimeout(() => {
+                        const lastRow = componentsContainer.lastElementChild;
+                        if (lastRow) {
+                            lastRow.querySelector('.component-name').value = comp.name;
+                            lastRow.querySelector('.component-version').value = comp.version;
+                        }
+                        addNext();
+                    }, 50);
+                }
+                addNext();
                 return;
             }
+
+            if (!SAMPLE_MANIFESTS[selectedKey]) return;
 
             manifestContentInput.value = SAMPLE_MANIFESTS[selectedKey];
             manifestFileInput.value = '';
@@ -2114,15 +2162,10 @@
         if (tryDemoBtn) {
             tryDemoBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-
-                // Clear existing components
                 componentsContainer.innerHTML = '';
                 componentCounter = 0;
-
-                // Fill organization name
                 document.getElementById('orgName').value = 'Healthcare Corp Demo';
 
-                // Clear manifest for demo (different org)
                 const savedDemoManifest = getSavedManifestForOrg('Healthcare Corp Demo');
                 if (savedDemoManifest) {
                     manifestContentInput.value = savedDemoManifest;
@@ -2131,7 +2174,6 @@
                     manifestFileInput.value = '';
                 }
 
-                // Add real vulnerable software sequentially
                 const demoComponents = [
                     {name: 'apache-tomcat', version: '9.0.62'},
                     {name: 'openssl', version: '1.0.1'},
@@ -2139,31 +2181,23 @@
                 ];
 
                 let componentIndex = 0;
-
                 function addNextDemoComponent() {
                     if (componentIndex >= demoComponents.length) {
-                        // All done - scroll to submit button
                         submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         submitBtn.focus();
                         return;
                     }
-
-                    const comp = demoComponents[componentIndex];
-                    componentIndex++;
-
+                    const comp = demoComponents[componentIndex++];
                     addComponentBtn.click();
-                    // Wait for DOM to update, fill values, then add next component
                     setTimeout(() => {
                         const lastRow = componentsContainer.lastElementChild;
                         if (lastRow) {
                             lastRow.querySelector('.component-name').value = comp.name;
                             lastRow.querySelector('.component-version').value = comp.version;
                         }
-                        // Add next component
                         addNextDemoComponent();
                     }, 100);
                 }
-
                 addNextDemoComponent();
             });
         }
@@ -3453,7 +3487,9 @@
             if (!lastAiThreatModel) return;
             const m = lastAiThreatModel;
             const orgName = tmOrgInput.value.trim() || 'organization';
-            const date = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const date = now.toISOString().split('T')[0];
+            const time = now.toTimeString().split(' ')[0].replace(/:/g, '');
             const lines = [];
             const sep = '='.repeat(80);
             const subsep = '-'.repeat(80);
@@ -3586,7 +3622,7 @@
             const blob = new Blob([text], { type: 'text/plain' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `threat-model-${orgName.replace(/\s+/g, '-')}-${date}.txt`;
+            link.download = `threat-model-${orgName.replace(/\s+/g, '-')}-${date}-${time}.txt`;
             link.click();
             URL.revokeObjectURL(link.href);
         }

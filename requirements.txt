@@ -9,7 +9,7 @@ sqlalchemy==2.0.48
 alembic==1.18.4
 
 # Security
-PyJWT==2.11.0                     # JWT token handling
+PyJWT==2.12.1                     # JWT token handling
 passlib[bcrypt]==1.7.4           # Password hashing
 slowapi==0.1.9                    # Rate limiting
 python-multipart==0.0.22          # Form data parsing

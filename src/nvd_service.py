@@ -161,6 +161,7 @@ class NVDService:
         "httpd": [("a", "apache", "http_server")],
         "tomcat": [("a", "apache", "tomcat")],
         "django": [("a", "djangoproject", "django")],
+        "fastapi": [("a", "fastapi_project", "fastapi")],
         "flask": [("a", "palletsprojects", "flask")],
         "rails": [("a", "rubyonrails", "rails")],
         "spring": [("a", "vmware", "spring_framework")],
@@ -177,6 +178,13 @@ class NVDService:
         "angular": [("a", "google", "angular")],
         "vue": [("a", "vuejs", "vue.js")],
         "vue.js": [("a", "vuejs", "vue.js")],
+        # Python libraries
+        "uvicorn": [("a", "encode", "uvicorn")],
+        "pydantic": [("a", "pydantic_project", "pydantic")],
+        "sqlalchemy": [("a", "sqlalchemy", "sqlalchemy")],
+        "pyjwt": [("a", "pyjwt_project", "pyjwt")],
+        "requests": [("a", "python-requests", "requests")],
+        "python-requests": [("a", "python-requests", "requests")],
     }
 
     @staticmethod

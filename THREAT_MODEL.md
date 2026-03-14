@@ -491,18 +491,107 @@ if not member:
 
 ---
 
+## 7. Dependency Vulnerabilities (Supply Chain)
+
+**Threat Actors:** Attackers exploit known CVEs in third-party dependencies to compromise the application.
+
+> This section was added after running Charlotte's Web's own threat modeling feature against its dependency stack (self-assessment, 2026-03-14). For detailed CVE disposition mapping, see [SECURITY.md, Threat Model Assessment](SECURITY.md#threat-model-assessment).
+
+### 7.1 Known CVEs in Dependencies (TB2 Application Service)
+**Attack:** Attacker exploits publicly disclosed vulnerabilities in installed packages.
+
+| Component | Version | CVE | Severity | Status |
+|-----------|---------|-----|----------|--------|
+| PyJWT | 2.12.1 | CVE-2026-32597 | HIGH | **Patched** (fixed in 2.12.0) |
+| SQLite | 3.50.4 | CVE-2022-31631 | CRITICAL | **Not Applicable** (PHP-specific, SQLAlchemy uses parameterized queries) |
+| Uvicorn | 0.41.0 | CVE-2020-7694 | MEDIUM | **Mitigated** (structured logging, no raw terminal output) |
+| Starlette (via FastAPI) | TBD | CVE-2024-47874 | MEDIUM | **Under Review** (verify bundled version) |
+| FastAPI | 0.135.1 | CVE-2024-40627, 42816, 42818 | HIGH | **Not Applicable** (affect fastapi-opa / fastapi-admin-pro, not installed) |
+| Python | 3.14.3 | CVE-2020-29396, CVE-2021-32052 | HIGH/MEDIUM | **Not Applicable** (affect Odoo / Django, not installed) |
+| Pydantic | 2.12.5 | CVE-2025-22151 | MEDIUM | **Not Applicable** (affects Strawberry GraphQL, not installed) |
+
+**Key Finding:** 7 of 11 CVEs flagged by NVD were false positives due to incorrect package attribution (CVEs assigned to third-party plugins, not the core libraries installed here).
+
+---
+
+## 8. Data Protection Gaps
+
+### 8.1 Data at Rest: Unencrypted SQLite Database (TB3 Persistence Layer)
+**Attack:** Attacker with filesystem access reads or exfiltrates the entire database without needing application credentials.
+
+| Component | Current Risk | Mitigation |
+|-----------|-------------|-----------|
+| TB3 SQLite database stored as plaintext file | **HIGH** | No encryption at rest |
+| Single file contains all org data, assessments, findings | **HIGH** | Full data exposure on file compromise |
+| File permissions may allow broader access | **MEDIUM** | OS-level access control only |
+
+**Current Disposition:** Accepted risk for development. Production guidance requires PostgreSQL with storage-level encryption.
+
+**Recommended Hardening:**
+- Development: Restrict file permissions (`chmod 600`, owned by app service account)
+- Production: Migrate to PostgreSQL with encrypted storage (AWS RDS encryption, Azure TDE)
+- Alternative: SQLCipher for encrypted SQLite if single-file deployment is required
+
+### 8.2 Data in Transit: TLS Enforcement (TB1 ↔ TB2 boundary)
+**Status: Mitigated**
+
+| Component | Current Risk | Mitigation |
+|-----------|-------------|-----------|
+| `HTTPSEnforcementMiddleware` redirects HTTP → HTTPS (301) | **LOW** | All requests forced to TLS |
+| HSTS header: `max-age=31536000; includeSubDomains; preload` | **LOW** | Browsers enforce HTTPS on return visits |
+| Dev server binds exclusively on port 8443 with TLS certificates | **LOW** | No plaintext listener available |
+
+---
+
+## 9. Authentication Gaps
+
+### 9.1 Absent Multi-Factor Authentication (TB1 → TB2 boundary)
+**Attack:** Credential stuffing or phishing against single-factor authentication provides full account takeover.
+
+| Component | Current Risk | Mitigation |
+|-----------|-------------|-----------|
+| Authentication relies on API keys and JWT tokens only | **HIGH** | No second factor |
+| JWT compromise = full access (no MFA challenge) | **HIGH** | Single point of failure |
+
+**Current Disposition:** Remediation planned. TOTP-based MFA (e.g., `pyotp`) is planned for a future release when user login flows are added.
+
+---
+
+## 10. Compliance Determination
+
+### 10.1 HIPAA: Not Applicable
+This application processes software component metadata and vulnerability data. It does not store, transmit, or process Protected Health Information (PHI). HIPAA requirements do not apply.
+
+If the application scope changes to include PHI, a full HIPAA gap analysis must be conducted before deployment. See [SECURITY.md, Compliance Notes](SECURITY.md#compliance-notes).
+
+### 10.2 SSRF Risk (TB2 → TB4 boundary)
+**Attack:** If user-controlled URLs are passed to python-requests, an attacker could pivot to internal network resources or cloud metadata endpoints.
+
+| Component | Current Risk | Mitigation |
+|-----------|-------------|-----------|
+| python-requests makes outbound calls to NVD API | **LOW** | Base URLs are hardcoded, not user-supplied |
+| No user-supplied URL input currently exists | **LOW** | No SSRF vector present |
+
+**Current Disposition:** Accepted risk. URL allowlisting recommended if user-controlled URLs are added in the future.
+
+---
+
 ## Summary: Prioritized Mitigations
 
-| Priority | Threat | Mitigation | Trust Boundary |
-|----------|--------|-----------|-----------------|
-| **CRITICAL** | Spoofing 1.2, Elevation 6.1 | User auth + org membership checks | TB1 ↔ TB2 ↔ TB3 |
-| **CRITICAL** | Information Disclosure 4.1 | Row-level security + caller auth | TB2 ↔ TB3 |
-| ⚠️ **HIGH** | Tampering 2.2 | Finding audit trail + versioning | TB2 ↔ TB3 |
-| ⚠️ **HIGH** | Repudiation 3.1 | SIEM + log encryption + hash chain | TB2 ↔ TB5 |
-| ⚠️ **HIGH** | DoS 5.1 | Redis rate limiting + per-endpoint tuning | TB2 Middleware |
-| ⚠️ **HIGH** | DoS 5.2 | NVD circuit breaker + caching + timeout | TB2 ↔ TB4 |
-| ⚠️ **HIGH** | DoS 5.3 | Async job queue (Celery) | TB2 R_ASSESS |
-| ⚠️ **HIGH** | Elevation 6.2 | API key scopes + per-org binding | TB1 → TB2 |
+| Priority | Threat | Mitigation | Trust Boundary | Status |
+|----------|--------|-----------|-----------------|--------|
+| **CRITICAL** | Spoofing 1.2, Elevation 6.1 | User auth + org membership checks | TB1 ↔ TB2 ↔ TB3 | Open |
+| **CRITICAL** | Information Disclosure 4.1 | Row-level security + caller auth | TB2 ↔ TB3 | Open |
+| ⚠️ **HIGH** | Data at Rest 8.1 | SQLite encryption or PostgreSQL migration | TB3 | Accepted (Dev) |
+| ⚠️ **HIGH** | Authentication 9.1 | MFA implementation (pyotp/TOTP) | TB1 → TB2 | Planned |
+| ⚠️ **HIGH** | Tampering 2.2 | Finding audit trail + versioning | TB2 ↔ TB3 | Open |
+| ⚠️ **HIGH** | Repudiation 3.1 | SIEM + log encryption + hash chain | TB2 ↔ TB5 | Open |
+| ⚠️ **HIGH** | DoS 5.1 | Redis rate limiting + per-endpoint tuning | TB2 Middleware | Open |
+| ⚠️ **HIGH** | DoS 5.2 | NVD circuit breaker + caching + timeout | TB2 ↔ TB4 | Open |
+| ⚠️ **HIGH** | DoS 5.3 | Async job queue (Celery) | TB2 R_ASSESS | Open |
+| ⚠️ **HIGH** | Elevation 6.2 | API key scopes + per-org binding | TB1 → TB2 | Open |
+| **MITIGATED** | Data in Transit 8.2 | TLS enforcement + HSTS | TB1 ↔ TB2 | Mitigated |
+| **MITIGATED** | Supply Chain 7.1 | PyJWT patched, false positives identified | TB2 | Mitigated |
 
 ---
 
@@ -511,6 +600,7 @@ if not member:
 - **Monthly:** Review critical/high-priority mitigations for completeness
 - **Quarterly:** Full threat model refresh (new features, architecture changes)
 - **Post-Incident:** Immediate update if any issue exploits a gap
+- **Last Review:** 2026-03-14 (self-assessment using Charlotte's Web threat modeling feature, see [SECURITY.md](SECURITY.md#threat-model-assessment) for detailed CVE disposition)
 
 ## ASCII Diagram Fallback
 
