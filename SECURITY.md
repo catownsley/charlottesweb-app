@@ -546,14 +546,14 @@ For security issues or questions:
 
 ## Version History
 
-**v0.3.0 (2026-03-05)** - Security automation and dependency hardening
+**v0.3.0 (2026-03-05):** Security automation and dependency hardening
 - pip-audit automated dependency scanning (PR non-blocking + nightly strict)
 - Startup security validation with 6 configuration checks
 - PyJWT migration (eliminated CVE-2024-23342 in python-jose dependency)
 - 80% reduction in dependency attack surface for HS256 algorithm
 - Zero known vulnerabilities
 
-**v0.2.0 (2026-03-04)** - Security hardening
+**v0.2.0 (2026-03-04):** Security hardening
 - API key authentication with configurable enforcement
 - Per-IP rate limiting with slowapi
 - 7 security headers (including CSP, HSTS, X-Frame-Options)
@@ -562,7 +562,7 @@ For security issues or questions:
 - Secure error handling (environment-aware)
 - Environment-based secrets management
 
-**v0.1.0 (2026-03-03)** - Initial MVP
+**v0.1.0 (2026-03-03):** Initial MVP
 - FastAPI foundation with CRUD endpoints
 - HTTPS support with self-signed dev certificates
 - Basic CORS configuration
@@ -571,12 +571,12 @@ For security issues or questions:
 
 ## Additional Resources
 
-- **[DEV_GUIDE.md](DEV_GUIDE.md)** - Development setup and local testing
-- **[src/security.py](src/security.py)** - Authentication utilities
-- **[src/audit.py](src/audit.py)** - Logging implementation
-- **[src/middleware.py](src/middleware.py)** - Security headers & rate limiting
-- **[OWASP Top 10](https://owasp.org/www-project-top-ten/)** - Web security fundamentals
-- **[HIPAA Security Rule](https://www.hhs.gov/hipaa/for-professionals/security/index.html)** - Compliance framework
+- **[DEV_GUIDE.md](DEV_GUIDE.md):** Development setup and local testing
+- **[src/security.py](src/security.py):** Authentication utilities
+- **[src/audit.py](src/audit.py):** Logging implementation
+- **[src/middleware.py](src/middleware.py):** Security headers & rate limiting
+- **[OWASP Top 10](https://owasp.org/www-project-top-ten/):** Web security fundamentals
+- **[HIPAA Security Rule](https://www.hhs.gov/hipaa/for-professionals/security/index.html):** Compliance framework
 
 ---
 

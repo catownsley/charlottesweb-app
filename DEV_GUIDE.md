@@ -1,4 +1,4 @@
-# CharlottesWeb - Development Guide
+# CharlottesWeb: Development Guide
 
 ## Quick Start
 
@@ -90,7 +90,7 @@ gcloud run deploy charlottesweb --set-secrets SECRET_KEY=secret-manager-secret
 docker run -e SECRET_KEY="your-secret" charlottesweb
 ```
 
-#### Development: Option 1 - Environment Variables
+#### Development: Option 1: Environment Variables
 
 Set environment variables directly in your shell:
 
@@ -101,7 +101,7 @@ export API_KEY_REQUIRED=false
 python -m src.main
 ```
 
-#### Development: Option 2 - .env File (Automatic Loading)
+#### Development: Option 2: .env File (Automatic Loading)
 
 Create `.env` file with your secrets (it's automatically ignored by git):
 
@@ -111,9 +111,9 @@ cp .env.example .env
 python -m src.main
 ```
 
-️ **Important**: `.env` is automatically ignored by git - check `.gitignore` if concerned.
+️ **Important**: `.env` is automatically ignored by git. Check `.gitignore` if concerned.
 
-#### Development: Option 3 - Encrypted .env File (Extra Protection)
+#### Development: Option 3: Encrypted .env File (Extra Protection)
 
 For additional local security, encrypt your `.env` file:
 
@@ -348,8 +348,8 @@ To run the server with HTTPS using self-signed certificates for local developmen
 ```
 
 This creates:
-- `certs/cert.pem` - Self-signed certificate
-- `certs/key.pem` - Private key
+- `certs/cert.pem`: Self-signed certificate
+- `certs/key.pem`: Private key
 
 ### Run with HTTPS
 
@@ -626,7 +626,7 @@ CharlottesWeb includes an AI-powered threat model generator that produces compre
 ### Setup
 
 1. Get an API key from [Anthropic Console](https://console.anthropic.com/settings/keys)
-2. Purchase API credits (prepaid billing — separate from Claude Pro subscription)
+2. Purchase API credits (prepaid billing, separate from Claude Pro subscription)
 3. Add to your `.env` file:
    ```
    ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
@@ -643,11 +643,11 @@ CharlottesWeb includes an AI-powered threat model generator that produces compre
 
 ### What It Produces
 
-- **Executive summary** — 3-5 sentence security posture overview
-- **STRIDE threat analysis** — Architectural threats with specific mitigations (not per-CVE)
-- **Consolidated dependency finding** — One finding for all outdated dependencies
-- **Compound risks** — Where a CVE escalates an architectural threat (only when causal chain exists)
-- **Remediation roadmap** — Prioritized action items
+- **Executive summary:** 3-5 sentence security posture overview
+- **STRIDE threat analysis:** Architectural threats with specific mitigations (not per-CVE)
+- **Consolidated dependency finding:** One finding for all outdated dependencies
+- **Compound risks:** Where a CVE escalates an architectural threat (only when causal chain exists)
+- **Remediation roadmap:** Prioritized action items
 
 ### API Endpoint
 
@@ -702,8 +702,8 @@ uvicorn src.main:app --port 8001
 
 ## Additional Resources
 
-- [BUSINESS_PLAN.md](BUSINESS_PLAN.md) - Market strategy and business model
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Complete technical architecture
+- [BUSINESS_PLAN.md](BUSINESS_PLAN.md): Market strategy and business model
+- [ARCHITECTURE.md](ARCHITECTURE.md): Complete technical architecture
 - [FastAPI Docs](https://fastapi.tiangolo.com/)
 - [SQLAlchemy Docs](https://docs.sqlalchemy.org/)
 - [NIST 800-53 Rev 5](https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final)

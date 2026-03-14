@@ -1,4 +1,4 @@
-# Real-Time Medical AI Translation - Architecture & Audit Evidence Framework
+# Real-Time Medical AI Translation: Architecture & Audit Evidence Framework
 
 ## Executive Summary
 
@@ -36,10 +36,10 @@ Provider-Patient Audio Stream
 
 **Components:**
 - **Audio Processing Pod** (Kubernetes on EKS)
-- **Automatic Speech Recognition (ASR)** - likely cloud provider (AWS Transcribe, Google Cloud Speech, or self-hosted Whisper)
-- **Medical Context Understanding** - LLM fine-tuned on medical terminology
-- **Translation Service** - Another LLM or specialized translation model
-- **Temporary Storage** - Ephemeral volumes (10-30 min TTL)
+- **Automatic Speech Recognition (ASR):** likely cloud provider (AWS Transcribe, Google Cloud Speech, or self-hosted Whisper)
+- **Medical Context Understanding:** LLM fine-tuned on medical terminology
+- **Translation Service:** Another LLM or specialized translation model
+- **Temporary Storage:** Ephemeral volumes (10-30 min TTL)
 
 **Data Flow:**
 ```
@@ -66,8 +66,8 @@ SQS Message (encrypted audio)
 **Components:**
 - **RDS PostgreSQL** for metadata: conversation ID, provider ID, patient context (no names/MRN in plaintext)
 - **S3 Buckets** (encrypted with KMS, versioning disabled, MFA delete enabled)
-- `healthcare-org-audit-logs/` - CloudTrail logs
-- `healthcare-org-database-backups/` - encrypted snapshots
+- `healthcare-org-audit-logs/`: CloudTrail logs
+- `healthcare-org-database-backups/`: encrypted snapshots
 - **DynamoDB** (optional) for session state, caching
 - **VPC Endpoints** for S3/RDS to avoid internet egress
 
@@ -88,10 +88,10 @@ SQS Message (encrypted audio)
 ### 4. Data Scrubbing & Deletion
 
 **Components:**
-- **Retention Policy Engine** - Cronjob to TTL audio/metadata
-- **Cryptographic Key Rotation** - Delete old encryption keys after 180 days
-- **De-identification Service** - Before any data archived to cold storage
-- **Deletion Audit Logger** - Record every deletion with timestamp, user, reason
+- **Retention Policy Engine:** Cronjob to TTL audio/metadata
+- **Cryptographic Key Rotation:** Delete old encryption keys after 180 days
+- **De-identification Service:** Before any data archived to cold storage
+- **Deletion Audit Logger:** Record every deletion with timestamp, user, reason
 
 **Policy:**
 - Audio: Deleted 24 hours after processing (or immediately if processing fails)
@@ -176,10 +176,10 @@ SQS Message (encrypted audio)
 
 For each control, we collect **4 types of evidence:**
 
-1. **Configuration Evidence** - "Is encryption enabled?" (S3 bucket policy, RDS encryption status)
-2. **Access Evidence** - "Who accessed what and when?" (IAM logs, database logs, API logs)
-3. **Operational Evidence** - "Did the process execute as expected?" (Deletion logs, key rotation logs, backup verification)
-4. **Compliance Evidence** - "Do you have a policy for this?" (Data Retention Policy, Encryption Policy, Incident Response Plan)
+1. **Configuration Evidence:** "Is encryption enabled?" (S3 bucket policy, RDS encryption status)
+2. **Access Evidence:** "Who accessed what and when?" (IAM logs, database logs, API logs)
+3. **Operational Evidence:** "Did the process execute as expected?" (Deletion logs, key rotation logs, backup verification)
+4. **Compliance Evidence:** "Do you have a policy for this?" (Data Retention Policy, Encryption Policy, Incident Response Plan)
 
 ---
 
@@ -215,12 +215,12 @@ When an auditor reviews such a healthcare AI organization, they'd want:
 
 ## Next Steps
 
-1. **Ingestion Evidence** - Seed controls for audio intake, API auth, encryption in transit
-2. **Processing Evidence** - Controls for model usage, ephemeral storage, key management
-3. **Storage Evidence** - Controls for encryption at rest, backup security, database hardening
-4. **Deletion Evidence** - Controls for TTL enforcement, cryptographic erasure, audit logging
-5. **Access Control Evidence** - IAM, RBAC, MFA, API key rotation
-6. **Incident Response Evidence** - Breach logs, remediation proof, drill results
+1. **Ingestion Evidence:** Seed controls for audio intake, API auth, encryption in transit
+2. **Processing Evidence:** Controls for model usage, ephemeral storage, key management
+3. **Storage Evidence:** Controls for encryption at rest, backup security, database hardening
+4. **Deletion Evidence:** Controls for TTL enforcement, cryptographic erasure, audit logging
+5. **Access Control Evidence:** IAM, RBAC, MFA, API key rotation
+6. **Incident Response Evidence:** Breach logs, remediation proof, drill results
 
 This framework is **realistic but aspirational**. A healthcare AI company may not have all of these controls yet, but the automation tool helps them **track what they have, what they're missing, and what the auditor will ask for**.
 
