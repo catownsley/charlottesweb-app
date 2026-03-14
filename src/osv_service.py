@@ -180,15 +180,8 @@ class OSVService:
 
         raise OSVApiError(f"OSV API failed after {attempts} attempts: {last_error}")
 
-    def _parse_vulnerability(self, vuln: dict[str, Any]) -> VulnerabilityResult:
-        """Parse an OSV vulnerability record into our standard format."""
-        vuln_id = vuln.get("id", "")
-        aliases = vuln.get("aliases", [])
-        summary = vuln.get("summary", "")
-        details = vuln.get("details", "")
-        published = vuln.get("published", "")
-
-        # Extract CVSS score from severity array
+    def _extract_cvss(self, vuln: dict[str, Any]) -> tuple[float | None, str | None]:
+        """Extract CVSS score and severity from an OSV vulnerability record."""
         cvss_score: float | None = None
         cvss_severity: str | None = None
         for sev in vuln.get("severity", []):
@@ -201,15 +194,13 @@ class OSVService:
                     cvss_severity = self.get_severity_from_cvss(cvss_score)
                     break
             elif sev_type == "CVSS_V4" and cvss_score is None:
-                # CVSS v4 vector parsing is complex; extract score if
-                # embedded in the vector as a rough fallback.
                 match = re.search(r"(\d+\.\d+)", score_str)
                 if match:
                     cvss_score = float(match.group(1))
                     if cvss_score > 10:
                         cvss_score = None
 
-        # Also check affected[].ecosystem_specific.severity as fallback
+        # Fallback: check affected[].ecosystem_specific.severity
         if cvss_severity is None:
             for affected in vuln.get("affected", []):
                 eco_specific = affected.get("ecosystem_specific", {})
@@ -219,7 +210,23 @@ class OSVService:
                         cvss_severity = sev_str.lower()
                         break
 
-        # Extract CWE IDs from database_specific or aliases
+        return cvss_score, cvss_severity
+
+    @staticmethod
+    def _extract_fixed_versions(vuln: dict[str, Any]) -> list[str]:
+        """Extract fixed versions from affected ranges in an OSV record."""
+        fixed_versions: list[str] = []
+        for affected in vuln.get("affected", []):
+            for range_info in affected.get("ranges", []):
+                for event in range_info.get("events", []):
+                    if "fixed" in event:
+                        fixed_versions.append(event["fixed"])
+        return fixed_versions
+
+    def _parse_vulnerability(self, vuln: dict[str, Any]) -> VulnerabilityResult:
+        """Parse an OSV vulnerability record into our standard format."""
+        cvss_score, cvss_severity = self._extract_cvss(vuln)
+
         cwe_ids: list[str] = []
         db_specific = vuln.get("database_specific", {})
         if isinstance(db_specific, dict):
@@ -227,24 +234,16 @@ class OSVService:
                 if isinstance(cwe, str) and cwe.startswith("CWE-"):
                     cwe_ids.append(cwe)
 
-        # Extract fixed versions from affected ranges
-        fixed_versions: list[str] = []
-        for affected in vuln.get("affected", []):
-            for range_info in affected.get("ranges", []):
-                for event in range_info.get("events", []):
-                    if "fixed" in event:
-                        fixed_versions.append(event["fixed"])
-
         return VulnerabilityResult(
-            vuln_id=vuln_id,
-            aliases=aliases,
-            summary=summary,
-            details=details,
+            vuln_id=vuln.get("id", ""),
+            aliases=vuln.get("aliases", []),
+            summary=vuln.get("summary", ""),
+            details=vuln.get("details", ""),
             cvss_score=cvss_score,
             cvss_severity=cvss_severity,
             cwe_ids=list(set(cwe_ids)),
-            published_date=published,
-            fixed_versions=fixed_versions,
+            published_date=vuln.get("published", ""),
+            fixed_versions=self._extract_fixed_versions(vuln),
         )
 
     def query_package(

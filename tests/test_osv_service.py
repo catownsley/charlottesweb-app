@@ -7,7 +7,6 @@ import pytest
 from src.osv_service import OSVApiError, OSVService, parse_cvss_v3_score
 from src.rules_engine import normalize_software_stack
 
-
 # ========== CVSS Parser Tests ==========
 
 
