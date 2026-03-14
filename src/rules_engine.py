@@ -285,13 +285,13 @@ class RulesEngine:
             logger.info("No software stack provided, skipping NVD check")
             return findings
 
-        logger.info(f"Analyzing software stack: {software_stack}")
+        logger.info("Analyzing software stack: %s", software_stack)
 
         # Analyze stack for vulnerabilities
         try:
             vulnerabilities = self.nvd_service.analyze_software_stack(software_stack)
         except NVDApiError as e:
-            logger.error(f"NVD API unavailable during assessment: {e}")
+            logger.error("NVD API unavailable during assessment: %s", e)
             return findings
 
         # Look up relevant control for software vulnerabilities
@@ -339,6 +339,8 @@ class RulesEngine:
                     owner="DevOps",
                 )
                 findings.append(finding)
-                logger.info(f"Created finding for {cve_data['cve_id']} in {component}")
+                logger.info(
+                    "Created finding for %s in %s", cve_data["cve_id"], component
+                )
 
         return findings

@@ -129,13 +129,13 @@ class MITREService:
             # Cache the full STIX bundle
             self._cache[cache_key] = (data, datetime.now(UTC))
             logger.info(
-                f"Fetched MITRE ATT&CK data: {len(data.get('objects', []))} objects"
+                "Fetched MITRE ATT&CK data: %s objects", len(data.get("objects", []))
             )
 
             return data
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to fetch MITRE ATT&CK data: {e}")
+            logger.error("Failed to fetch MITRE ATT&CK data: %s", e)
             # Return empty structure if fetch fails
             return {"objects": []}
 

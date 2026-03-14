@@ -6,7 +6,10 @@ from pathlib import Path
 # Common emojis used in docs
 EMOJI_PATTERN = re.compile(
     "["
-    "\U0001F300-\U0001F9FF"  # Emojis
+    "\U0001F600-\U0001F64F"  # Emoticons
+    "\U0001F300-\U0001F5FF"  # Misc symbols & pictographs
+    "\U0001F680-\U0001F6FF"  # Transport & map symbols
+    "\U0001F900-\U0001F9FF"  # Supplemental symbols
     "\u2600-\u26FF"  # Misc symbols
     "\u2700-\u27BF"  # Dingbats
     "\U0001F1E0-\U0001F1FF"  # Flags

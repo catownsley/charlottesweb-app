@@ -74,7 +74,7 @@
         }
 
         .container {
-            max-width: 700px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -645,117 +645,88 @@
         a:hover {
             color: #ddd6fe;
         }
+        /* AI Threat Model Styles */
+        .ai-tm-section { margin-bottom: 24px; }
+        .ai-tm-section h3 { color: #c9b8e8; margin-bottom: 12px; border-bottom: 1px solid #3d3556; padding-bottom: 8px; }
+        .ai-tm-exec-summary { background: #252038; padding: 16px; border-radius: 8px; border-left: 4px solid #a78bfa; line-height: 1.7; color: #e0d6f2; font-size: 14px; }
+        .ai-tm-severity { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .ai-tm-severity.CRITICAL { background: #7f1d1d; color: #fca5a5; }
+        .ai-tm-severity.HIGH { background: #78350f; color: #fcd34d; }
+        .ai-tm-severity.MEDIUM { background: #713f12; color: #fde68a; }
+        .ai-tm-severity.LOW { background: #14532d; color: #86efac; }
+        .ai-tm-compound { background: #2d1b2e; border: 1px solid #d946ef; border-radius: 8px; padding: 16px; margin-bottom: 12px; line-height: 1.6; }
+        .ai-tm-compound h4 { color: #f0abfc; margin: 0 0 8px 0; }
+        .ai-tm-roadmap-item { display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-start; }
+        .ai-tm-priority { background: #7c3aed; color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+        .ai-tm-roadmap-text { flex: 1; }
+        .ai-tm-roadmap-text strong { color: #c9b8e8; }
+        .ai-tm-roadmap-text p { color: #9b8fba; margin: 4px 0 0 0; font-size: 13px; line-height: 1.5; }
+        .ai-tm-meta { display: flex; gap: 16px; flex-wrap: wrap; color: #8b7faa; font-size: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #3d3556; }
+
+        /* STRIDE / Dependency tables */
+        .stride-table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.5; }
+        .stride-table th { background: #252038; color: #c9b8e8; text-align: left; padding: 10px 12px; border-bottom: 2px solid #7c3aed; font-weight: 600; white-space: nowrap; }
+        .stride-table td { padding: 10px 12px; border-bottom: 1px solid #2d2545; color: #d4c8ee; vertical-align: top; }
+        .stride-table tr:hover td { background: #1e1833; }
+        .stride-table td:first-child { color: #a78bfa; font-weight: 600; white-space: nowrap; }
+        .stride-table td:last-child { color: #b8a0d8; font-size: 12px; }
+
         /* Threat Model Styles */
         .threat-model-container {
             max-width: 900px;
             margin: 0 auto;
         }
 
-        #threatModelGraph {
+        /* Editable Diagram Styles */
+        #diagramContainer {
             width: 100%;
             height: 550px;
             background: #1a1726;
             border: 1px solid #3d3556;
             border-radius: 8px;
             margin: 16px 0;
+            position: relative;
         }
 
-        .tm-summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 12px;
-            margin: 16px 0;
-        }
-
-        .tm-stat {
+        .diagram-toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 10px;
             background: #252038;
-            padding: 14px;
             border-radius: 6px;
-            text-align: center;
+            margin: 12px 0;
+            align-items: center;
         }
 
-        .tm-stat-value {
-            font-size: 28px;
-            font-weight: 700;
-            color: #a78bfa;
-        }
-
-        .tm-stat-label {
-            font-size: 11px;
-            color: #8b7faa;
-            margin-top: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stride-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 16px;
-            font-size: 13px;
-        }
-
-        .stride-table th {
-            background: #252038;
-            color: #c9b8e8;
-            padding: 10px 12px;
-            text-align: left;
-            font-weight: 600;
-            border-bottom: 2px solid #3d3556;
-            white-space: nowrap;
-        }
-
-        .stride-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #2d2545;
-            vertical-align: top;
-            max-width: 300px;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-
-        .stride-table td:first-child {
-            white-space: nowrap;
-        }
-
-        .stride-table .cvss-score {
-            margin-left: 0;
-        }
-
-        .stride-table tr:hover td {
-            background: #1e1b2e;
-        }
-
-        .stride-category-badge {
-            display: inline-block;
-            padding: 3px 10px;
+        .diagram-toolbar button {
+            padding: 6px 12px;
             border-radius: 4px;
-            font-weight: 600;
+            border: 1px solid #3d3556;
+            background: #1a1726;
+            color: #c9b8e8;
             font-size: 12px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .diagram-toolbar button:hover {
+            background: #2d2545;
+        }
+
+        .diagram-toolbar button.active {
+            background: #6b3fa0;
+            border-color: #a78bfa;
             color: white;
         }
 
-        .stride-category-badge.spoofing { background: #e06b6b; }
-        .stride-category-badge.tampering { background: #e2a04d; }
-        .stride-category-badge.repudiation { background: #d4b94e; color: #1e1b2e; }
-        .stride-category-badge.information-disclosure { background: #60a5fa; }
-        .stride-category-badge.denial-of-service { background: #a78bfa; }
-        .stride-category-badge.elevation-of-privilege { background: #f472b6; }
-
-        .tm-node-details {
-            background: #252038;
-            border: 1px solid #3d3556;
-            border-radius: 6px;
-            padding: 14px;
-            margin: 12px 0;
-            display: none;
+        .diagram-toolbar .separator {
+            width: 1px;
+            height: 24px;
+            background: #3d3556;
         }
 
-        .tm-node-details.visible {
-            display: block;
-        }
-
-        .tm-legend {
+        .diagram-legend {
             display: flex;
             gap: 16px;
             flex-wrap: wrap;
@@ -766,17 +737,71 @@
             font-size: 12px;
         }
 
-        .tm-legend-item {
+        .diagram-legend-item {
             display: flex;
             align-items: center;
             gap: 6px;
         }
 
-        .tm-legend-swatch {
+        .diagram-legend-swatch {
             width: 14px;
             height: 14px;
             border-radius: 3px;
         }
+
+        .diagram-node-details {
+            background: #252038;
+            border: 1px solid #3d3556;
+            border-radius: 6px;
+            padding: 14px;
+            margin: 12px 0;
+            display: none;
+        }
+
+        .diagram-node-details.visible {
+            display: block;
+        }
+
+        #diagramEdgeModal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        #diagramEdgeModal.visible {
+            display: flex;
+        }
+
+        #diagramEdgeModal .modal-content {
+            background: #1e1b2e;
+            border: 1px solid #3d3556;
+            border-radius: 8px;
+            padding: 24px;
+            min-width: 320px;
+        }
+
+        #diagramEdgeModal label {
+            display: block;
+            color: #c9b8e8;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        #diagramEdgeModal input, #diagramEdgeModal select {
+            width: 100%;
+            padding: 8px;
+            background: #252038;
+            border: 1px solid #3d3556;
+            border-radius: 4px;
+            color: #e0d8f0;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js" defer></script>
 </head>
@@ -785,8 +810,8 @@
         <!-- HEADER: Branding and purpose statement -->
         <header>
             <h1><img src="/favicon.svg" alt="Charlotte's Web" style="height: 100px; width: 100px; margin-right: 10px; vertical-align: middle;"> Charlotte's Web</h1>
-            <div class="subtitle">Software Stack Vulnerability Analyzer</div>
-            <div class="subtitle">Vulnerability Analysis + Audit Evidence Automation</div>
+            <div class="subtitle">AI-Driven Threat Modeling + Multi-Framework Compliance</div>
+            <div class="subtitle">Vulnerability Analysis &bull; Audit Evidence Automation</div>
         </header>
 
         <!-- TAB NAVIGATION -->
@@ -827,10 +852,15 @@
                     <!-- Components will be added here dynamically -->
                 </div>
 
-                <!-- Add Component Button -->
-                <button type="button" id="addComponentBtn" style="margin-top: 10px; background: #6b3fa0;">
-                    Add Component
-                </button>
+                <!-- Add Component / Clear Buttons -->
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button type="button" id="addComponentBtn" style="background: #6b3fa0;">
+                        Add Component
+                    </button>
+                    <button type="button" id="clearComponentsBtn" class="btn-secondary" style="background: #4a2040; border: 1px solid #6b3556;">
+                        Clear Component List
+                    </button>
+                </div>
 
                 <div style="margin-top: 14px; padding: 12px; border: 1px solid #3d3556; border-radius: 6px; background: #252038;">
                     <div style="font-weight: 600; margin-bottom: 8px;">Import Manifest (pom.xml)</div>
@@ -844,7 +874,7 @@
                     </select>
 
                     <label style="font-size: 13px; color: #c9b8e8; margin-bottom: 4px; display: block;">Or upload / paste your own:</label>
-                    <input type="file" id="manifestFile" accept=".xml,.pom" style="margin-bottom: 8px; width: 100%;">
+                    <input type="file" id="manifestFile" accept=".xml,.pom,.sample" style="margin-bottom: 8px; width: 100%;">
                     <textarea id="manifestContent" rows="6" placeholder="Paste pom.xml content here (optional if file or sample selected)" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; resize: vertical; background: #2a2440; color: #e0d8f0;"></textarea>
 
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
@@ -897,40 +927,73 @@
                     Enter an organization that has a completed assessment
                 </div>
 
-                <div style="display: flex; gap: 10px; margin-top: 16px;">
-                    <button type="button" id="generateThreatModelBtn">
-                        Generate Threat Model
+                <div style="display: flex; gap: 10px; margin-top: 16px; align-items: center;">
+                    <button type="button" id="generateAiThreatModelBtn" style="background: linear-gradient(135deg, #7c3aed, #a78bfa);">
+                        AI Threat Model
                     </button>
-                    <button type="button" id="exportThreatModelPng" class="btn-secondary" disabled>
-                        Export PNG
+                    <button type="button" id="exportAiThreatModelBtn" class="btn-secondary" style="background: #4a2040; border: 1px solid #6b3556;" disabled>
+                        Export Report
                     </button>
+                    <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: #8b7faa; cursor: pointer; margin-left: 8px;">
+                        <input type="checkbox" id="forceRegenerate"> Force regenerate
+                    </label>
                 </div>
             </div>
 
-            <div id="threatModelResult" class="result hidden">
-                <!-- Summary stats -->
-                <div id="tmSummary"></div>
-
-                <!-- Legend -->
-                <div class="tm-legend" id="tmLegend" style="display: none;">
-                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #7c3aed;"></div> Application</div>
-                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #e06b6b;"></div> Critical/High Risk</div>
-                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #d4b94e;"></div> Medium Risk</div>
-                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #10b981;"></div> Low/No Risk</div>
-                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #60a5fa;"></div> External Service</div>
-                    <div class="tm-legend-item"><div class="tm-legend-swatch" style="background: #a78bfa; border: 2px dashed #6d28d9;" ></div> Trust Boundary</div>
+            <!-- Editable Diagram -->
+            <div id="diagramSection" class="result hidden">
+                <div class="diagram-toolbar" id="diagramToolbar">
+                    <button type="button" id="diagramModeSelect" class="active" title="Select & drag nodes">Select</button>
+                    <button type="button" id="diagramModeEdge" title="Click source then target to draw an edge">Draw Edge</button>
+                    <button type="button" id="diagramModeDelete" title="Click a node or edge to delete it">Delete</button>
+                    <div class="separator"></div>
+                    <button type="button" id="diagramAddNode" title="Add a new component node">+ Node</button>
+                    <button type="button" id="diagramAddBoundary" title="Add a trust boundary group">+ Boundary</button>
+                    <div class="separator"></div>
+                    <button type="button" id="diagramExportPng" title="Export as PNG">Export PNG</button>
+                    <button type="button" id="diagramExportJson" title="Save diagram as JSON">Save JSON</button>
+                    <button type="button" id="diagramImportJson" title="Load diagram from JSON">Load JSON</button>
+                    <input type="file" id="diagramFileInput" accept=".json" style="display:none;">
                 </div>
 
-                <!-- Graph -->
-                <div id="threatModelGraph"></div>
+                <div class="diagram-legend">
+                    <div class="diagram-legend-item"><div class="diagram-legend-swatch" style="background: #7c3aed;"></div> Application</div>
+                    <div class="diagram-legend-item"><div class="diagram-legend-swatch" style="background: #e06b6b;"></div> Critical/High Risk</div>
+                    <div class="diagram-legend-item"><div class="diagram-legend-swatch" style="background: #d4b94e;"></div> Medium Risk</div>
+                    <div class="diagram-legend-item"><div class="diagram-legend-swatch" style="background: #10b981;"></div> Low/No Risk</div>
+                    <div class="diagram-legend-item"><div class="diagram-legend-swatch" style="background: #60a5fa;"></div> External Service</div>
+                    <div class="diagram-legend-item"><div class="diagram-legend-swatch" style="background: rgba(45,37,69,0.6); border: 2px dashed #6d28d9;"></div> Trust Boundary</div>
+                </div>
 
-                <!-- Node details on click -->
-                <div id="tmNodeDetails" class="tm-node-details"></div>
-
-                <!-- STRIDE Analysis -->
-                <h3 style="margin-top: 24px; color: #c9b8e8;">STRIDE Threat Analysis</h3>
-                <div id="tmStrideTable"></div>
+                <div id="diagramContainer"></div>
+                <div id="diagramNodeDetails" class="diagram-node-details"></div>
             </div>
+
+            <!-- Edge Label Modal -->
+            <div id="diagramEdgeModal">
+                <div class="modal-content">
+                    <h3 style="margin: 0 0 16px 0; color: #c9b8e8;">Define Data Flow</h3>
+                    <label for="edgeLabel">Label</label>
+                    <input type="text" id="edgeLabel" placeholder="e.g., REST API, gRPC, mTLS" maxlength="50">
+                    <label for="edgeClassification">Data Classification</label>
+                    <select id="edgeClassification">
+                        <option value="internal">Internal</option>
+                        <option value="phi">PHI</option>
+                        <option value="credentials">Credentials</option>
+                        <option value="public">Public</option>
+                    </select>
+                    <div style="display: flex; gap: 10px; margin-top: 8px;">
+                        <button type="button" id="edgeModalConfirm" style="flex:1; background: #6b3fa0;">Add Edge</button>
+                        <button type="button" id="edgeModalCancel" class="btn-secondary" style="flex:1; background: #1a1726; border: 1px solid #3d3556;">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Threat Model Result -->
+            <div id="aiThreatModelResult" class="result hidden">
+                <div id="aiTmContent"></div>
+            </div>
+
         </div><!-- /tab-threat-model -->
 
     </div>
@@ -1290,84 +1353,19 @@
                     displayResults(ca.stack, ca.findings, ca.org, ca.assessmentId, [], null, ca.orgReused);
                 }
 
-                // Clear threat model since it's now stale
-                const tmSummary = document.getElementById('tmSummary');
-                const tmGraph = document.getElementById('threatModelGraph');
-                const tmStride = document.getElementById('tmStrideTable');
-                const tmLegend = document.getElementById('tmLegend');
-                const tmNodeDetails = document.getElementById('tmNodeDetails');
-                if (tmSummary) tmSummary.innerHTML = '';
-                if (tmGraph) tmGraph.innerHTML = '';
-                if (tmStride) tmStride.innerHTML = '';
-                if (tmLegend) tmLegend.style.display = 'none';
-                if (tmNodeDetails) { tmNodeDetails.innerHTML = ''; tmNodeDetails.classList.remove('visible'); }
-                if (tmCyInstance) { tmCyInstance.destroy(); tmCyInstance = null; }
-                const exportBtn = document.getElementById('exportThreatModelPng');
-                if (exportBtn) exportBtn.disabled = true;
+                // Clear AI threat model since it's now stale
+                const aiTmContent = document.getElementById('aiTmContent');
+                if (aiTmContent) aiTmContent.innerHTML = '';
+                const aiTmResult = document.getElementById('aiThreatModelResult');
+                if (aiTmResult) aiTmResult.classList.add('hidden');
             });
 
-            // Version suggestions handler
             const componentNameInput = row.querySelector('.component-name');
             const versionInput = row.querySelector('.component-version');
             const componentSuggestionsBox = row.querySelector('.component-suggestions');
             const versionSuggestionsBox = row.querySelector('.version-suggestions');
             let suggestionTimeout;
-
-            async function loadVersionSuggestions(componentName) {
-                const normalizedName = String(componentName || '').trim();
-                if (!normalizedName || normalizedName.length < 2) {
-                    versionSuggestionsBox.classList.remove('show');
-                    return;
-                }
-
-                versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #6b6080; cursor: default; font-style: italic;">Fetching versions from NVD...</div>';
-                versionSuggestionsBox.classList.add('show');
-
-                try {
-                    const response = await fetch(
-                        `/api/v1/components/${encodeURIComponent(normalizedName)}/versions`
-                    );
-
-                    if (!response.ok) {
-                        versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #6b6080; cursor: default; font-style: italic;">No versions found \u2014 enter manually</div>';
-                        return;
-                    }
-
-                    const data = await response.json();
-                    const versions = data.versions || [];
-
-                    if (versions.length === 0) {
-                        versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #6b6080; cursor: default; font-style: italic;">No versions found \u2014 enter manually</div>';
-                        return;
-                    }
-
-                    versionSuggestionsBox.innerHTML = '';
-                    versions.forEach((version) => {
-                        const suggestionEl = document.createElement('div');
-                        suggestionEl.className = 'suggestion';
-                        suggestionEl.textContent = version;
-                        suggestionEl.addEventListener('mousedown', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            versionInput.value = version;
-                            versionSuggestionsBox.classList.remove('show');
-                            versionInput.dispatchEvent(new Event('change', { bubbles: true }));
-                        });
-                        suggestionEl.addEventListener('mouseenter', () => {
-                            versionSuggestionsBox.querySelectorAll('.suggestion').forEach(el => {
-                                el.classList.remove('selected');
-                            });
-                            suggestionEl.classList.add('selected');
-                        });
-                        versionSuggestionsBox.appendChild(suggestionEl);
-                    });
-
-                    versionSuggestionsBox.classList.add('show');
-                } catch (err) {
-                    console.warn('Failed to fetch version suggestions:', err);
-                    versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #6b6080; cursor: default; font-style: italic;">Could not reach NVD \u2014 enter version manually</div>';
-                }
-            }
+            let lastLoadedVersionComponent = '';
 
             componentNameInput.addEventListener('input', async function(e) {
                 const componentName = e.target.value.trim();
@@ -1378,10 +1376,6 @@
                     versionSuggestionsBox.classList.remove('show');
                     return;
                 }
-
-                // Name changed: clear version so users don't submit stale component/version pairs
-                versionInput.value = '';
-                versionSuggestionsBox.classList.remove('show');
 
                 componentSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #6b6080; cursor: default;">Loading components...</div>';
                 componentSuggestionsBox.classList.add('show');
@@ -1414,16 +1408,17 @@
                             const suggestionEl = document.createElement('div');
                             suggestionEl.className = 'suggestion';
                             suggestionEl.textContent = component;
-                            suggestionEl.addEventListener('click', async (e) => {
+                            suggestionEl.addEventListener('click', (e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 componentNameInput.value = component;
                                 componentSuggestionsBox.classList.remove('show');
-                                await loadVersionSuggestions(component);
+                                // Clear stale versions when component changes
+                                lastLoadedVersionComponent = '';
+                                versionSuggestionsBox.classList.remove('show');
                                 versionInput.focus();
                             });
                             suggestionEl.addEventListener('mouseenter', () => {
-                                // Visual feedback on hover
                                 componentSuggestionsBox.querySelectorAll('.suggestion').forEach(el => {
                                     el.classList.remove('selected');
                                 });
@@ -1441,24 +1436,82 @@
                 }, 300);  // 300ms debounce delay
             });
 
-            versionInput.addEventListener('focus', async () => {
-                const componentName = componentNameInput.value.trim();
-                if (componentName.length >= 2 && !versionInput.value.trim()) {
-                    await loadVersionSuggestions(componentName);
+            // Load version suggestions when version input is focused
+            let versionTimeout;
+
+            async function fetchAndShowVersions(componentName, prefix) {
+                const url = `/api/v1/components/${encodeURIComponent(componentName)}/versions`
+                    + (prefix ? `?prefix=${encodeURIComponent(prefix)}` : '');
+
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        versionSuggestionsBox.classList.remove('show');
+                        return;
+                    }
+
+                    const data = await response.json();
+                    const versions = data.versions || [];
+
+                    if (versions.length === 0) {
+                        versionSuggestionsBox.classList.remove('show');
+                        return;
+                    }
+
+                    versionSuggestionsBox.innerHTML = '';
+                    versions.forEach((version) => {
+                        const suggestionEl = document.createElement('div');
+                        suggestionEl.className = 'suggestion';
+                        suggestionEl.textContent = version;
+                        suggestionEl.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            versionInput.value = version;
+                            versionSuggestionsBox.classList.remove('show');
+                        });
+                        suggestionEl.addEventListener('mouseenter', () => {
+                            versionSuggestionsBox.querySelectorAll('.suggestion').forEach(el => {
+                                el.classList.remove('selected');
+                            });
+                            suggestionEl.classList.add('selected');
+                        });
+                        versionSuggestionsBox.appendChild(suggestionEl);
+                    });
+                    versionSuggestionsBox.classList.add('show');
+
+                } catch (err) {
+                    console.warn('Failed to fetch version suggestions:', err);
+                    versionSuggestionsBox.classList.remove('show');
                 }
+            }
+
+            versionInput.addEventListener('focus', async function() {
+                // Only show suggestions on focus if user already started typing
+                const componentName = componentNameInput.value.trim();
+                const typed = versionInput.value.trim();
+                if (!componentName || componentName.length < 2 || !typed) return;
+                await fetchAndShowVersions(componentName, typed);
+            });
+
+            versionInput.addEventListener('input', function() {
+                const componentName = componentNameInput.value.trim();
+                if (!componentName || componentName.length < 2) {
+                    versionSuggestionsBox.classList.remove('show');
+                    return;
+                }
+
+                clearTimeout(versionTimeout);
+                versionTimeout = setTimeout(() => {
+                    fetchAndShowVersions(componentName, versionInput.value.trim());
+                }, 200);
             });
 
             // Close suggestions when clicking outside
             document.addEventListener('click', (e) => {
-                const clickedInsideComponentSuggestions = componentSuggestionsBox.contains(e.target);
-                const clickedInsideVersionSuggestions = versionSuggestionsBox.contains(e.target);
-                const clickedOnComponentInput = e.target === componentNameInput;
-                const clickedOnVersionInput = e.target === versionInput;
-
-                if (!clickedInsideComponentSuggestions && !clickedOnComponentInput) {
+                if (!componentSuggestionsBox.contains(e.target) && e.target !== componentNameInput) {
                     componentSuggestionsBox.classList.remove('show');
                 }
-                if (!clickedInsideVersionSuggestions && !clickedOnVersionInput) {
+                if (!versionSuggestionsBox.contains(e.target) && e.target !== versionInput) {
                     versionSuggestionsBox.classList.remove('show');
                 }
             }, true);
@@ -1474,6 +1527,14 @@
             e.preventDefault();
             e.stopPropagation();
             addComponentRow();
+        });
+
+        document.getElementById('clearComponentsBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Clear all components from the list?')) {
+                document.querySelectorAll('.component-row').forEach(row => row.remove());
+                addComponentRow();
+            }
         });
 
         // Add initial component field
@@ -1512,19 +1573,28 @@
 
         if (orgNameInput) {
             let syncDebounceTimer = null;
+            // Track the last synced org name so we only replace components
+            // when the org actually changes — not on every keystroke
+            let lastSyncedOrgName = '';
+
+            async function syncIfOrgChanged() {
+                const currentName = orgNameInput.value.trim();
+                if (currentName && currentName !== lastSyncedOrgName) {
+                    lastSyncedOrgName = currentName;
+                    await syncManifestForSelectedOrg();
+                }
+            }
+
             orgNameInput.addEventListener('change', async () => {
-                await syncManifestForSelectedOrg();
+                await syncIfOrgChanged();
             });
             orgNameInput.addEventListener('blur', async () => {
-                await syncManifestForSelectedOrg();
+                await syncIfOrgChanged();
             });
-            // Clear manifest immediately as user types a new org name
             orgNameInput.addEventListener('input', () => {
-                manifestContentInput.value = '';
-                manifestFileInput.value = '';
                 clearTimeout(syncDebounceTimer);
                 syncDebounceTimer = setTimeout(async () => {
-                    await syncManifestForSelectedOrg();
+                    await syncIfOrgChanged();
                 }, 500);
             });
             // Add an empty component row on load
@@ -1772,6 +1842,7 @@
                 const stack = {};
                 const componentRows = document.querySelectorAll('.component-row');
                 const defaultedVersions = [];  // Track versions we auto-selected
+                const droppedComponents = [];  // Components skipped due to missing version
 
                 // Validation patterns (match backend)
                 // Allow dots for names like "node.js", "vue.js", "ASP.NET"
@@ -1851,17 +1922,16 @@
                                 versionInput.value = version;
                                 console.log(`  → Auto-selected version ${version} for ${name}`);
                             } else {
-                                // No versions found even with variations
-                                throw new Error(
-                                    `No versions found. Please specify "${name}" version manually ` +
-                                    `or try the full component name (e.g., "tomcat" instead of "apache-tomcat").`
-                                );
+                                // No version found — skip this component instead of failing
+                                droppedComponents.push(name);
+                                console.log(`  → Skipping "${name}": no version found in NVD`);
+                                continue;
                             }
                         } catch (err) {
-                            throw new Error(
-                                `Component "${name}" requires a version. ` +
-                                `${err.message}`
-                            );
+                            // Network/API error — skip rather than fail the whole query
+                            droppedComponents.push(name);
+                            console.warn(`  → Skipping "${name}": ${err.message}`);
+                            continue;
                         }
                     }
 
@@ -2004,7 +2074,7 @@
                 }
 
                 // Display results with notification about auto-selected versions
-                displayResults(stack, findings, org, assess.id, defaultedVersions, runStatus, orgReused);
+                displayResults(stack, findings, org, assess.id, defaultedVersions, runStatus, orgReused, droppedComponents);
 
             } catch (err) {
                 showError(err.message);
@@ -2271,12 +2341,22 @@
             applyFindingsFilters(assessmentId);
         }
 
-        function displayResults(stack, findings, org, assessmentId, defaultedVersions = [], runStatus = null, orgReused = false) {
+        function displayResults(stack, findings, org, assessmentId, defaultedVersions = [], runStatus = null, orgReused = false, droppedComponents = []) {
             // Store data for export
             window.currentAssessment = { stack, findings, org, assessmentId, orgReused };
 
             let html = `
                 <h3>Analysis Complete</h3>`;
+
+            // Show notification if components were dropped
+            if (droppedComponents && droppedComponents.length > 0) {
+                const droppedList = droppedComponents.map(c => `<strong>${escapeHtml(c)}</strong>`).join(', ');
+                html += `
+                <div style="background: #2d1f1f; border: 1px solid #6b3535; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #f0a0a0;">
+                    <strong>Skipped (no version found):</strong> ${droppedList}
+                    <div style="font-size: 12px; margin-top: 6px; color: #c08080;">These components were excluded because no version could be determined from NVD. Add a version manually and re-run to include them.</div>
+                </div>`;
+            }
 
             // Show notification if versions were auto-selected
             if (defaultedVersions && defaultedVersions.length > 0) {
@@ -2321,7 +2401,9 @@
                         <div class="stat-label">Evidence<br>Automation</div>
                     </div>
                 </div>
-                <p><strong>Organization:</strong> ${org.name} (ID: ${org.id})</p>
+                <p><strong>Organization:</strong> ${org.name} (ID: ${org.id})
+                    <button onclick="deleteOrganization('${org.id}', '${escapeHtml(org.name)}')" style="margin-left: 12px; background: #4a1c1c; color: #f0a0a0; border: 1px solid #6b3535; padding: 2px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;" title="Delete this organization and all associated data">Delete Org</button>
+                </p>
                 <p><strong>Components:</strong> ${Object.keys(stack).map(k => `${k} ${stack[k]}`).join(', ')}</p>
 
                 <div style="background: #1a2e25; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #10b981;">
@@ -2411,6 +2493,18 @@
                     <div style="display: flex; gap: 8px; margin-bottom: 10px;">
                         <button id="applyFindingsFiltersBtn" type="button" style="margin-top: 0; padding: 8px 14px; font-size: 14px;">Apply Filters</button>
                         <button id="resetFindingsFiltersBtn" type="button" class="btn-secondary" style="margin-top: 0; padding: 8px 14px; font-size: 14px;">Reset</button>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <button type="button" id="toggleFindingsBtn" onclick="(function(btn){
+                            const container = document.getElementById('findingsDashboardContainer');
+                            if (container.style.display === 'none') {
+                                container.style.display = '';
+                                btn.textContent = 'Collapse Findings';
+                            } else {
+                                container.style.display = 'none';
+                                btn.textContent = 'Expand Findings (' + (window.currentAssessment?.findings?.length || 0) + ')';
+                            }
+                        })(this)" class="btn-secondary" style="margin-top: 0; padding: 6px 12px; font-size: 13px;">Collapse Findings</button>
                     </div>
                     <div id="findingsDashboardContainer">${buildFindingsListMarkup(findings)}</div>
                 `;
@@ -2700,6 +2794,35 @@
             }
         });
 
+        // Delete organization and all associated data
+        async function deleteOrganization(orgId, orgName) {
+            if (!confirm(`Delete "${orgName}" and ALL associated data?\n\nThis will permanently remove:\n- Metadata profiles\n- Assessments\n- Findings\n- Evidence\n- Organization members\n\nThis cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/organizations/${encodeURIComponent(orgId)}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Failed to delete organization');
+                }
+
+                const result = await response.json();
+                alert(result.detail);
+
+                // Clear results and reset form
+                document.getElementById('results').classList.add('hidden');
+                document.getElementById('results').innerHTML = '';
+                document.getElementById('aiThreatModelResult').classList.add('hidden');
+                window.currentAssessment = null;
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
         // Export functions for report generation
         function exportJSON() {
             if (!window.currentAssessment) return;
@@ -2800,321 +2923,350 @@
         // =====================================================================
         // THREAT MODEL TAB
         // =====================================================================
-        let tmCyInstance = null;
-
         const tmOrgInput = document.getElementById('tmOrgName');
-        const generateTmBtn = document.getElementById('generateThreatModelBtn');
-        const exportTmPngBtn = document.getElementById('exportThreatModelPng');
-        const tmResultDiv = document.getElementById('threatModelResult');
+        const generateAiTmBtn = document.getElementById('generateAiThreatModelBtn');
+        const exportAiTmBtn = document.getElementById('exportAiThreatModelBtn');
+        const aiTmResultDiv = document.getElementById('aiThreatModelResult');
+        let lastAiThreatModel = null;
 
-        // Clear threat model input on page load
-        if (tmOrgInput) tmOrgInput.value = '';
+        // =====================================================================
+        // EDITABLE DIAGRAM
+        // =====================================================================
+        let diagramCy = null;
+        let diagramMode = 'select'; // select | edge | delete
+        let edgeSourceNode = null;
+        let diagramNodeCounter = 0;
+        let diagramBoundaryCounter = 0;
 
-        generateTmBtn.addEventListener('click', generateThreatModel);
+        const diagramSection = document.getElementById('diagramSection');
 
-        exportTmPngBtn.addEventListener('click', () => {
-            if (!tmCyInstance) return;
-            const pngData = tmCyInstance.png({ full: true, scale: 2, bg: '#1a1726' });
+        // Mode buttons
+        document.getElementById('diagramModeSelect').addEventListener('click', () => setDiagramMode('select'));
+        document.getElementById('diagramModeEdge').addEventListener('click', () => setDiagramMode('edge'));
+        document.getElementById('diagramModeDelete').addEventListener('click', () => setDiagramMode('delete'));
+
+        function setDiagramMode(mode) {
+            diagramMode = mode;
+            edgeSourceNode = null;
+            document.getElementById('diagramModeSelect').classList.toggle('active', mode === 'select');
+            document.getElementById('diagramModeEdge').classList.toggle('active', mode === 'edge');
+            document.getElementById('diagramModeDelete').classList.toggle('active', mode === 'delete');
+            if (diagramCy) {
+                diagramCy.autoungrabify(mode !== 'select');
+                diagramCy.container().style.cursor = mode === 'edge' ? 'crosshair' : mode === 'delete' ? 'not-allowed' : 'default';
+            }
+        }
+
+        // Add Node
+        document.getElementById('diagramAddNode').addEventListener('click', () => {
+            if (!diagramCy) return;
+            const name = prompt('Component name:');
+            if (!name) return;
+            const version = prompt('Version (optional):') || '';
+            diagramNodeCounter++;
+            diagramCy.add({
+                data: {
+                    id: 'user-node-' + diagramNodeCounter,
+                    label: name,
+                    nodeType: 'component',
+                    metadata: { version: version, findings_count: 0 }
+                },
+                position: { x: 300 + Math.random() * 200, y: 200 + Math.random() * 200 }
+            });
+        });
+
+        // Add Trust Boundary
+        document.getElementById('diagramAddBoundary').addEventListener('click', () => {
+            if (!diagramCy) return;
+            const name = prompt('Boundary name (e.g., "DMZ", "Internal Network"):');
+            if (!name) return;
+            diagramBoundaryCounter++;
+            diagramCy.add({
+                data: {
+                    id: 'user-boundary-' + diagramBoundaryCounter,
+                    label: name,
+                    nodeType: 'boundary'
+                }
+            });
+        });
+
+        // Edge modal
+        const edgeModal = document.getElementById('diagramEdgeModal');
+        const edgeLabelInput = document.getElementById('edgeLabel');
+        const edgeClassInput = document.getElementById('edgeClassification');
+        let pendingEdge = null;
+
+        document.getElementById('edgeModalConfirm').addEventListener('click', () => {
+            if (!pendingEdge || !diagramCy) return;
+            const edgeId = 'user-edge-' + Date.now();
+            diagramCy.add({
+                data: {
+                    id: edgeId,
+                    source: pendingEdge.source,
+                    target: pendingEdge.target,
+                    label: edgeLabelInput.value || '',
+                    classification: edgeClassInput.value
+                }
+            });
+            applyEdgeStyle(diagramCy.getElementById(edgeId));
+            edgeModal.classList.remove('visible');
+            pendingEdge = null;
+            edgeLabelInput.value = '';
+            edgeClassInput.value = 'internal';
+        });
+
+        document.getElementById('edgeModalCancel').addEventListener('click', () => {
+            edgeModal.classList.remove('visible');
+            pendingEdge = null;
+            edgeSourceNode = null;
+        });
+
+        function applyEdgeStyle(edge) {
+            const cls = edge.data('classification');
+            if (cls === 'phi') {
+                edge.style({ 'line-color': '#e06b6b', 'target-arrow-color': '#e06b6b', 'width': 3 });
+            } else if (cls === 'credentials') {
+                edge.style({ 'line-color': '#e2a04d', 'target-arrow-color': '#e2a04d', 'width': 3 });
+            } else if (cls === 'public') {
+                edge.style({ 'line-color': '#8b7faa', 'target-arrow-color': '#8b7faa', 'line-style': 'dashed' });
+            }
+        }
+
+        // Export PNG
+        document.getElementById('diagramExportPng').addEventListener('click', () => {
+            if (!diagramCy) return;
+            const pngData = diagramCy.png({ full: true, scale: 2, bg: '#1a1726' });
             const link = document.createElement('a');
             link.href = pngData;
-            const orgName = tmOrgInput.value.trim() || 'org';
-            link.download = `threat-model-${orgName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.png`;
+            const orgName = tmOrgInput.value.trim() || 'diagram';
+            link.download = `diagram-${orgName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.png`;
             link.click();
         });
 
-        async function generateThreatModel() {
-            const orgName = tmOrgInput.value.trim();
-            if (!orgName) {
-                alert('Please enter an organization name.');
-                return;
-            }
+        // Save JSON
+        document.getElementById('diagramExportJson').addEventListener('click', () => {
+            if (!diagramCy) return;
+            const data = {
+                nodes: diagramCy.nodes().map(n => ({
+                    data: n.data(),
+                    position: n.position()
+                })),
+                edges: diagramCy.edges().map(e => ({ data: e.data() }))
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            const orgName = tmOrgInput.value.trim() || 'diagram';
+            link.download = `diagram-${orgName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        });
 
-            generateTmBtn.disabled = true;
-            generateTmBtn.textContent = 'Generating...';
-            tmResultDiv.classList.remove('hidden');
-            // Show loading state without destroying child elements
-            document.getElementById('tmSummary').innerHTML = '<div style="text-align:center; color:#a78bfa; padding:40px;">Generating threat model...</div>';
-            document.getElementById('tmLegend').style.display = 'none';
-            document.getElementById('threatModelGraph').innerHTML = '';
-            document.getElementById('tmNodeDetails').innerHTML = '';
-            document.getElementById('tmNodeDetails').classList.remove('visible');
-            document.getElementById('tmStrideTable').innerHTML = '';
+        // Load JSON
+        document.getElementById('diagramImportJson').addEventListener('click', () => {
+            document.getElementById('diagramFileInput').click();
+        });
 
-            try {
-                // Look up org by name (returns a list, take first match)
-                const orgResponse = await fetch(`/api/v1/organizations?name=${encodeURIComponent(orgName)}`);
-                if (!orgResponse.ok) {
-                    throw new Error('Organization not found. Run an assessment first.');
-                }
-                const orgs = await orgResponse.json();
-                if (!Array.isArray(orgs) || orgs.length === 0) {
-                    throw new Error('Organization not found. Run an assessment first.');
-                }
-                const org = orgs[0];
-
-                // Generate threat model
-                const tmResponse = await fetch(`/api/v1/threat-model/organizations/${encodeURIComponent(org.id)}`);
-                if (!tmResponse.ok) {
-                    const err = await tmResponse.json().catch(() => ({}));
-                    throw new Error(err.detail || 'Failed to generate threat model');
-                }
-
-                const model = await tmResponse.json();
-                renderThreatModel(model);
-                exportTmPngBtn.disabled = false;
-
-            } catch (error) {
-                document.getElementById('tmSummary').innerHTML = `<div style="color: #f0abfc; padding: 20px; background: #2d1b2e; border-left: 4px solid #d946ef; border-radius: 4px;">${escapeHtml(error.message)}</div>`;
-            } finally {
-                generateTmBtn.disabled = false;
-                generateTmBtn.textContent = 'Generate Threat Model';
-            }
-        }
-
-        function renderThreatModel(model) {
-            // Render summary
-            const s = model.summary;
-            document.getElementById('tmSummary').innerHTML = `
-                <div class="tm-summary-grid">
-                    <div class="tm-stat"><div class="tm-stat-value">${s.total_components}</div><div class="tm-stat-label">Components</div></div>
-                    <div class="tm-stat"><div class="tm-stat-value">${s.trust_boundaries}</div><div class="tm-stat-label">Trust Boundaries</div></div>
-                    <div class="tm-stat"><div class="tm-stat-value">${s.data_flows}</div><div class="tm-stat-label">Data Flows</div></div>
-                    <div class="tm-stat"><div class="tm-stat-value">${s.stride_threats}</div><div class="tm-stat-label">STRIDE Threats</div></div>
-                    <div class="tm-stat"><div class="tm-stat-value">${s.findings_count}</div><div class="tm-stat-label">Findings</div></div>
-                    <div class="tm-stat"><div class="tm-stat-value">${s.has_phi ? 'Yes' : 'No'}</div><div class="tm-stat-label">PHI Exposure</div></div>
-                </div>
-            `;
-
-            document.getElementById('tmLegend').style.display = 'flex';
-            tmResultDiv.classList.remove('hidden');
-
-            // Build Cytoscape graph
-            renderCytoscapeGraph(model.graph);
-
-            // Render STRIDE table
-            renderStrideTable(model.stride_analysis);
-        }
-
-        function getNodeColor(node) {
-            if (node.type === 'boundary') return '#2d2545';
-            if (node.type === 'external') return '#60a5fa';
-            if (node.type === 'user') return '#a78bfa';
-            if (node.type === 'infrastructure') return '#6b3fa0';
-
-            const sev = (node.metadata && node.metadata.max_severity) || '';
-            if (sev === 'immediate' || sev === 'critical') return '#e06b6b';
-            if (sev === 'high') return '#e2a04d';
-            if (sev === 'medium') return '#d4b94e';
-            return '#10b981';
-        }
-
-        function getNodeShape(node) {
-            if (node.type === 'user') return 'hexagon';
-            if (node.type === 'external') return 'diamond';
-            if (node.type === 'infrastructure') return 'barrel';
-            return 'round-rectangle';
-        }
-
-        function getEdgeColor(edge) {
-            if (edge.data_classification === 'phi') return '#e06b6b';
-            if (edge.data_classification === 'credentials') return '#e2a04d';
-            if (edge.data_classification === 'public') return '#8b7faa';
-            return '#6b3fa0';
-        }
-
-        function renderCytoscapeGraph(graph) {
-            const container = document.getElementById('threatModelGraph');
-
-            // Build Cytoscape elements
-            const elements = [];
-
-            // Add nodes
-            for (const node of graph.nodes) {
-                const el = {
-                    data: {
-                        id: node.id,
-                        label: node.label,
-                        nodeType: node.type,
-                        metadata: node.metadata || {},
+        document.getElementById('diagramFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = JSON.parse(evt.target.result);
+                    diagramSection.classList.remove('hidden');
+                    initDiagramCytoscape([], []);
+                    for (const n of (data.nodes || [])) {
+                        diagramCy.add({ data: n.data, position: n.position });
                     }
-                };
-
-                if (node.parent && node.type !== 'boundary') {
-                    el.data.parent = node.parent;
+                    for (const e of (data.edges || [])) {
+                        diagramCy.add({ data: e.data });
+                        applyEdgeStyle(diagramCy.getElementById(e.data.id));
+                    }
+                } catch (err) {
+                    alert('Invalid diagram JSON file.');
                 }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        });
 
+        /**
+         * Render an AI-generated data flow diagram using Cytoscape.js.
+         *
+         * The AI threat model returns a diagram object with nodes, edges, and
+         * trust boundary names. This function:
+         *   1. Creates Cytoscape parent nodes for each trust boundary
+         *   2. Maps AI nodes into boundary groups via parent references
+         *   3. Generates unique edge IDs (AI edges don't carry IDs)
+         *   4. Validates node types against the allowed enum before rendering
+         *
+         * After rendering, all editing capabilities remain available (drag,
+         * draw edges, delete, add nodes/boundaries, export).
+         */
+        function renderAiDiagram(diagram) {
+            if (!diagram || !Array.isArray(diagram.nodes) || !Array.isArray(diagram.edges)) return;
+            diagramSection.classList.remove('hidden');
+
+            // Allowed node types — reject anything unexpected from the AI
+            const allowedTypes = new Set(['user', 'application', 'infrastructure', 'external']);
+
+            // Build boundary parent nodes from AI boundaries list
+            const boundaryNodes = (diagram.boundaries || []).map((b, i) => ({
+                id: 'boundary_' + i,
+                label: String(b),
+                type: 'boundary'
+            }));
+
+            // Map boundary names to IDs for Cytoscape parent assignment
+            const boundaryMap = {};
+            boundaryNodes.forEach(bn => { boundaryMap[bn.label] = bn.id; });
+
+            // Convert AI nodes to Cytoscape format, filtering invalid types
+            const cyNodes = diagram.nodes
+                .filter(n => n.id && n.label && allowedTypes.has(n.type))
+                .map(n => ({
+                    id: String(n.id),
+                    label: String(n.label),
+                    type: n.type,
+                    parent: boundaryMap[n.boundary] || null
+                }));
+
+            const allNodes = [...boundaryNodes, ...cyNodes];
+
+            // Build a set of valid node IDs for edge validation
+            const validNodeIds = new Set(allNodes.map(n => n.id));
+
+            // Convert AI edges, filtering out any that reference nonexistent nodes
+            const cyEdges = diagram.edges
+                .filter(e => e.source && e.target && validNodeIds.has(String(e.source)) && validNodeIds.has(String(e.target)))
+                .map((e, i) => ({
+                    id: 'edge_' + i,
+                    source: String(e.source),
+                    target: String(e.target),
+                    label: String(e.label || ''),
+                    data_classification: e.data_classification || 'internal'
+                }));
+
+            initDiagramCytoscape(allNodes, cyEdges);
+        }
+
+        function initDiagramCytoscape(nodes, edges) {
+            const container = document.getElementById('diagramContainer');
+            container.innerHTML = '';
+
+            // Map AI node types → Cytoscape selector values used in the style block.
+            // The AI returns "application" but Cytoscape styles target [nodeType="component"].
+            const typeMap = {
+                'application': 'component',
+                'user': 'user',
+                'external': 'external',
+                'infrastructure': 'infrastructure',
+                'boundary': 'boundary',
+                'component': 'component'
+            };
+
+            const elements = [];
+            for (const node of nodes) {
+                const mappedType = typeMap[node.type] || 'component';
+                const el = { data: { id: node.id, label: node.label, nodeType: mappedType, metadata: node.metadata || {} } };
+                if (node.parent && mappedType !== 'boundary') el.data.parent = node.parent;
                 elements.push(el);
             }
-
-            // Add edges
-            for (const edge of graph.edges) {
+            for (const edge of edges) {
                 elements.push({
-                    data: {
-                        id: edge.id,
-                        source: edge.source,
-                        target: edge.target,
-                        label: edge.label,
-                        classification: edge.data_classification,
-                        crossesBoundary: edge.crosses_boundary,
-                    }
+                    data: { id: edge.id, source: edge.source, target: edge.target, label: edge.label, classification: edge.data_classification }
                 });
             }
 
-            // Destroy previous instance
-            if (tmCyInstance) {
-                tmCyInstance.destroy();
-            }
+            if (diagramCy) diagramCy.destroy();
 
-            tmCyInstance = cytoscape({
+            diagramCy = cytoscape({
                 container: container,
                 elements: elements,
                 style: [
-                    // Trust boundary (compound node)
                     {
                         selector: 'node[nodeType="boundary"]',
                         style: {
-                            'background-color': '#2d2545',
-                            'background-opacity': 0.4,
-                            'border-width': 2,
-                            'border-style': 'dashed',
-                            'border-color': '#6d28d9',
-                            'label': 'data(label)',
-                            'text-valign': 'top',
-                            'text-halign': 'center',
-                            'font-size': '12px',
-                            'color': '#8b7faa',
-                            'padding': '20px',
-                            'shape': 'round-rectangle',
-                            'text-margin-y': '-8px',
+                            'background-color': '#2d2545', 'background-opacity': 0.4,
+                            'border-width': 2, 'border-style': 'dashed', 'border-color': '#6d28d9',
+                            'label': 'data(label)', 'text-valign': 'top', 'text-halign': 'center',
+                            'font-size': '12px', 'color': '#8b7faa', 'padding': '20px', 'shape': 'round-rectangle', 'text-margin-y': '-8px'
                         }
                     },
-                    // Component nodes
                     {
                         selector: 'node[nodeType="component"]',
                         style: {
-                            'label': 'data(label)',
-                            'text-valign': 'center',
-                            'text-halign': 'center',
-                            'font-size': '11px',
-                            'font-weight': 'bold',
-                            'color': '#fff',
-                            'text-outline-width': 1,
-                            'text-outline-color': '#13111a',
-                            'width': '90px',
-                            'height': '45px',
-                            'shape': 'round-rectangle',
-                            'text-wrap': 'ellipsis',
-                            'text-max-width': '80px',
+                            'label': 'data(label)', 'text-valign': 'center', 'text-halign': 'center',
+                            'font-size': '11px', 'font-weight': 'bold', 'color': '#fff',
+                            'text-outline-width': 1, 'text-outline-color': '#13111a',
+                            'width': '90px', 'height': '45px', 'shape': 'round-rectangle',
+                            'text-wrap': 'ellipsis', 'text-max-width': '80px', 'background-color': '#7c3aed'
                         }
                     },
-                    // User node
                     {
                         selector: 'node[nodeType="user"]',
                         style: {
-                            'background-color': '#a78bfa',
-                            'label': 'data(label)',
-                            'text-valign': 'center',
-                            'text-halign': 'center',
-                            'font-size': '10px',
-                            'font-weight': 'bold',
-                            'color': '#fff',
-                            'text-outline-width': 1,
-                            'text-outline-color': '#13111a',
-                            'width': '70px',
-                            'height': '70px',
-                            'shape': 'hexagon',
+                            'background-color': '#a78bfa', 'label': 'data(label)',
+                            'text-valign': 'center', 'text-halign': 'center',
+                            'font-size': '10px', 'font-weight': 'bold', 'color': '#fff',
+                            'text-outline-width': 1, 'text-outline-color': '#13111a',
+                            'width': '70px', 'height': '70px', 'shape': 'hexagon'
                         }
                     },
-                    // External nodes
                     {
                         selector: 'node[nodeType="external"]',
                         style: {
-                            'background-color': '#60a5fa',
-                            'label': 'data(label)',
-                            'text-valign': 'center',
-                            'text-halign': 'center',
-                            'font-size': '10px',
-                            'font-weight': 'bold',
-                            'color': '#fff',
-                            'text-outline-width': 1,
-                            'text-outline-color': '#13111a',
-                            'width': '80px',
-                            'height': '80px',
-                            'shape': 'diamond',
+                            'background-color': '#60a5fa', 'label': 'data(label)',
+                            'text-valign': 'center', 'text-halign': 'center',
+                            'font-size': '10px', 'font-weight': 'bold', 'color': '#fff',
+                            'text-outline-width': 1, 'text-outline-color': '#13111a',
+                            'width': '80px', 'height': '80px', 'shape': 'diamond'
                         }
                     },
-                    // Infrastructure nodes
                     {
                         selector: 'node[nodeType="infrastructure"]',
                         style: {
-                            'background-color': '#6b3fa0',
-                            'label': 'data(label)',
-                            'text-valign': 'center',
-                            'text-halign': 'center',
-                            'font-size': '10px',
-                            'font-weight': 'bold',
-                            'color': '#fff',
-                            'text-outline-width': 1,
-                            'text-outline-color': '#13111a',
-                            'width': '80px',
-                            'height': '50px',
-                            'shape': 'barrel',
+                            'background-color': '#6b3fa0', 'label': 'data(label)',
+                            'text-valign': 'center', 'text-halign': 'center',
+                            'font-size': '10px', 'font-weight': 'bold', 'color': '#fff',
+                            'text-outline-width': 1, 'text-outline-color': '#13111a',
+                            'width': '80px', 'height': '50px', 'shape': 'barrel'
                         }
                     },
-                    // Edges
                     {
                         selector: 'edge',
                         style: {
-                            'width': 2,
-                            'line-color': '#6b3fa0',
-                            'target-arrow-color': '#6b3fa0',
-                            'target-arrow-shape': 'triangle',
-                            'curve-style': 'bezier',
-                            'label': 'data(label)',
-                            'font-size': '9px',
-                            'color': '#8b7faa',
-                            'text-rotation': 'autorotate',
-                            'text-background-color': '#1a1726',
-                            'text-background-opacity': 0.9,
-                            'text-background-padding': '3px',
+                            'width': 2, 'line-color': '#6b3fa0', 'target-arrow-color': '#6b3fa0',
+                            'target-arrow-shape': 'triangle', 'curve-style': 'bezier',
+                            'label': 'data(label)', 'font-size': '9px', 'color': '#8b7faa',
+                            'text-rotation': 'autorotate', 'text-background-color': '#1a1726',
+                            'text-background-opacity': 0.9, 'text-background-padding': '3px'
                         }
                     },
-                    // PHI data flow edges (red)
                     {
                         selector: 'edge[classification="phi"]',
-                        style: {
-                            'line-color': '#e06b6b',
-                            'target-arrow-color': '#e06b6b',
-                            'width': 3,
-                        }
+                        style: { 'line-color': '#e06b6b', 'target-arrow-color': '#e06b6b', 'width': 3 }
                     },
-                    // Public data edges (gray)
+                    {
+                        selector: 'edge[classification="credentials"]',
+                        style: { 'line-color': '#e2a04d', 'target-arrow-color': '#e2a04d', 'width': 3 }
+                    },
                     {
                         selector: 'edge[classification="public"]',
-                        style: {
-                            'line-color': '#8b7faa',
-                            'target-arrow-color': '#8b7faa',
-                            'line-style': 'dashed',
-                        }
-                    },
+                        style: { 'line-color': '#8b7faa', 'target-arrow-color': '#8b7faa', 'line-style': 'dashed' }
+                    }
                 ],
-                layout: {
-                    name: 'cose',
-                    animate: true,
-                    animationDuration: 800,
-                    nodeRepulsion: function() { return 8000; },
-                    idealEdgeLength: function() { return 120; },
-                    edgeElasticity: function() { return 100; },
-                    gravity: 0.25,
-                    padding: 40,
-                    componentSpacing: 60,
-                },
-                minZoom: 0.3,
-                maxZoom: 3,
+                layout: elements.length > 0 ? {
+                    name: 'cose', animate: true, animationDuration: 800,
+                    nodeRepulsion: function() { return 8000; }, idealEdgeLength: function() { return 120; },
+                    edgeElasticity: function() { return 100; }, gravity: 0.25, padding: 40, componentSpacing: 60
+                } : { name: 'preset' },
+                minZoom: 0.3, maxZoom: 3
             });
 
-            // Apply dynamic colors to component nodes after init
-            tmCyInstance.nodes('[nodeType="component"]').forEach(function(node) {
+            // Apply severity colors to component nodes
+            diagramCy.nodes('[nodeType="component"]').forEach(function(node) {
                 const meta = node.data('metadata') || {};
                 const sev = meta.max_severity || '';
                 let color = '#10b981';
@@ -3124,13 +3276,43 @@
                 node.style('background-color', color);
             });
 
-            // Click handler for node details
-            tmCyInstance.on('tap', 'node', function(evt) {
-                const node = evt.target;
-                if (node.data('nodeType') === 'boundary') return;
+            // Apply edge styles for loaded data
+            diagramCy.edges().forEach(e => applyEdgeStyle(e));
 
+            // Tap handler — mode-dependent
+            diagramCy.on('tap', 'node', function(evt) {
+                const node = evt.target;
+                if (node.data('nodeType') === 'boundary' && diagramMode !== 'delete') return;
+
+                if (diagramMode === 'delete') {
+                    if (confirm(`Delete "${node.data('label')}"?`)) {
+                        node.connectedEdges().remove();
+                        node.remove();
+                    }
+                    return;
+                }
+
+                if (diagramMode === 'edge') {
+                    if (!edgeSourceNode) {
+                        edgeSourceNode = node.id();
+                        node.style('border-width', 3);
+                        node.style('border-color', '#a78bfa');
+                    } else if (edgeSourceNode !== node.id()) {
+                        pendingEdge = { source: edgeSourceNode, target: node.id() };
+                        edgeLabelInput.value = '';
+                        edgeClassInput.value = 'internal';
+                        edgeModal.classList.add('visible');
+                        // Reset source highlight
+                        const srcNode = diagramCy.getElementById(edgeSourceNode);
+                        if (srcNode) { srcNode.style('border-width', 0); }
+                        edgeSourceNode = null;
+                    }
+                    return;
+                }
+
+                // Select mode — show details
                 const meta = node.data('metadata') || {};
-                const detailsDiv = document.getElementById('tmNodeDetails');
+                const detailsDiv = document.getElementById('diagramNodeDetails');
                 detailsDiv.classList.add('visible');
                 detailsDiv.innerHTML = `
                     <h4 style="margin: 0 0 8px 0; color: #c9b8e8;">${escapeHtml(node.data('label'))}</h4>
@@ -3139,61 +3321,276 @@
                         ${meta.version ? `<div><strong>Version:</strong> ${escapeHtml(meta.version)}</div>` : ''}
                         <div><strong>Findings:</strong> ${meta.findings_count || 0}</div>
                         ${meta.max_severity ? `<div><strong>Max Severity:</strong> <span class="cvss-score ${meta.max_severity}">${escapeHtml(meta.max_severity)}</span></div>` : ''}
-                        <div><strong>PHI Exposure:</strong> ${meta.phi_exposure ? 'Yes' : 'No'}</div>
-                    </div>
-                `;
+                    </div>`;
             });
 
-            // Click on background to hide details
-            tmCyInstance.on('tap', function(evt) {
-                if (evt.target === tmCyInstance) {
-                    document.getElementById('tmNodeDetails').classList.remove('visible');
+            // Tap edge — delete mode
+            diagramCy.on('tap', 'edge', function(evt) {
+                if (diagramMode === 'delete') {
+                    const edge = evt.target;
+                    if (confirm(`Delete edge "${edge.data('label') || '(unlabeled)'}"?`)) {
+                        edge.remove();
+                    }
                 }
             });
+
+            // Background tap — hide details
+            diagramCy.on('tap', function(evt) {
+                if (evt.target === diagramCy) {
+                    document.getElementById('diagramNodeDetails').classList.remove('visible');
+                    if (edgeSourceNode) {
+                        const srcNode = diagramCy.getElementById(edgeSourceNode);
+                        if (srcNode) { srcNode.style('border-width', 0); }
+                        edgeSourceNode = null;
+                    }
+                }
+            });
+
+            setDiagramMode('select');
         }
 
-        function renderStrideTable(strideAnalysis) {
-            const container = document.getElementById('tmStrideTable');
-            if (!strideAnalysis || strideAnalysis.length === 0) {
-                container.innerHTML = '<p style="color: #8b7faa;">No STRIDE threats identified.</p>';
-                return;
-            }
+        // Clear threat model input on page load
+        if (tmOrgInput) tmOrgInput.value = '';
 
-            let html = `<table class="stride-table">
-                <thead>
-                    <tr>
-                        <th>Category</th>
-                        <th>Description</th>
-                        <th>Severity</th>
-                        <th>MITRE Techniques</th>
-                    </tr>
-                </thead>
-                <tbody>`;
+        generateAiTmBtn.addEventListener('click', generateAiThreatModel);
+        exportAiTmBtn.addEventListener('click', exportAiThreatModel);
 
-            for (const category of strideAnalysis) {
-                const badgeClass = category.category.toLowerCase().replace(/ /g, '-');
+        async function generateAiThreatModel() {
+            const orgName = tmOrgInput.value.trim();
+            if (!orgName) { alert('Please enter an organization name.'); return; }
 
-                if (category.threats.length === 0) {
-                    html += `<tr>
-                        <td><span class="stride-category-badge ${badgeClass}">${escapeHtml(category.category)}</span></td>
-                        <td colspan="3" style="color: #8b7faa;">No threats identified</td>
-                    </tr>`;
-                    continue;
+            generateAiTmBtn.disabled = true;
+            generateAiTmBtn.textContent = 'Generating (this takes ~2 min)...';
+            aiTmResultDiv.classList.remove('hidden');
+            document.getElementById('aiTmContent').innerHTML = '<div style="text-align:center; color:#a78bfa; padding:40px;">Generating AI threat model... this may take 1-2 minutes.</div>';
+
+            try {
+                const orgResponse = await fetch(`/api/v1/organizations?name=${encodeURIComponent(orgName)}`);
+                if (!orgResponse.ok) throw new Error('Organization not found.');
+                const orgs = await orgResponse.json();
+                if (!Array.isArray(orgs) || orgs.length === 0) throw new Error('Organization not found.');
+                const org = orgs[0];
+
+                const forceRegen = document.getElementById('forceRegenerate').checked;
+                const aiTmUrl = `/api/v1/threat-model/ai/organizations/${encodeURIComponent(org.id)}${forceRegen ? '?force=true' : ''}`;
+                const tmResponse = await fetch(aiTmUrl);
+                if (!tmResponse.ok) {
+                    const err = await tmResponse.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Failed to generate AI threat model');
                 }
 
-                for (const threat of category.threats) {
-                    html += `<tr>
-                        <td><span class="stride-category-badge ${badgeClass}">${escapeHtml(category.category)}</span></td>
-                        <td>${escapeHtml(threat.description)}</td>
-                        <td><span class="cvss-score ${threat.severity}">${escapeHtml(threat.severity)}</span></td>
-                        <td style="font-size: 11px;">${threat.mitre_techniques.map(t => escapeHtml(t)).join('<br>') || '<span style="color:#8b7faa;">None</span>'}</td>
-                    </tr>`;
-                }
+                const model = await tmResponse.json();
+                lastAiThreatModel = model;
+                renderAiThreatModel(model);
+                if (model.diagram) { renderAiDiagram(model.diagram); }
+                exportAiTmBtn.disabled = false;
+            } catch (error) {
+                document.getElementById('aiTmContent').innerHTML = `<div style="color: #f0abfc; padding: 20px; background: #2d1b2e; border-left: 4px solid #d946ef; border-radius: 4px;">${escapeHtml(error.message)}</div>`;
+            } finally {
+                generateAiTmBtn.disabled = false;
+                generateAiTmBtn.textContent = 'AI Threat Model';
             }
-
-            html += '</tbody></table>';
-            container.innerHTML = html;
         }
+
+        function renderAiThreatModel(model) {
+            let html = '';
+
+            // Cache indicator
+            if (model._cached) {
+                html += '<div style="display:inline-flex; align-items:center; gap:6px; background:#1a2332; border:1px solid #2d4a5e; color:#7dd3fc; padding:4px 12px; border-radius:12px; font-size:12px; margin-bottom:12px;">Served from cache <span style="color:#4a6a7e;">—</span> check Force regenerate to refresh</div>';
+            }
+
+            // Executive Summary
+            html += `<div class="ai-tm-section"><h3>Executive Summary</h3><div class="ai-tm-exec-summary">${escapeHtml(model.executive_summary)}</div></div>`;
+
+            // STRIDE Analysis
+            html += `<div class="ai-tm-section"><h3>STRIDE Threat Analysis (${model.stride_analysis.length} threats)</h3>`;
+            html += '<table class="stride-table"><thead><tr><th>Category</th><th>Threat</th><th>Component</th><th>Severity</th><th>Mitigation</th></tr></thead><tbody>';
+            for (const t of model.stride_analysis) {
+                html += `<tr><td>${escapeHtml(t.category)}</td><td>${escapeHtml(t.threat)}</td><td>${escapeHtml(t.affected_component)}</td><td><span class="ai-tm-severity ${t.severity}">${t.severity}</span></td><td>${escapeHtml(t.mitigation)}</td></tr>`;
+            }
+            html += '</tbody></table></div>';
+
+            // Dependency Finding
+            const dep = model.dependency_finding;
+            html += `<div class="ai-tm-section"><h3>Dependency Vulnerabilities</h3>`;
+            html += `<div class="ai-tm-exec-summary" style="border-left-color: #e2a04d; margin-bottom: 12px;"><strong>${dep.affected_count} affected components</strong> (highest: <span class="ai-tm-severity ${dep.highest_severity}">${dep.highest_severity}</span>)<br>${escapeHtml(dep.summary)}</div>`;
+            if (dep.details && dep.details.length) {
+                html += '<table class="stride-table"><thead><tr><th>Component</th><th>Version</th><th>CVEs</th><th>Fix?</th><th>Action</th></tr></thead><tbody>';
+                for (const d of dep.details) {
+                    html += `<tr><td>${escapeHtml(d.component)}</td><td>${escapeHtml(d.current_version)}</td><td>${d.cve_ids.map(c => escapeHtml(c)).join(', ')}</td><td>${d.fix_available ? 'Yes' : 'No'}</td><td>${escapeHtml(d.action)}</td></tr>`;
+                }
+                html += '</tbody></table>';
+            }
+            html += '</div>';
+
+            // Compound Risks
+            if (model.compound_risks && model.compound_risks.length) {
+                html += `<div class="ai-tm-section"><h3>Compound Risks (${model.compound_risks.length})</h3>`;
+                for (const cr of model.compound_risks) {
+                    html += `<div class="ai-tm-compound"><h4>${escapeHtml(cr.vulnerability)} + ${escapeHtml(cr.architectural_threat)}</h4><p style="color:#e0d6f2;">${escapeHtml(cr.escalation)}</p><p style="margin-top:8px;"><span class="ai-tm-severity ${cr.adjusted_severity}">${cr.adjusted_severity}</span> <span style="color:#8b7faa; margin-left:8px;">Mitigation:</span> ${escapeHtml(cr.mitigation)}</p></div>`;
+                }
+                html += '</div>';
+            }
+
+            // Remediation Roadmap
+            html += `<div class="ai-tm-section"><h3>Remediation Roadmap</h3>`;
+            for (const r of model.remediation_roadmap) {
+                html += `<div class="ai-tm-roadmap-item"><div class="ai-tm-priority">${r.priority}</div><div class="ai-tm-roadmap-text"><strong>${escapeHtml(r.action)}</strong><p>${escapeHtml(r.rationale)}</p></div></div>`;
+            }
+            html += '</div>';
+
+            // Metadata
+            if (model.metadata) {
+                const m = model.metadata;
+                html += `<div class="ai-tm-meta"><span>Model: ${escapeHtml(m.model || '')}</span><span>Findings analyzed: ${m.findings_analyzed || 0}</span><span>Components: ${m.components_analyzed || 0}</span></div>`;
+            }
+
+            document.getElementById('aiTmContent').innerHTML = html;
+        }
+
+        function exportAiThreatModel() {
+            if (!lastAiThreatModel) return;
+            const m = lastAiThreatModel;
+            const orgName = tmOrgInput.value.trim() || 'organization';
+            const date = new Date().toISOString().split('T')[0];
+            const lines = [];
+            const sep = '='.repeat(80);
+            const subsep = '-'.repeat(80);
+
+            lines.push(sep);
+            lines.push(`AI THREAT MODEL REPORT — ${orgName.toUpperCase()}`);
+            lines.push(`Generated: ${date}`);
+            if (m.metadata) {
+                lines.push(`Model: ${m.metadata.model || 'N/A'}  |  Findings analyzed: ${m.metadata.findings_analyzed || 0}  |  Components: ${m.metadata.components_analyzed || 0}`);
+            }
+            lines.push(sep);
+
+            // Executive Summary
+            lines.push('');
+            lines.push('EXECUTIVE SUMMARY');
+            lines.push(subsep);
+            lines.push(m.executive_summary);
+
+            // STRIDE — sorted by severity
+            const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+            const sortedStride = [...m.stride_analysis].sort((a, b) => (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4));
+
+            lines.push('');
+            lines.push(`STRIDE THREAT ANALYSIS (${sortedStride.length} threats, sorted by severity)`);
+            lines.push(subsep);
+
+            for (let i = 0; i < sortedStride.length; i++) {
+                const t = sortedStride[i];
+                lines.push(`${i + 1}. [${t.severity}] ${t.category}`);
+                lines.push(`   Threat:    ${t.threat}`);
+                lines.push(`   Component: ${t.affected_component}`);
+                lines.push(`   Mitigation: ${t.mitigation}`);
+                lines.push('');
+            }
+
+            // Dependency Finding
+            const dep = m.dependency_finding;
+            lines.push('DEPENDENCY VULNERABILITIES');
+            lines.push(subsep);
+            lines.push(`Affected components: ${dep.affected_count}  |  Highest severity: ${dep.highest_severity}`);
+            lines.push(`Summary: ${dep.summary}`);
+            lines.push(`Remediation: ${dep.remediation}`);
+            if (dep.details && dep.details.length) {
+                lines.push('');
+                for (const d of dep.details) {
+                    lines.push(`  - ${d.component} ${d.current_version}  |  CVEs: ${d.cve_ids.join(', ')}  |  Fix: ${d.fix_available ? 'Yes' : 'No'}`);
+                    lines.push(`    Action: ${d.action}`);
+                }
+            }
+
+            // Compound Risks
+            if (m.compound_risks && m.compound_risks.length) {
+                lines.push('');
+                lines.push(`COMPOUND RISKS (${m.compound_risks.length})`);
+                lines.push(subsep);
+                for (const cr of m.compound_risks) {
+                    lines.push(`  [${cr.adjusted_severity}] ${cr.vulnerability} + ${cr.architectural_threat}`);
+                    lines.push(`    ${cr.escalation}`);
+                    lines.push(`    Mitigation: ${cr.mitigation}`);
+                    lines.push('');
+                }
+            }
+
+            // Remediation Roadmap
+            lines.push('REMEDIATION ROADMAP');
+            lines.push(subsep);
+            for (const r of m.remediation_roadmap) {
+                lines.push(`  ${r.priority}. ${r.action}`);
+                lines.push(`     Rationale: ${r.rationale}`);
+            }
+
+            // Data Flow Diagram as Mermaid
+            if (m.diagram && m.diagram.nodes && m.diagram.edges) {
+                lines.push('');
+                lines.push('DATA FLOW DIAGRAM (Mermaid)');
+                lines.push(subsep);
+                lines.push('Paste this into any Mermaid renderer (e.g., mermaid.live) to view the diagram.');
+                lines.push('');
+                lines.push('```mermaid');
+                lines.push('graph LR');
+
+                // Group nodes into subgraphs by boundary
+                const boundaryGroups = {};
+                const unbounded = [];
+                for (const node of m.diagram.nodes) {
+                    if (node.boundary) {
+                        if (!boundaryGroups[node.boundary]) boundaryGroups[node.boundary] = [];
+                        boundaryGroups[node.boundary].push(node);
+                    } else {
+                        unbounded.push(node);
+                    }
+                }
+
+                // Render subgraphs for each trust boundary
+                for (const [boundary, nodes] of Object.entries(boundaryGroups)) {
+                    lines.push(`    subgraph ${boundary.replace(/"/g, "'")}`);
+                    for (const node of nodes) {
+                        const shape = node.type === 'infrastructure' ? `[("${node.label}")]`
+                            : node.type === 'external' ? `{"${node.label}"}`
+                            : node.type === 'user' ? `(("${node.label}"))`
+                            : `["${node.label}"]`;
+                        lines.push(`        ${node.id}${shape}`);
+                    }
+                    lines.push('    end');
+                }
+
+                // Render unbounded nodes
+                for (const node of unbounded) {
+                    lines.push(`    ${node.id}["${node.label}"]`);
+                }
+
+                // Render edges with labels and data classification markers
+                for (const edge of m.diagram.edges) {
+                    const classMarker = edge.data_classification === 'phi' ? ' ⚠PHI'
+                        : edge.data_classification === 'credentials' ? ' 🔑'
+                        : '';
+                    const label = (edge.label || '') + classMarker;
+                    lines.push(`    ${edge.source} -->|${label}| ${edge.target}`);
+                }
+
+                lines.push('```');
+            }
+
+            lines.push('');
+            lines.push(sep);
+            lines.push('END OF REPORT');
+            lines.push(sep);
+
+            const text = lines.join('\n');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `threat-model-${orgName.replace(/\s+/g, '-')}-${date}.txt`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
     </script>
 </body>
 </html>

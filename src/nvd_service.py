@@ -28,7 +28,7 @@ class CVEResult(TypedDict):
 
 
 # Configuration constants
-CACHE_TTL_HOURS = 24
+CACHE_TTL_HOURS = 0  # Disabled during development; re-enable with Redis in production
 DEFAULT_MAX_RESULTS = 10
 VERSION_SEARCH_MAX_RESULTS = 100
 REQUEST_TIMEOUT_SECONDS = 30
@@ -48,6 +48,7 @@ class NVDService:
     """Service for querying NVD API for CVE information."""
 
     BASE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+    CPE_URL = "https://services.nvd.nist.gov/rest/json/cpes/2.0"
 
     def __init__(
         self, api_key: str | None = None, max_retries: int = RATE_LIMIT_RETRY_ATTEMPTS
@@ -68,19 +69,22 @@ class NVDService:
         self._cache: dict[str, tuple[list[CVEResult] | list[str], datetime]] = {}
         self._cache_ttl = timedelta(hours=CACHE_TTL_HOURS)
 
-    def _request_with_retry(self, params: dict[str, str | int]) -> dict[str, Any]:
+    def _request_with_retry(
+        self, params: dict[str, str | int], *, url: str | None = None
+    ) -> dict[str, Any]:
         """Make an NVD API request with retry on rate limit (429).
 
         Retries up to self.max_retries times with backoff.
         Raises NVDApiError on persistent failure so callers can handle it.
         """
+        base = url or self.BASE_URL
         last_error: Exception | None = None
         attempts = max(self.max_retries, 1)
 
         for attempt in range(attempts):
             try:
                 response = requests.get(
-                    self.BASE_URL,
+                    base,
                     params=params,
                     headers=self.headers,
                     timeout=REQUEST_TIMEOUT_SECONDS,
@@ -89,8 +93,10 @@ class NVDService:
                 if response.status_code == 429:
                     wait = RATE_LIMIT_BACKOFF_SECONDS * (attempt + 1)
                     logger.warning(
-                        f"NVD rate limit hit (attempt {attempt + 1}/{attempts}), "
-                        f"retrying in {wait}s"
+                        "NVD rate limit hit (attempt %d/%d), retrying in %ds",
+                        attempt + 1,
+                        attempts,
+                        wait,
                     )
                     time.sleep(wait)
                     continue
@@ -101,21 +107,268 @@ class NVDService:
             except requests.exceptions.RequestException as e:
                 last_error = e
                 logger.warning(
-                    f"NVD API request failed (attempt {attempt + 1}/{attempts}): {e}"
+                    "NVD API request failed (attempt %d/%d): %s",
+                    attempt + 1,
+                    attempts,
+                    e,
                 )
                 if attempt < attempts - 1:
                     time.sleep(RATE_LIMIT_BACKOFF_SECONDS)
 
         raise NVDApiError(f"NVD API failed after {attempts} attempts: {last_error}")
 
+    # Common CPE naming mismatches: user-friendly names → NVD vendor:product.
+    # NVD virtualMatchString does NOT support wildcard vendors, so we must
+    # map common names to their exact NVD vendor:product pairs.
+    _CPE_ALIASES: dict[str, list[tuple[str, str, str]]] = {
+        # Operating systems
+        "ubuntu": [("o", "canonical", "ubuntu_linux")],
+        "debian": [("o", "debian", "debian_linux")],
+        "centos": [("o", "centos", "centos")],
+        "rhel": [("o", "redhat", "enterprise_linux")],
+        "red hat": [("o", "redhat", "enterprise_linux")],
+        "windows": [
+            ("o", "microsoft", "windows_10"),
+            ("o", "microsoft", "windows_11"),
+            ("o", "microsoft", "windows_server_2022"),
+        ],
+        "macos": [("o", "apple", "macos")],
+        "linux": [("o", "linux", "linux_kernel")],
+        # Languages / runtimes
+        "python": [("a", "python", "python")],
+        "php": [("a", "php", "php")],
+        "ruby": [("a", "ruby", "ruby")],
+        "perl": [("a", "perl", "perl")],
+        "go": [("a", "golang", "go")],
+        "golang": [("a", "golang", "go")],
+        "rust": [("a", "rust-lang", "rust")],
+        "java": [("a", "oracle", "jdk"), ("a", "oracle", "jre")],
+        "openjdk": [("a", "oracle", "openjdk")],
+        "node": [("a", "nodejs", "node.js")],
+        "nodejs": [("a", "nodejs", "node.js")],
+        "node.js": [("a", "nodejs", "node.js")],
+        # Databases
+        "postgresql": [("a", "postgresql", "postgresql")],
+        "postgres": [("a", "postgresql", "postgresql")],
+        "mysql": [("a", "oracle", "mysql")],
+        "mariadb": [("a", "mariadb", "mariadb")],
+        "sqlite": [("a", "sqlite", "sqlite")],
+        "redis": [("a", "redis", "redis")],
+        "mongodb": [("a", "mongodb", "mongodb")],
+        # Web servers / frameworks
+        "nginx": [("a", "f5", "nginx")],
+        "apache": [("a", "apache", "http_server")],
+        "httpd": [("a", "apache", "http_server")],
+        "tomcat": [("a", "apache", "tomcat")],
+        "django": [("a", "djangoproject", "django")],
+        "flask": [("a", "palletsprojects", "flask")],
+        "rails": [("a", "rubyonrails", "rails")],
+        "spring": [("a", "vmware", "spring_framework")],
+        "express": [("a", "expressjs", "express")],
+        # Other common software
+        "openssl": [("a", "openssl", "openssl")],
+        "curl": [("a", "haxx", "curl")],
+        "git": [("a", "git-scm", "git")],
+        "docker": [("a", "docker", "docker")],
+        "kubernetes": [("a", "kubernetes", "kubernetes")],
+        "wordpress": [("a", "wordpress", "wordpress")],
+        "jquery": [("a", "jquery", "jquery")],
+        "react": [("a", "facebook", "react")],
+        "angular": [("a", "google", "angular")],
+        "vue": [("a", "vuejs", "vue.js")],
+        "vue.js": [("a", "vuejs", "vue.js")],
+    }
+
+    @staticmethod
+    def _parse_cve_to_result(cve: dict[str, Any]) -> CVEResult:
+        """Parse a single NVD CVE dict into a CVEResult."""
+        descriptions = cve.get("descriptions", [])
+        description = descriptions[0].get("value", "") if descriptions else ""
+
+        metrics = cve.get("metrics", {})
+        cvss_score: float | None = None
+        cvss_severity: str | None = None
+        for metric_ver in ["cvssMetricV31", "cvssMetricV30", "cvssMetricV2"]:
+            if metric_ver in metrics and metrics[metric_ver]:
+                cvss_data = metrics[metric_ver][0].get("cvssData", {})
+                cvss_score = cvss_data.get("baseScore")
+                cvss_severity = cvss_data.get("baseSeverity", "").lower()
+                break
+
+        cwe_ids: list[str] = []
+        for weakness in cve.get("weaknesses", []):
+            for desc in weakness.get("description", []):
+                cwe_value = desc.get("value", "")
+                if cwe_value.startswith("CWE-"):
+                    cwe_ids.append(cwe_value)
+
+        return CVEResult(
+            cve_id=cve.get("id", ""),
+            description=description,
+            cvss_score=cvss_score,
+            cvss_severity=cvss_severity,
+            cwe_ids=list(set(cwe_ids)),
+            published_date=cve.get("published", ""),
+        )
+
+    @staticmethod
+    def _version_candidates(version: str) -> list[str]:
+        """Generate version strings to try against NVD CPE entries."""
+        candidates = [version]
+        if version.count(".") == 1:
+            candidates.append(f"{version}.0")
+        elif version.count(".") == 0 and version.replace(".", "").isdigit():
+            candidates.append(f"{version}.0.0")
+        return candidates
+
+    def _search_by_cpe(
+        self, component: str, version: str, max_results: int
+    ) -> list[CVEResult]:
+        """Search NVD for CVEs matching a specific component and version via CPE."""
+        ver_candidates = self._version_candidates(version)
+        comp_lower = component.lower()
+        # Default: try vendor=product (most common NVD pattern), then wildcard
+        cpe_candidates = self._CPE_ALIASES.get(
+            comp_lower, [("a", comp_lower, comp_lower), ("a", "*", comp_lower)]
+        )
+
+        cache_key = f"cpe:{comp_lower}:{version}:{max_results}"
+        if cache_key in self._cache:
+            cached_data, cached_time = self._cache[cache_key]
+            if datetime.now(UTC) - cached_time < self._cache_ttl:
+                logger.info("CPE cache hit for %s %s", component, version)
+                return cached_data  # type: ignore[return-value]
+
+        for cpe_type, cpe_vendor, cpe_product in cpe_candidates:
+            for ver_candidate in ver_candidates:
+                cpe_match = f"cpe:2.3:{cpe_type}:{cpe_vendor}:{cpe_product}:{ver_candidate}:*:*:*:*:*:*:*"
+                params: dict[str, str | int] = {
+                    "virtualMatchString": cpe_match,
+                    "resultsPerPage": max_results,
+                }
+
+                try:
+                    data = self._request_with_retry(params)
+                except NVDApiError:
+                    continue
+
+                vulnerabilities = data.get("vulnerabilities", [])
+                if not vulnerabilities:
+                    continue
+
+                results = [
+                    self._parse_cve_to_result(vuln.get("cve", {}))
+                    for vuln in vulnerabilities
+                ]
+                self._cache[cache_key] = (results, datetime.now(UTC))
+                logger.info(
+                    "CPE search found %d CVEs for %s %s",
+                    len(results),
+                    component,
+                    ver_candidate,
+                )
+                return results
+
+        logger.info(
+            "No CPE results for %s %s, falling back to keyword",
+            component,
+            version,
+        )
+        return []
+
+    def _cve_affects_version(
+        self, cve_data: dict[str, Any], component: str, user_version: str
+    ) -> bool:
+        """Check if a CVE affects a specific component version.
+
+        Inspects CPE match entries for the component and checks whether
+        the user's version falls within any affected range.
+
+        Args:
+            cve_data: Raw CVE object from NVD API
+            component: Component name (lowercase)
+            user_version: User-specified version string
+
+        Returns:
+            True if the CVE affects the given version (or cannot be determined)
+        """
+        user_parts = self._parse_version(user_version)
+        configurations = cve_data.get("configurations", [])
+
+        # If no configuration data, assume it could affect any version
+        if not configurations:
+            return True
+
+        for config in configurations:
+            for node in config.get("nodes", []):
+                for match in node.get("cpeMatch", []):
+                    cpe = match.get("criteria", "")
+                    parts = cpe.split(":")
+                    if len(parts) < 6:
+                        continue
+
+                    # Only check CPE entries for this component
+                    cpe_product = parts[4].lower()
+                    if cpe_product != component:
+                        continue
+
+                    # Check exact version match in CPE URI
+                    cpe_version = parts[5]
+                    if cpe_version not in ("*", "-", ""):
+                        if self._parse_version(cpe_version) == user_parts:
+                            return True
+
+                    # Check version ranges
+                    v_start_inc = match.get("versionStartIncluding")
+                    v_start_exc = match.get("versionStartExcluding")
+                    v_end_inc = match.get("versionEndIncluding")
+                    v_end_exc = match.get("versionEndExcluding")
+
+                    # If no range constraints at all and wildcard version,
+                    # this CPE matches all versions of the product
+                    if cpe_version in ("*", "-") and not any(
+                        [v_start_inc, v_start_exc, v_end_inc, v_end_exc]
+                    ):
+                        return True
+
+                    # Check if user version falls within the range
+                    in_range = True
+                    if v_start_inc:
+                        in_range = in_range and user_parts >= self._parse_version(
+                            v_start_inc
+                        )
+                    if v_start_exc:
+                        in_range = in_range and user_parts > self._parse_version(
+                            v_start_exc
+                        )
+                    if v_end_inc:
+                        in_range = in_range and user_parts <= self._parse_version(
+                            v_end_inc
+                        )
+                    if v_end_exc:
+                        in_range = in_range and user_parts < self._parse_version(
+                            v_end_exc
+                        )
+
+                    if in_range and any(
+                        [v_start_inc, v_start_exc, v_end_inc, v_end_exc]
+                    ):
+                        return True
+
+        return False
+
     def search_cves_by_keyword(
-        self, keyword: str, max_results: int = DEFAULT_MAX_RESULTS
+        self,
+        keyword: str,
+        max_results: int = DEFAULT_MAX_RESULTS,
+        version: str | None = None,
     ) -> list[CVEResult]:
         """Search for CVEs by keyword (e.g., product name).
 
         Args:
             keyword: Search term (e.g., "postgresql", "nginx")
             max_results: Maximum number of results to return
+            version: If provided, filter results to CVEs affecting this version
 
         Returns:
             List of CVE dictionaries with id, description, cvss, cwe
@@ -123,18 +376,28 @@ class NVDService:
         Raises:
             NVDApiError: If the NVD API is unreachable after retries.
         """
-        cache_key = f"keyword:{keyword}:{max_results}"
+        # When a version is provided, use NVD's virtualMatchString API to
+        # search for CVEs by CPE, which targets the exact product+version.
+        # Falls back to keyword search if no CPE results are found.
+        if version:
+            cpe_results = self._search_by_cpe(keyword, version, max_results)
+            if cpe_results:
+                return cpe_results
+
+        fetch_count = max_results
+        cache_key = f"keyword:{keyword}:{fetch_count}"
 
         # Check cache
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
             if datetime.now(UTC) - cached_time < self._cache_ttl:
-                logger.info(f"Cache hit for keyword: {keyword}")
-                return cached_data  # type: ignore[return-value]
+                logger.info("Cache hit for keyword: %s", keyword)
+                cached_results: list[CVEResult] = cached_data[0]  # type: ignore[assignment]
+                return cached_results[:max_results]
 
         params: dict[str, str | int] = {
             "keywordSearch": keyword,
-            "resultsPerPage": max_results,
+            "resultsPerPage": fetch_count,
         }
 
         # Let NVDApiError propagate so callers know the API failed
@@ -142,6 +405,7 @@ class NVDService:
         vulnerabilities = data.get("vulnerabilities", [])
 
         results: list[CVEResult] = []
+        raw_cve_data: list[dict[str, Any]] = []
         for vuln in vulnerabilities:
             cve = vuln.get("cve", {})
             cve_id = cve.get("id", "")
@@ -158,9 +422,9 @@ class NVDService:
             cvss_severity: str | None = None
 
             # Try CVSS v3.1 first, then v3.0, then v2.0
-            for version in ["cvssMetricV31", "cvssMetricV30", "cvssMetricV2"]:
-                if version in metrics and metrics[version]:
-                    cvss_data = metrics[version][0].get("cvssData", {})
+            for metric_ver in ["cvssMetricV31", "cvssMetricV30", "cvssMetricV2"]:
+                if metric_ver in metrics and metrics[metric_ver]:
+                    cvss_data = metrics[metric_ver][0].get("cvssData", {})
                     cvss_score = cvss_data.get("baseScore")
                     cvss_severity = cvss_data.get("baseSeverity", "").lower()
                     break
@@ -184,11 +448,42 @@ class NVDService:
                     published_date=cve.get("published", ""),
                 )
             )
+            raw_cve_data.append(cve)
 
-        # Only cache successful results (never cache failures)
-        self._cache[cache_key] = (results, datetime.now(UTC))
-        logger.info(f"Fetched {len(results)} CVEs for keyword: {keyword}")
-        return results
+        # Cache both parsed results and raw data for version filtering
+        self._cache[cache_key] = ((results, raw_cve_data), datetime.now(UTC))
+        logger.info("Fetched %d CVEs for keyword: %s", len(results), keyword)
+
+        if version:
+            return self._filter_cves_by_version(
+                results, raw_cve_data, keyword, version, max_results
+            )
+        return results[:max_results]
+
+    def _filter_cves_by_version(
+        self,
+        results: list[CVEResult],
+        raw_cve_data: list[dict[str, Any]],
+        component: str,
+        version: str,
+        max_results: int,
+    ) -> list[CVEResult]:
+        """Filter CVE results to only those affecting the specified version."""
+        filtered: list[CVEResult] = []
+        component_lower = component.lower()
+        for cve_result, raw_cve in zip(results, raw_cve_data, strict=False):
+            if self._cve_affects_version(raw_cve, component_lower, version):
+                filtered.append(cve_result)
+                if len(filtered) >= max_results:
+                    break
+        logger.info(
+            "Version filter: %d/%d CVEs match %s %s",
+            len(filtered),
+            len(results),
+            component,
+            version,
+        )
+        return filtered
 
     def analyze_software_stack(
         self, software_stack: dict[str, str]
@@ -211,20 +506,24 @@ class NVDService:
         failed_components: list[str] = []
 
         for component, version in software_stack.items():
-            # Search by component name only, not version string.
-            # NVD API uses AND logic for multiple keywords, so "java 21" searches
-            # for CVEs mentioning BOTH "java" AND "21", which is too restrictive.
+            # Search NVD by component name, then filter results to only CVEs
+            # whose CPE version ranges actually affect the user's version.
             try:
-                cves = self.search_cves_by_keyword(component, max_results=5)
+                cves = self.search_cves_by_keyword(
+                    component, max_results=5, version=version
+                )
             except NVDApiError:
                 failed_components.append(component)
-                logger.error(f"NVD API failed for component: {component}")
+                logger.error("NVD API failed for component: %s", component)
                 continue
 
             if cves:
                 results[component] = cves
                 logger.info(
-                    f"Found {len(cves)} CVEs for {component} (version {version})"
+                    "Found %d CVEs for %s (version %s)",
+                    len(cves),
+                    component,
+                    version,
                 )
 
         if failed_components and not results:
@@ -236,8 +535,10 @@ class NVDService:
 
         if failed_components:
             logger.warning(
-                f"Partial NVD results: {len(failed_components)} components failed "
-                f"({', '.join(failed_components)}), {len(results)} succeeded"
+                "Partial NVD results: %d components failed (%s), %d succeeded",
+                len(failed_components),
+                ", ".join(failed_components),
+                len(results),
             )
 
         return results
@@ -282,98 +583,111 @@ class NVDService:
         else:
             return "quarterly"
 
+    @staticmethod
+    def _extract_versions_from_vulns(
+        vulnerabilities: list[dict[str, Any]], component_name: str
+    ) -> set[str]:
+        """Extract unique version strings from NVD vulnerability data."""
+        versions_set: set[str] = set()
+        for vuln in vulnerabilities:
+            cve = vuln.get("cve", {})
+            for config in cve.get("configurations", []):
+                for node in config.get("nodes", []):
+                    for match in node.get("cpeMatch", []):
+                        cpe23uri = match.get("criteria", "")
+                        if cpe23uri:
+                            parts = cpe23uri.split(":")
+                            if len(parts) >= 6:
+                                if parts[4].lower() != component_name:
+                                    continue
+                                version = parts[5]
+                                if version and version not in ("*", "-", ""):
+                                    if "." in version or (
+                                        version.isdigit()
+                                        and int(version)
+                                        <= MAX_VALID_SINGLE_DIGIT_VERSION
+                                    ):
+                                        versions_set.add(version)
+                        for range_key in (
+                            "versionStartIncluding",
+                            "versionEndIncluding",
+                        ):
+                            range_ver = match.get(range_key)
+                            if range_ver:
+                                versions_set.add(range_ver)
+        return versions_set
+
     def get_known_versions(
         self, component_name: str, max_versions: int = DEFAULT_MAX_RESULTS
     ) -> list[str]:
-        """Get known versions of a component from NVD CVE records.
+        """Get known versions of a component from NVD CPE dictionary.
 
-        Queries NVD for CVEs affecting the component and extracts all unique versions
-        mentioned in the vulnerability data.
+        Uses a two-step approach: first gets the total CPE count, then fetches
+        the last page to get the newest versions.
 
         Args:
-            component_name: Name of the component (e.g., 'postgresql', 'nginx')
+            component_name: Name of the component (e.g., 'python', 'postgresql')
             max_versions: Maximum number of versions to return
 
         Returns:
-            List of version strings found in NVD records, sorted by recency
+            List of version strings, newest first
         """
         cache_key = f"versions:{component_name}"
 
-        # Check cache
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
             if datetime.now(UTC) - cached_time < self._cache_ttl:
-                logger.info(f"Cache hit for component versions: {component_name}")
+                logger.info("Cache hit for component versions: %s", component_name)
                 return cached_data  # type: ignore[return-value]
 
         try:
+            # Resolve CPE type/vendor/product using alias map
+            comp_lower = component_name.lower()
+            aliases = self._CPE_ALIASES.get(comp_lower)
+            if aliases:
+                cpe_type, cpe_vendor, cpe_product = aliases[0]
+            else:
+                cpe_type, cpe_vendor, cpe_product = "a", comp_lower, comp_lower
+
+            cpe_match = f"cpe:2.3:{cpe_type}:{cpe_vendor}:{cpe_product}:*"
+
+            # Fetch all CPE entries for this product (max 10000 per page,
+            # most products have far fewer — e.g. Python has ~600)
             params: dict[str, str | int] = {
-                "keywordSearch": component_name,
-                "resultsPerPage": VERSION_SEARCH_MAX_RESULTS,
+                "cpeMatchString": cpe_match,
+                "resultsPerPage": 10000,
             }
+            data = self._request_with_retry(params, url=self.CPE_URL)
+            products = data.get("products", [])
 
-            data = self._request_with_retry(params)
-            vulnerabilities = data.get("vulnerabilities", [])
-
+            # Extract unique versions from CPE names
             versions_set: set[str] = set()
+            for product in products:
+                cpe_name = product.get("cpe", {}).get("cpeName", "")
+                parts = cpe_name.split(":")
+                if len(parts) >= 6:
+                    ver = parts[5]
+                    if ver and ver not in ("*", "-", ""):
+                        versions_set.add(ver)
 
-            # Extract version information from CVE configurations
-            for vuln in vulnerabilities:
-                cve = vuln.get("cve", {})
-                configurations = cve.get("configurations", [])
-
-                for config in configurations:
-                    nodes = config.get("nodes", [])
-                    for node in nodes:
-                        cpe_match = node.get("cpeMatch", [])
-                        for match in cpe_match:
-                            # Extract version from CPE URI
-                            cpe23uri = match.get("criteria", "")
-                            # CPE format: cpe:2.3:part:vendor:product:version:...
-                            # [0]=cpe, [1]=2.3, [2]=part, [3]=vendor, [4]=product, [5]=version
-                            if cpe23uri:
-                                parts = cpe23uri.split(":")
-                                if len(parts) >= 6:
-                                    version = parts[5]
-                                    # Filter out wildcards, generic versions, and invalid formats
-                                    # Valid versions should contain dots (e.g., "21.0.1") or be simple numbers
-                                    # This filters out update/build numbers that aren't valid versions
-                                    if version and version not in ["*", "-", ""]:
-                                        # Accept versions with dots or reasonable single numbers
-                                        if "." in version or (
-                                            version.isdigit()
-                                            and int(version)
-                                            <= MAX_VALID_SINGLE_DIGIT_VERSION
-                                        ):
-                                            versions_set.add(version)
-
-                            # Also check version ranges
-                            version_start_including = match.get("versionStartIncluding")
-                            if version_start_including:
-                                versions_set.add(version_start_including)
-
-                            version_end_including = match.get("versionEndIncluding")
-                            if version_end_including:
-                                versions_set.add(version_end_including)
-
-            # Sort versions (try numeric sort, fallback to string sort)
             sorted_versions = sorted(
-                list(versions_set), key=lambda v: self._parse_version(v), reverse=True
+                list(versions_set), key=self._parse_version, reverse=True
             )
             top_versions = sorted_versions[:max_versions]
 
-            # Cache results
             self._cache[cache_key] = (top_versions, datetime.now(UTC))
             logger.info(
-                f"Extracted {len(top_versions)} versions for {component_name} from NVD"
+                "Found %d versions for %s from CPE dictionary",
+                len(top_versions),
+                component_name,
             )
             return top_versions
 
         except NVDApiError:
-            logger.error(f"NVD API unavailable for version lookup: {component_name}")
+            logger.error("NVD API unavailable for version lookup: %s", component_name)
             return []
         except Exception as e:
-            logger.error(f"Error extracting versions from NVD: {e}")
+            logger.error("Error fetching versions from NVD: %s", e)
             return []
 
     def get_component_suggestions(
@@ -397,7 +711,9 @@ class NVDService:
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
             if datetime.now(UTC) - cached_time < self._cache_ttl:
-                logger.info(f"Cache hit for component suggestions: {normalized_prefix}")
+                logger.info(
+                    "Cache hit for component suggestions: %s", normalized_prefix
+                )
                 return cached_data  # type: ignore[return-value]
 
         try:
@@ -435,17 +751,20 @@ class NVDService:
 
             self._cache[cache_key] = (top_components, datetime.now(UTC))
             logger.info(
-                f"Extracted {len(top_components)} component suggestions for prefix: {normalized_prefix}"
+                "Extracted %d component suggestions for prefix: %s",
+                len(top_components),
+                normalized_prefix,
             )
             return top_components
 
         except NVDApiError:
             logger.error(
-                f"NVD API unavailable for component suggestions: {normalized_prefix}"
+                "NVD API unavailable for component suggestions: %s",
+                normalized_prefix,
             )
             return []
         except Exception as e:
-            logger.error(f"Error extracting component suggestions from NVD: {e}")
+            logger.error("Error extracting component suggestions from NVD: %s", e)
             return []
 
     def _collect_component_names_from_nodes(

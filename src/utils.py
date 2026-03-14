@@ -15,9 +15,6 @@ from src.constants import PriorityWindow, Severity
 # Protocols allowed in user-supplied URLs.
 _ALLOWED_URL_SCHEMES = {"https", "http"}
 
-# Characters allowed in sanitized text (letters, digits, common punctuation).
-_SAFE_TEXT_RE = re.compile(r"[^\w\s@.,;:!?/\\#\-_()\[\]{}'\"+=&%$<>|~`^]", re.UNICODE)
-
 # Control characters (C0/C1) except tab, newline, carriage-return.
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
 

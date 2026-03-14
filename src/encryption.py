@@ -23,7 +23,7 @@ try:
     from cryptography.fernet import Fernet
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
     CRYPTO_AVAILABLE = True
 except ImportError:
@@ -45,7 +45,7 @@ def derive_key_from_password(password: str, salt: bytes = b"charlottesweb") -> b
             "cryptography library required for encryption. Install with: pip install cryptography"
         )
 
-    kdf = PBKDF2(
+    kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,

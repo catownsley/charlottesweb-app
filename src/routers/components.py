@@ -45,33 +45,37 @@ def suggest_component_names(
 @router.get("/{component_name}/versions")
 @limiter.limit(f"{settings.rate_limit_per_minute * 3}/minute")
 def get_component_versions(
-    request: Request, component_name: str
+    request: Request, component_name: str, prefix: str = ""
 ) -> dict[str, list[str]]:
-    """Get known versions of a component from NVD vulnerability data.
+    """Get known versions of a component from NVD CPE dictionary.
 
-    Queries the National Vulnerability Database to find versions of components
-    that have known CVEs. This provides dynamic version suggestions based on
-    actual vulnerability records.
+    Returns versions matching an optional prefix, newest first.
+    Fetches a broad set from NVD and filters server-side.
 
     Args:
-        component_name: Name of the component (e.g., 'postgres', 'java', 'nodejs')
+        component_name: Name of the component (e.g., 'python', 'php')
+        prefix: Optional version prefix to filter by (e.g., '3.12')
 
     Returns:
-        Dictionary with 'versions' list of version strings found in NVD data
+        Dictionary with 'versions' list (up to 10), newest first
 
     Example:
-        GET /api/v1/components/java/versions
-        Response: {"versions": ["21", "20", "19", "18"]}
+        GET /api/v1/components/python/versions?prefix=3.12
+        Response: {"versions": ["3.12.9", "3.12.8", "3.12.7", ...]}
     """
     component_lower = component_name.lower().strip()
 
     if not component_lower or len(component_lower) < 2:
         return {"versions": []}
 
-    # Query NVD for versions of this component
-    versions = nvd_service.get_known_versions(component_lower, max_versions=10)
+    # Fetch a large set so prefix filtering has enough to work with
+    versions = nvd_service.get_known_versions(component_lower, max_versions=200)
 
-    return {"versions": versions}
+    prefix = prefix.strip()
+    if prefix:
+        versions = [v for v in versions if v.startswith(prefix)]
+
+    return {"versions": versions[:10]}
 
 
 @router.post("/ingest-manifest", response_model=ManifestIngestResponse)

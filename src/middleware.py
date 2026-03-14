@@ -107,7 +107,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # Disable CSP for docs to avoid conflicts
             pass  # Don't set CSP for docs
         elif request.url.path == "/":
-            # App UI needs: inline scripts/styles + Cytoscape.js CDN for threat model
+            # App UI needs: inline scripts/styles + Cytoscape.js CDN for diagram
             csp = (
                 "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
                 "style-src 'self' 'unsafe-inline'; "

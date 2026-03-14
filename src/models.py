@@ -3,7 +3,17 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Index, String, Text
+from sqlalchemy import (
+    JSON,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 
 from src.database import Base
@@ -34,10 +44,21 @@ class Organization(Base):
     stage = Column(String, nullable=True)  # seed, series_a, series_b, etc.
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
-    # Relationships
-    metadata_profiles = relationship("MetadataProfile", back_populates="organization")
-    assessments = relationship("Assessment", back_populates="organization")
-    members = relationship("OrganizationMember", back_populates="organization")
+    # Relationships — cascade delete ensures data sovereignty: removing an org
+    # cleans up all child records so no customer data lingers in the system.
+    # Note: Evidence has a direct FK (not cascaded here) and must be deleted
+    # explicitly in the delete endpoint before the org is removed.
+    metadata_profiles = relationship(
+        "MetadataProfile", back_populates="organization", cascade="all, delete-orphan"
+    )
+    assessments = relationship(
+        "Assessment", back_populates="organization", cascade="all, delete-orphan"
+    )
+    members = relationship(
+        "OrganizationMember",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+    )
 
 
 class OrganizationMember(Base):
@@ -86,7 +107,9 @@ class MetadataProfile(Base):
 
     # Relationships
     organization = relationship("Organization", back_populates="metadata_profiles")
-    assessments = relationship("Assessment", back_populates="metadata_profile")
+    assessments = relationship(
+        "Assessment", back_populates="metadata_profile", cascade="all, delete-orphan"
+    )
 
     # Indexes for query performance
     __table_args__ = (
@@ -190,7 +213,9 @@ class Assessment(Base):
     # Relationships
     organization = relationship("Organization", back_populates="assessments")
     metadata_profile = relationship("MetadataProfile", back_populates="assessments")
-    findings = relationship("Finding", back_populates="assessment")
+    findings = relationship(
+        "Finding", back_populates="assessment", cascade="all, delete-orphan"
+    )
 
     # Indexes for query performance
     __table_args__ = (
@@ -303,4 +328,25 @@ class Evidence(Base):
         Index("idx_evidence_assessment_id", "assessment_id"),
         Index("idx_evidence_status", "status"),
         Index("idx_evidence_created_at", "created_at"),
+    )
+
+
+class CacheEntry(Base):
+    """Persistent cache for API responses (NVD, AI threat model, etc.).
+
+    Designed with a clean key/value interface so the backing store can be
+    swapped to Redis in production without changing callers.
+    """
+
+    __tablename__ = "cache_entries"
+
+    key = Column(String, primary_key=True)
+    namespace = Column(String, nullable=False, index=True)  # "nvd", "ai_threat_model"
+    value = Column(JSON, nullable=False)
+    ttl_seconds = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("idx_cache_namespace", "namespace"),
+        Index("idx_cache_created_at", "created_at"),
     )

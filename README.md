@@ -1,8 +1,33 @@
-# Charlotte's Web
+# CharlottesWeb
 
-> Intelligent Compliance for Applications that Protect Regulated Data
+> AI-Powered Threat Modeling and Automated Compliance for Applications that Protect Regulated Data
 
-Charlotte's Web automates regulatory mapping by correlating compliance requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) with real-world exploitable vulnerabilities (CVE/CWE), producing prioritized remediation roadmaps and audit-ready evidence packages.
+CharlottesWeb combines **AI-driven threat analysis** with **multi-framework compliance automation**. Get a complete STRIDE threat model in minutes — not weeks — while simultaneously mapping your stack against HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, and CCPA. Real vulnerabilities from your actual software stack are correlated with regulatory controls to produce prioritized, actionable remediation roadmaps.
+
+## AI Threat Model
+
+Generate a comprehensive threat model in minutes. Enter your organization name, click **AI Threat Model**, and get:
+
+- **Executive summary** of your security posture
+- **STRIDE threat analysis** — specific threats to your architecture with actionable mitigations
+- **Consolidated dependency findings** — not a line-item per CVE, but a prioritized view of what matters
+- **Compound risk detection** — where a known CVE escalates an architectural threat (e.g., an unpatched deserialization flaw + a public-facing API = critical)
+- **Prioritized remediation roadmap** — what to fix first, second, third, with rationale
+
+Export the full report as a text file sorted by severity. Results are cached (7-day TTL) to minimize API cost — use **Force Regenerate** when your assessment data changes.
+
+Requires an Anthropic API key. See [DEV_GUIDE.md](DEV_GUIDE.md) for setup.
+
+## Automated Compliance
+
+**Compliance mapped to real exploitability.** Most tools tell you what controls you need. We tell you which vulnerabilities in your actual stack create regulatory risk.
+
+- **Metadata-only intake** — zero PHI ingestion
+- **Multi-framework regulatory mapping** — HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA
+- **CVE/CWE correlation** — exploitability-aware risk scoring via NVD and Dependabot
+- **Interactive data flow diagrams** — editable Cytoscape.js diagrams with trust boundaries, drag-and-drop nodes, and labeled data flows
+- **Prioritized remediation roadmap** — Immediate / 30 Days / Quarterly / Annual
+- **Audit evidence automation** — control-to-evidence mapping, policy templates, audit binders
 
 ## Security First
 
@@ -18,29 +43,13 @@ See [SECURITY.md](SECURITY.md) for complete security documentation.
 
 ## Quick Links
 
-- [Business Plan](BUSINESS_PLAN.md)** - Market strategy, competitive landscape, go-to-market, team hiring
-- ️[Architecture & Product Vision](ARCHITECTURE.md) - Technical design, domain model, system architecture, API design
-- **[Documentation Index](docs/INDEX.md)** - Full navigation guide to all project docs
-- **[DEV_GUIDE](DEV_GUIDE.md)** - Setup, security configuration, API examples
-- **[Architecture & Product Vision](ARCHITECTURE.md)** - Technical design, domain model, API design
-- **[Security Documentation](SECURITY.md)** - Security features, configuration, and best practices
-- **[Ticket Index](docs/tickets/TICKET_INDEX.md)** - Phased execution roadmap with detailed tickets
-- **[GitHub Issues](https://github.com/catownsley/charlottesweb-app/issues)** - Active implementation backlog
-
-## Core Value Proposition
-
-**Compliance mapped to real exploitability.**
-
-Most tools tell you what controls you need. We tell you which vulnerabilities in your actual stack create regulatory risk.
-
-### What We Build
-
-- **Metadata-only intake** (zero PHI ingestion)
-- **Multi-framework regulatory mapping** (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA)
-- **CVE/CWE correlation** (exploitability-aware risk scoring)
-- **Prioritized remediation roadmap** (Immediate / 30 Days / Quarterly / Annual)
-- **Audit evidence automation** (control-to-evidence mapping, policy templates, audit binders)
-- **Interactive threat modeling** (STRIDE analysis, Cytoscape.js data flow diagrams, MITRE ATT&CK enrichment)
+- **[DEV_GUIDE](DEV_GUIDE.md)** — Setup, security configuration, API examples
+- **[Architecture & Product Vision](ARCHITECTURE.md)** — Technical design, domain model, API design
+- **[Business Plan](BUSINESS_PLAN.md)** — Market strategy, competitive landscape, go-to-market
+- **[Documentation Index](docs/INDEX.md)** — Full navigation guide to all project docs
+- **[Security Documentation](SECURITY.md)** — Security features, configuration, and best practices
+- **[Ticket Index](docs/tickets/TICKET_INDEX.md)** — Phased execution roadmap with detailed tickets
+- **[GitHub Issues](https://github.com/catownsley/charlottesweb-app/issues)** — Active implementation backlog
 
 ## Project Structure
 
@@ -94,13 +103,14 @@ See [Ticket Index](docs/tickets/TICKET_INDEX.md) for detailed phase status and i
 
 ## Why This Exists
 
-Digital health startups face a compliance paradox:
-- Regulatory violations carry real financial penalties
+Digital health startups face a security and compliance paradox:
+- Threat modeling takes weeks of expert time — most startups skip it entirely
+- HIPAA violations carry real financial penalties
 - Security leadership is expensive
 - Existing tools lack exploitability-aware action plans
 - Audit preparation is manual and chaotic
 
-CharlottesWeb automates the hard parts: vulnerability correlation, risk prioritization, and evidence generation, turning compliance from a manual burden into automated intelligence.
+CharlottesWeb automates both sides: **AI generates your threat model in minutes** while the compliance engine handles vulnerability correlation, risk prioritization, and evidence generation — turning security and compliance from a manual burden into automated intelligence.
 
 ## License
 
