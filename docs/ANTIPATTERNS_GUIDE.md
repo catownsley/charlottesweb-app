@@ -111,7 +111,7 @@ def seed_database():
     # 590 more lines...
 ```
 
-**Fix - Extract Functions:**
+**Fix: Extract Functions:**
 ```python
 # GOOD
 def seed_database():
@@ -236,7 +236,7 @@ if status == AssessmentStatus.COMPLETED:
 assessment.status = AssessmentStatus.RUNNING
 ```
 
-**Even Better - Enums:**
+**Even Better, Enums:**
 ```python
 from enum import Enum
 
@@ -327,7 +327,7 @@ def validate_phone(phone: str) -> bool:
 ```
 
 **Key Review Notes:**
-- "DRY (Don't Repeat Yourself) - but clarity matters more"
+- "DRY (Don't Repeat Yourself), but clarity matters more"
 - "Extract when: logic complex, repeated 3+ times, likely to change together"
 - "Keep duplication when: extraction makes code harder to read"
 - "Rule of Three: duplicate twice, extract on third occurrence"
@@ -360,7 +360,7 @@ def process(data):
         return "No data"
 ```
 
-**Good - Guard Clauses:**
+**Good: Guard Clauses:**
 ```python
 def process(data):
     if not data:
@@ -378,9 +378,9 @@ def process(data):
 ```
 
 **Key Review Notes:**
-- "Use guard clauses - return early"
+- "Use guard clauses; return early"
 - "Fail fast principle"
-- "Reduces cognitive load - flat is better than nested"
+- "Reduces cognitive load: flat is better than nested"
 - "Easier to test each condition independently"
 
 ---
@@ -409,9 +409,9 @@ def process(data):
 5. **Know the tradeoffs**: "Sometimes duplication is better than wrong abstraction"
 
 **Useful Review Heuristics:**
-- "I look for functions over 50 lines - extract helpers"
+- "I look for functions over 50 lines, then extract helpers"
 - "I avoid bare except because it catches system signals"
-- "I use constants for repeated strings - makes refactoring safe"
+- "I use constants for repeated strings; it makes refactoring safe"
 - "I catch specific exceptions in business logic, broader at API boundaries"
 - "I apply the Rule of Three before extracting duplication"
 
