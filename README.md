@@ -1,4 +1,4 @@
-# CharlottesWeb
+# Charlotte's Web
 
 > AI-Powered Threat Modeling and Automated Compliance for Applications that Protect Regulated Data
 
