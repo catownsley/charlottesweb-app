@@ -37,6 +37,7 @@ from src.audit import AuditAction, AuditLevel, log_audit_event, log_security_ale
 from src.config import settings
 from src.database import Base, engine
 from src.middleware import (
+    HTTPSEnforcementMiddleware,
     RequestIDMiddleware,
     ResponseTimeMiddleware,
     SecurityHeadersMiddleware,
@@ -179,9 +180,13 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 #   5. Application routes (innermost)
 # ============================================================================
 
+# Security Middleware 0: HTTPS Enforcement
+# Rejects any request that arrives over plain HTTP with 403
+# Outermost layer so HTTP requests never reach any handler
+app.add_middleware(HTTPSEnforcementMiddleware)
+
 # Security Middleware 1: Security Headers
 # Adds security headers to ALL responses (even error responses)
-# Must be outer layer to protect entire application
 app.add_middleware(SecurityHeadersMiddleware)
 
 # Security Middleware 2: Request ID Tracking
@@ -425,13 +430,31 @@ except Exception as e:
 
 
 def run_dev_server() -> None:
-    """Run development server with controlled failure handling."""
+    """Run development server with TLS and controlled failure handling."""
+    import os
+
     import uvicorn
 
+    cert_dir = os.path.join(os.path.dirname(__file__), "..", "certs")
+    ssl_keyfile = os.path.join(cert_dir, "key.pem")
+    ssl_certfile = os.path.join(cert_dir, "cert.pem")
+
+    if not (os.path.isfile(ssl_keyfile) and os.path.isfile(ssl_certfile)):
+        logger.error(
+            "TLS certificates not found in certs/. "
+            "Run: ./scripts/generate_dev_certs.sh"
+        )
+        raise SystemExit(1)
+
     try:
-        # Development server (NOT for production)
-        # Use gunicorn + uvicorn worker in production
-        uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
+        uvicorn.run(
+            "src.main:app",
+            host="127.0.0.1",
+            port=8443,
+            reload=True,
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile,
+        )
     except KeyboardInterrupt:
         logger.info("Development server interrupted by user")
     except Exception as err:

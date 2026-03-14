@@ -41,12 +41,34 @@ from src.security import get_api_key_optional  # Re-export for convenience
 limiter = Limiter(key_func=get_remote_address)
 
 __all__ = [
+    "HTTPSEnforcementMiddleware",
     "SecurityHeadersMiddleware",
     "RequestIDMiddleware",
     "ResponseTimeMiddleware",
     "limiter",
     "get_api_key_optional",
 ]
+
+
+class HTTPSEnforcementMiddleware(BaseHTTPMiddleware):
+    """Redirect HTTP requests to HTTPS.
+
+    Returns 301 Permanent Redirect to the HTTPS equivalent URL.
+    Browsers and clients will automatically follow the redirect
+    and re-issue the request over TLS.
+    """
+
+    def __init__(self, app: ASGIApp):
+        super().__init__(app)
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if request.url.scheme != "https":
+            https_url = request.url.replace(scheme="https", port=8443)
+            return Response(
+                status_code=301,
+                headers={"Location": str(https_url)},
+            )
+        return await call_next(request)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
