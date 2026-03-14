@@ -491,11 +491,22 @@ if not member:
 
 ---
 
+## Self-Assessment Summary
+
+Sections 7-10 were added after running Charlotte's Web against itself, using the platform's own threat modeling feature to analyze its own dependency stack (2026-03-14). You could say the project is self-aware.
+
+| Disposition | Count | Description |
+|-------------|-------|-------------|
+| **Mitigated** | 6 | Finding is valid but already addressed by existing controls |
+| **Not Applicable** | 7 | Finding does not apply to this application or stack |
+| **Accepted Risk** | 3 | Finding is valid, risk accepted with documented rationale |
+| **Remediation Planned** | 2 | Finding is valid, remediation scheduled |
+
+---
+
 ## 7. Dependency Vulnerabilities (Supply Chain)
 
 **Threat Actors:** Attackers exploit known CVEs in third-party dependencies to compromise the application.
-
-> This section was added after running Charlotte's Web's own threat modeling feature against its dependency stack (self-assessment, 2026-03-14). For detailed CVE disposition mapping, see [SECURITY.md, Threat Model Assessment](SECURITY.md#threat-model-assessment).
 
 ### 7.1 Known CVEs in Dependencies (TB2 Application Service)
 **Attack:** Attacker exploits publicly disclosed vulnerabilities in installed packages.
@@ -562,7 +573,7 @@ if not member:
 ### 10.1 HIPAA: Not Applicable
 This application processes software component metadata and vulnerability data. It does not store, transmit, or process Protected Health Information (PHI). HIPAA requirements do not apply.
 
-If the application scope changes to include PHI, a full HIPAA gap analysis must be conducted before deployment. See [SECURITY.md, Compliance Notes](SECURITY.md#compliance-notes).
+If the application scope changes to include PHI, a full HIPAA gap analysis must be conducted before deployment.
 
 ### 10.2 SSRF Risk (TB2 → TB4 boundary)
 **Attack:** If user-controlled URLs are passed to python-requests, an attacker could pivot to internal network resources or cloud metadata endpoints.
@@ -600,7 +611,7 @@ If the application scope changes to include PHI, a full HIPAA gap analysis must 
 - **Monthly:** Review critical/high-priority mitigations for completeness
 - **Quarterly:** Full threat model refresh (new features, architecture changes)
 - **Post-Incident:** Immediate update if any issue exploits a gap
-- **Last Review:** 2026-03-14 (self-assessment using Charlotte's Web threat modeling feature, see [SECURITY.md](SECURITY.md#threat-model-assessment) for detailed CVE disposition)
+- **Last Review:** 2026-03-14 (self-assessment using Charlotte's Web threat modeling feature)
 
 ## ASCII Diagram Fallback
 
