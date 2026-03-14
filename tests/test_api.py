@@ -68,7 +68,7 @@ def test_db(tmp_path):
 @pytest.fixture(scope="function")
 def client(test_db):
     """Create test client with database dependency override."""
-    return TestClient(app)
+    return TestClient(app, base_url="https://testserver")
 
 
 def test_health_check(client):

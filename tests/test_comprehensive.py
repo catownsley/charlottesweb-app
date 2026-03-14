@@ -84,7 +84,7 @@ def test_db(tmp_path):
 @pytest.fixture(scope="function")
 def client(test_db):
     """Create test client."""
-    return TestClient(app)
+    return TestClient(app, base_url="https://testserver")
 
 
 @pytest.fixture(scope="function")
