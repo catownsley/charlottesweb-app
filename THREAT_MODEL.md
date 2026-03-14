@@ -39,7 +39,8 @@ flowchart LR
     end
 
     subgraph TB4[Trust Boundary 4: External Intel Services]
-        NVD[NVD API\nCVE + version intelligence]
+        OSV[OSV.dev API\nVulnerability advisories]
+        NVD[NVD API\nCPE version intelligence]
         MITRE[MITRE ATT&CK mappings]
     end
 
@@ -69,7 +70,7 @@ flowchart LR
     %% Assessment workflows
     R_ASSESS --> RE
     RE --> CE
-    RE -->|3b. vulnerability enrichment| NVD
+    RE -->|3b. vulnerability enrichment| OSV
     RE -->|3c. threat context| MITRE
     RE --> DB
 
@@ -98,19 +99,19 @@ flowchart LR
 ## STRIDE Threat Model (Per Diagram)
 
 ### Key Entry Points (from diagram)
-- **TB1 → TB2:** Browser HTTPS API calls (label "2")
-- **TB2 → TB3:** Data persistence (organizations, assessments, findings writes)
-- **TB2 → TB4:** Outbound NVD/MITRE queries (labels "3a", "3b", "3c")
-- **TB2 → TB5:** Audit logging + TLS cert loading
-- **TB3 ← → TB2:** Assessment/finding reads and writes
+* **TB1 → TB2:** Browser HTTPS API calls (label "2")
+* **TB2 → TB3:** Data persistence (organizations, assessments, findings writes)
+* **TB2 → TB4:** Outbound OSV.dev/NVD/MITRE queries (labels "3a", "3b", "3c")
+* **TB2 → TB5:** Audit logging + TLS cert loading
+* **TB3 ← → TB2:** Assessment/finding reads and writes
 
 ### Sensitive Assets
-- Organization metadata (TB1 → TB2 → TB3)
-- Software stack + manifest content (R_META, R_COMP, MP in TB2)
-- Assessment findings + evidence (R_ASSESS, R_EVID writes to TB3)
-- Audit logs (TB5)
-- API keys (request auth)
-- NVD query results (TB4 ← TB2)
+* Organization metadata (TB1 → TB2 → TB3)
+* Software stack + manifest content (R_META, R_COMP, MP in TB2)
+* Assessment findings + evidence (R_ASSESS, R_EVID writes to TB3)
+* Audit logs (TB5)
+* API keys (request auth)
+* OSV.dev/NVD query results (TB4 ← TB2)
 
 ---
 
@@ -129,10 +130,10 @@ flowchart LR
 | Rate limiting: 60 req/min per IP | **LOW** | Slows brute force |
 
 **Recommended Hardening (⚠️ High):**
-- Implement per-API-key rate limits (500 req/min per key)
-- Move valid keys to database with versioning
-- Hash stored keys; rotate every 30 days
-- Log all auth attempts (success/failure)
+* Implement per-API-key rate limits (500 req/min per key)
+* Move valid keys to database with versioning
+* Hash stored keys; rotate every 30 days
+* Log all auth attempts (success/failure)
 
 ---
 
@@ -147,9 +148,9 @@ flowchart LR
 | No user authentication layer | **CRITICAL** | No way to associate caller with org membership |
 
 **Recommended Hardening (⚠️ CRITICAL):**
-- Implement user authentication (JWT or session tokens)
-- Add `OrganizationMember` table with roles (admin, analyst, viewer)
-- Verify caller's org membership before every org-scoped query:
+* Implement user authentication (JWT or session tokens)
+* Add `OrganizationMember` table with roles (admin, analyst, viewer)
+* Verify caller's org membership before every org-scoped query:
 ```python
 member = db.query(OrganizationMember).filter_by(
     organization_id=requested_org_id,
@@ -158,7 +159,7 @@ member = db.query(OrganizationMember).filter_by(
 if not member:
     raise 403 "Not authorized for this organization"
 ```
-- Add database row-level security (PostgreSQL RLS) as defense-in-depth
+* Add database row-level security (PostgreSQL RLS) as defense-in-depth
 
 ---
 
@@ -177,11 +178,11 @@ if not member:
 | No integrity check stored | **HIGH** | Can't detect post-storage modifications |
 
 **Recommended Hardening (⚠️ High):**
-- Validate manifest content-type: `application/xml` or `text/xml` only
-- Enforce manifest size limit: 5 MB max
-- Store manifest SHA-256 hash in TB3 database
-- Validate XML schema against whitelist of allowed elements
-- Re-verify hash on retrieval to detect tampering
+* Validate manifest content-type: `application/xml` or `text/xml` only
+* Enforce manifest size limit: 5 MB max
+* Store manifest SHA-256 hash in TB3 database
+* Validate XML schema against whitelist of allowed elements
+* Re-verify hash on retrieval to detect tampering
 
 ---
 
@@ -195,30 +196,29 @@ if not member:
 | TB5 Audit logging captures action but not diffs | MEDIUM | Can't see what was changed |
 
 **Recommended Hardening (⚠️ High):**
-- Implement finding versioning (immutable storage):
-  - Create new `FindingVersion` record on each update (don't modify original)
-  - Mark old version as "superseded"
-  - Store change summary + modifier identity
-- Implement approval workflow for high-severity finding changes
-- Require audit sign-off layer before findings marked "resolved"
+* Implement finding versioning (immutable storage):
+  * Create new `FindingVersion` record on each update (don't modify original)
+  * Mark old version as "superseded"
+  * Store change summary + modifier identity
+* Implement approval workflow for high-severity finding changes
+* Require audit sign-off layer before findings marked "resolved"
 
 ---
 
-### 2.3 NVD Cache Poisoning (TB2 ← → TB4 boundary)
-**Attack:** Attacker intercepts or modifies NVD responses before caching in TB2.
+### 2.3 Vulnerability API Cache Poisoning (TB2 ← → TB4 boundary)
+**Attack:** Attacker intercepts or modifies OSV.dev/NVD responses before caching in TB2.
 
 | Component | Current Risk | Mitigation |
 |-----------|-------------|-----------|
-| TB2 caches NVD responses in-memory | **MEDIUM** | Cache not persisted; resets on restart |
-| No HTTPS validation on NVD calls | **HIGH** | Could accept MITM responses |
+| TB2 caches vulnerability responses in memory | **MEDIUM** | Cache not persisted; resets on restart |
+| HTTPS validation on API calls | **LOW** | OSV.dev and NVD use TLS; requests library validates certs |
 | Cache keyed by component name | **MEDIUM** | Attacker learns what's cached |
 | No cache entry signature | **HIGH** | Can't detect tampering if cache compromised |
 
 **Recommended Hardening:**
-- Validate NVD API certificate (TLS pinning for critical endpoints)
-- Implement cache entry signing (HMAC over response data)
-- Cache expiration: 24 hours (TTL)
-- Monitor cache hit/miss ratio for anomalies
+* Implement cache entry signing (HMAC over response data)
+* Cache expiration: 24 hours (TTL)
+* Monitor cache hit/miss ratio for anomalies
 
 ---
 
@@ -238,11 +238,11 @@ if not member:
 | No remote log shipping | **HIGH** | Logs not redundantly stored; single point of failure |
 
 **Recommended Hardening (⚠️ High):**
-- Ship logs to centralized SIEM immediately (Splunk, ELK, Datadog)
-- Implement hash chain on audit records (each entry includes hash of previous)
-- Encrypt audit logs at rest: AES-256-GCM
-- Set file permissions: 600 (read-only to app user)
-- Implement 90-day retention policy + archive older logs
+* Ship logs to centralized SIEM immediately (Splunk, ELK, Datadog)
+* Implement hash chain on audit records (each entry includes hash of previous)
+* Encrypt audit logs at rest: AES-256-GCM
+* Set file permissions: 600 (read-only to app user)
+* Implement 90-day retention policy + archive older logs
 
 ---
 
@@ -256,8 +256,8 @@ if not member:
 | TB5 Audit logs include request ID | **LOW** | Full correlation chain present |
 
 **Recommended Hardening:**
-- Ensure request ID included in all structured log lines
-- Continue propagating context for async tasks
+* Ensure request ID included in all structured log lines
+* Continue propagating context for async tasks
 
 ---
 
@@ -276,9 +276,9 @@ if not member:
 | Audit logs capture org_id but not user identity | MEDIUM | Hard to attribute who accessed what |
 
 **Recommended Hardening (⚠️ CRITICAL):**
-- Implement user authentication + per-org membership checks (see Spoofing 1.2)
-- Add database RLS: every query automatically filtered by `user_accessible_orgs`
-- Implement per-role response filtering (admin sees all fields; analyst sees findings only; viewer sees read-only)
+* Implement user authentication + per-org membership checks (see Spoofing 1.2)
+* Add database RLS: every query automatically filtered by `user_accessible_orgs`
+* Implement per-role response filtering (admin sees all fields; analyst sees findings only; viewer sees read-only)
 
 ---
 
@@ -293,25 +293,25 @@ if not member:
 | Validation errors in dev expose schema hints | **MEDIUM** | Dev-only; low risk but worth hardening |
 
 **Recommended Hardening:**
-- Ensure `debug=false` and `APP_ENV=production` always in production
-- Add startup check: warn if debug enabled in prod
+* Ensure `debug=false` and `APP_ENV=production` always in production
+* Add startup check: warn if debug enabled in prod
 
 ---
 
-### 4.3 NVD/MITRE Data Leakage (TB2 ↔ TB4 boundary)
+### 4.3 OSV.dev/MITRE Data Leakage (TB2 ↔ TB4 boundary)
 **Attack:** Attacker learns what components/vulnerabilities are cached by timing analysis or unintended responses.
 
 | Component | Current Risk | Mitigation |
 |-----------|-------------|-----------|
-| TB2 caches NVD responses in memory | **MEDIUM** | Cache keys leaked if process memory readable |
+| TB2 caches vulnerability responses in memory | **MEDIUM** | Cache keys leaked if process memory readable |
 | Cache keyed by component name | **MEDIUM** | Attacker learns what's being assessed |
 | No cache access control | **MEDIUM** | Any process thread can read cache |
 
 **Recommended Hardening:**
-- Encrypt sensitive cache entries (AES-256)
-- Implement cache entry time-to-live (TTL): 24 hours
-- Monitor cache usage for anomalies
-- Don't expose cache stats in debug endpoints
+* Encrypt sensitive cache entries (AES-256)
+* Implement cache entry time-to-live (TTL): 24 hours
+* Monitor cache usage for anomalies
+* Don't expose cache stats in debug endpoints
 
 ---
 
@@ -326,11 +326,11 @@ if not member:
 | Logs not archived securely | **HIGH** | No separation between current + historical logs |
 
 **Recommended Hardening (⚠️ High):**
-- Encrypt logs at rest: AES-256-GCM
-- Ship to remote SIEM immediately
-- Set file permissions: 600 (read-only to app user)
-- Implement retention: 90 days current + archived securely
-- Separate audit database credentials from app credentials
+* Encrypt logs at rest: AES-256-GCM
+* Ship to remote SIEM immediately
+* Set file permissions: 600 (read-only to app user)
+* Implement retention: 90 days current + archived securely
+* Separate audit database credentials from app credentials
 
 ---
 
@@ -349,33 +349,32 @@ if not member:
 | No adaptive rate limiting | **MEDIUM** | No escalation on repeated violations |
 
 **Recommended Hardening (⚠️ High):**
-- Switch to Redis-backed rate limiting (survives restarts)
-- Implement per-endpoint limits:
-  - R_COMP (cheap): 300/min
-  - R_ASSESS (expensive): 5/min
-  - R_ORG (moderate): 100/min
-- Add per-API-key limits: 500/min
-- Implement adaptive rate limiting: tighter on repeated 429 responses
+* Switch to Redis-backed rate limiting (survives restarts)
+* Implement per-endpoint limits:
+  * R_COMP (cheap): 300/min
+  * R_ASSESS (expensive): 5/min
+  * R_ORG (moderate): 100/min
+* Add per-API-key limits: 500/min
+* Implement adaptive rate limiting: tighter on repeated 429 responses
 
 ---
 
-### 5.2 NVD API Dependency Failure (TB2 ↔ TB4 boundary)
-**Attack:** NVD becomes unavailable; system can't fetch vulnerabilities, blocking assessments.
+### 5.2 OSV.dev API Dependency Failure (TB2 ↔ TB4 boundary)
+**Attack:** OSV.dev becomes unavailable; system can't fetch vulnerabilities, blocking assessments.
 
 | Component | Current Risk | Mitigation |
 |-----------|-------------|-----------|
-| TB2 Component/Assessment routers call NVD directly | **CRITICAL** | Single point of failure; blocking request |
-| No timeout on NVD requests | **HIGH** | Slow/hanging request blocks entire API worker |
-| No cached fallback data | **HIGH** | No vulnerabilities returned if NVD down |
-| No circuit breaker pattern | **HIGH** | Cascading failures on repeated NVD outages |
+| TB2 Assessment routers call OSV.dev directly | **MEDIUM** | OSV service has retry with backoff (max 3 attempts) |
+| 30 second timeout on OSV.dev requests | **LOW** | Implemented in OSVService._request() |
+| No cached fallback data | **HIGH** | No vulnerabilities returned if OSV.dev down |
+| No circuit breaker pattern | **HIGH** | Cascading failures on repeated OSV.dev outages |
 
-**Recommended Hardening (⚠️ High):**
-- Implement request timeout: 5 seconds for NVD calls
-- Cache NVD responses with TTL: 24 hours
-- Implement circuit breaker:
-  - After 5 failed NVD calls in 1 minute → return cached data
-  - Prevent cascading failures
-- Return response: "Vulnerability data temporarily unavailable; using cached data"
+**Recommended Hardening:**
+* Cache OSV.dev responses with TTL: 24 hours
+* Implement circuit breaker:
+  * After 5 failed OSV.dev calls in 1 minute → return cached data
+  * Prevent cascading failures
+* Return response: "Vulnerability data temporarily unavailable; using cached data"
 
 ---
 
@@ -390,13 +389,13 @@ if not member:
 | No timeout on engine execution | **HIGH** | Runaway computation can hang worker indefinitely |
 
 **Recommended Hardening (⚠️ High):**
-- Implement async job queue (Celery + Redis):
-  - POST `/assessments` returns job_id immediately (202 Accepted)
-  - Client polls GET `/assessments/{job_id}` for status/results
-  - Job runs in background worker
-- Cache assessment results: 1 hour (if metadata unchanged)
-- Add timeout to correlation engine: 30 seconds max
-- Implement job priorities (user-initiated = high; batch = low)
+* Implement async job queue (Celery + Redis):
+  * POST `/assessments` returns job_id immediately (202 Accepted)
+  * Client polls GET `/assessments/{job_id}` for status/results
+  * Job runs in background worker
+* Cache assessment results: 1 hour (if metadata unchanged)
+* Add timeout to correlation engine: 30 seconds max
+* Implement job priorities (user-initiated = high; batch = low)
 
 ---
 
@@ -411,10 +410,10 @@ if not member:
 | No parsing timeout | **MEDIUM** | Runaway parser can hang worker |
 
 **Recommended Hardening:**
-- Enforce manifest size limit: 5 MB max
-- Return 413 Payload Too Large if exceeded
-- Implement streaming XML parser (lxml iterparse)
-- Add parsing timeout: 10 seconds
+* Enforce manifest size limit: 5 MB max
+* Return 413 Payload Too Large if exceeded
+* Implement streaming XML parser (lxml iterparse)
+* Add parsing timeout: 10 seconds
 
 ---
 
@@ -428,10 +427,10 @@ if not member:
 | DB queries may run long (TB2 correlation engine) | **MEDIUM** | Holds connection while processing |
 
 **Recommended Hardening:**
-- Configure pool with overflow: `pool_size=20, max_overflow=40` (total 60)
-- Add connection pool monitoring: log checkedout; alert > 80% utilized
-- Implement per-query timeout: 30 seconds
-- Current `pool_pre_ping=True` helps (already enabled)
+* Configure pool with overflow: `pool_size=20, max_overflow=40` (total 60)
+* Add connection pool monitoring: log checkedout; alert > 80% utilized
+* Implement per-query timeout: 30 seconds
+* Current `pool_pre_ping=True` helps (already enabled)
 
 ---
 
@@ -449,7 +448,7 @@ if not member:
 | TB3 Database has no RLS | **CRITICAL** | DB doesn't enforce boundaries |
 
 **Recommended Hardening (⚠️ CRITICAL):**
-- See **Spoofing 1.2** and **Information Disclosure 4.1** for full mitigation
+* See **Spoofing 1.2** and **Information Disclosure 4.1** for full mitigation
 
 ---
 
@@ -464,14 +463,14 @@ if not member:
 | DELETE endpoints not restricted | **HIGH** | Dangerous operations allowed freely |
 
 **Recommended Hardening (⚠️ High):**
-- Implement API key scopes:
-  - `read`: GET only
-  - `write`: GET + POST + PATCH
-  - `admin`: GET + POST + PATCH + DELETE (rare)
-- Implement per-org key binding:
-  - Key can only access Organization X
-  - Requesting Org Y → 403 "Key not authorized"
-- Implement key expiration + auto-rotation
+* Implement API key scopes:
+  * `read`: GET only
+  * `write`: GET + POST + PATCH
+  * `admin`: GET + POST + PATCH + DELETE (rare)
+* Implement per-org key binding:
+  * Key can only access Organization X
+  * Requesting Org Y → 403 "Key not authorized"
+* Implement key expiration + auto-rotation
 
 ---
 
@@ -485,22 +484,89 @@ if not member:
 | All routes go through middleware | **LOW** | No bypass paths |
 
 **Recommended Hardening:**
-- Ensure `CORS_ORIGINS` explicitly set in production (whitelist)
-- Add startup validation: verify middleware applied to all routes
-- Test middleware enforcement with security scanning
+* Ensure `CORS_ORIGINS` explicitly set in production (whitelist)
+* Add startup validation: verify middleware applied to all routes
+* Test middleware enforcement with security scanning
+
+---
+
+## AI-Generated STRIDE Findings (2026-03-14)
+
+The following threats were identified by running Charlotte's Web against its own stack. They supplement the manual STRIDE analysis in sections 1-6 with findings specific to the current deployment.
+
+### S-AI.1 JWT Without Transport Security [HIGH] — Spoofing
+**Threat:** JWT tokens issued without confirmed transport security can be intercepted and replayed.
+**Component:** PyJWT token issuance and validation in FastAPI
+**Mitigation:** Enforce HTTPS-only via uvicorn SSL certificates or TLS-terminating reverse proxy. Set Secure flag on all auth cookies. Reject plaintext HTTP requests.
+**Cross-reference:** See section 8.2 (TLS Enforcement) — currently mitigated with HTTPSEnforcementMiddleware + HSTS.
+
+### S-AI.2 Secret Exposure via Logging or Config [MEDIUM] — Information Disclosure
+**Threat:** Anthropic API key, JWT secret, and database credentials stored as environment variables may be exposed through misconfigured logging, error responses, or container inspection.
+**Component:** pydantic-settings configuration, Anthropic client, PyJWT secret
+**Current controls:** Audit logging already masks API keys to last 4 characters and never logs passwords or PHI. Production mode hides stack traces and detailed errors. `.env` files excluded from git. Optional Fernet encryption for `.env` files available (`src/encryption.py`).
+**Remaining gap:** Config fields do not use pydantic `SecretStr` type, so accidental serialization of the full config object could leak secrets. No external secrets manager integrated.
+**Mitigation:** Adopt `SecretStr` for secret config fields. Integrate a secrets manager (AWS Secrets Manager, HashiCorp Vault) for production.
+**Current Disposition:** Partially mitigated. Secrets management upgrade planned.
+
+### S-AI.3 JWT Secret Key Weakness [MEDIUM] — Elevation of Privilege
+**Threat:** Weak or predictable JWT secret key allows an attacker to forge tokens with elevated role claims.
+**Component:** PyJWT token signing, FastAPI dependency injection for auth
+**Current controls:** Development auto-generates secret via `secrets.token_urlsafe(32)` (256-bit entropy). Production requires explicitly set `SECRET_KEY` (startup validation fails without it). Algorithm strictly set to HS256 (no `none` accepted). Token expiry enforced (default 60 minutes). JWT infrastructure built but not yet wired to user session flow.
+**Remaining gap:** No refresh token rotation. No minimum key length enforcement beyond startup check. Secret stored in environment variable, not a secrets manager.
+**Mitigation:** Increase to 512-bit secret. Add refresh token rotation. Store in secrets manager for production.
+**Cross-reference:** See section 6.2 (API Key Privilege Escalation).
+
+### S-AI.4 Alembic Migration Integrity [MEDIUM] — Tampering
+**Threat:** Migration scripts run during deployment without integrity verification. A supply-chain or insider threat could introduce schema changes that exfiltrate or corrupt data.
+**Component:** Alembic migration pipeline
+**Mitigation:** Store migration files in version control with signed commits (GPG-signed tags). Run migrations only from CI/CD with a dedicated least-privilege database account.
+
+### S-AI.5 SQLite Write Contention [MEDIUM] — Denial of Service
+**Threat:** SQLite does not support concurrent write access. Under moderate load, write contention causes SQLITE_BUSY errors, resulting in effective denial of service for write operations.
+**Component:** SQLite database, SQLAlchemy connection pool
+**Mitigation:** Enable WAL mode (`PRAGMA journal_mode=WAL`) to improve read/write concurrency. For production workloads with >1 uvicorn worker, migrate to PostgreSQL.
+**Current Disposition:** Accepted risk for development. Production PostgreSQL migration planned.
+
+### S-AI.6 File Upload Validation [LOW] — Elevation of Privilege
+**Threat:** python-multipart file upload handling without strict content-type and size validation can be abused to upload malicious files.
+**Component:** python-multipart file upload endpoints in FastAPI
+**Current controls:** No file upload endpoints currently exist. Evidence attachment accepts HTTPS URLs only (validated and sanitized). Security scaffolding for future file uploads is documented in `src/routers/evidence.py` (allowed extensions, 25MB limit, UUID-based filenames, path traversal prevention, ClamAV integration points).
+**Remaining gap:** When file uploads are enabled, the scaffolding must be implemented before going live.
+**Mitigation:** Implement the scaffolded security controls before enabling any file upload endpoint.
+**Cross-reference:** See section 5.4 (Large Manifest Parsing).
+
+---
+
+## AI-Generated Remediation Roadmap (2026-03-14)
+
+Priority-ordered remediation steps from the AI threat model analysis:
+
+| Step | Action | Rationale |
+|------|--------|-----------|
+| 1 | **Enable TLS 1.2+ on all endpoints:** configure uvicorn with SSL certificates or deploy nginx/Caddy as TLS-terminating reverse proxy. Redirect HTTP to HTTPS. Disable TLS 1.0/1.1 and weak ciphers. | Plaintext HTTP undermines every other control. Direct HIPAA 164.312(e)(1) violation. **Status: Mitigated** (HTTPSEnforcementMiddleware + HSTS + port 8443 TLS binding) |
+| 2 | **Encrypt data at rest:** SQLCipher for SQLite or migrate to PostgreSQL with native encryption. Set database file permissions to 600. Deploy as non-root user. | Unencrypted data at rest violates HIPAA 164.312(a)(2)(iv). |
+| 3 | **Harden JWT secret key:** increase to 512-bit secret via `secrets.token_hex(64)`, store in secrets manager, add refresh token rotation. | Forgeable JWT enables full authentication bypass. **Partially mitigated:** strict HS256 validation, 60-min expiry, and production startup validation already enforced. |
+| 4 | **Ship audit logs to append-only store:** integrate SIEM (Splunk, ELK, Datadog) with 180-day retention. Add hash chain for tamper evidence. Encrypt audit log at rest. | Audit log tampering/loss undermines forensics. HIPAA 164.312(b). **Partially mitigated:** comprehensive JSON structured audit logging already in place (auth, data access, assessments, security alerts, request ID correlation, API key masking). Gap is file-based storage without SIEM or encryption. |
+| 5 | **Implement TOTP-based MFA (pyotp):** enforce before JWT issuance. Provide backup codes. | Most effective single control against credential compromise. HIPAA access control requirement. |
+| 6 | **Centralize secrets management:** move JWT secret, Anthropic API key, and database credentials to a secrets manager. Use `SecretStr` in pydantic-settings. | Prevents secret leakage via logs or error responses. **Partially mitigated:** 12-factor env-based config, `.env` excluded from git, optional Fernet encryption for `.env` files, audit logger already masks API keys. Gap is no `SecretStr` types and no external secrets manager. |
+| 7 | **Replace passlib with argon2-cffi:** configure Argon2id with OWASP parameters (memory=64MB, iterations=3, parallelism=4). Migrate existing hashes on next login via rehash-on-verify. | passlib is minimally maintained; Argon2id is OWASP-recommended. |
+| 8 | **Document formal HIPAA Risk Analysis:** asset inventory, threat identification, vulnerability assessment, impact/likelihood analysis, risk determination. Use this threat model as input artifact. | HIPAA 164.308(a)(1)(ii)(A) requires documented risk analysis. |
 
 ---
 
 ## Self-Assessment Summary
 
-Sections 7-10 were added after running Charlotte's Web against itself, using the platform's own threat modeling feature to analyze its own dependency stack (2026-03-14). You could say the project is self-aware.
+Sections 7-10 were added after running Charlotte's Web against itself, using the platform's own threat modeling feature to analyze its own dependency stack. Updated 2026-03-14 using OSV.dev ecosystem-aware vulnerability scanning (replaced NVD keyword matching which produced false positives). AI-generated findings were verified against the actual codebase to correct assumptions about absent controls that are in fact implemented (TLS, audit logging, error handling, CORS, algorithm validation).
+
+**AI Threat Model Summary (2026-03-14):** 5 compliance findings analyzed, 13 STRIDE threats identified (7 HIGH, 6 MEDIUM), 0 CVEs across all 16 components. All risk is architectural and configuration driven. After verification against the actual codebase, several AI-reported gaps were found to be already mitigated (TLS enforcement, audit logging, error handling, CORS). See the AI-Generated STRIDE Findings and Remediation Roadmap sections above for the corrected analysis.
 
 | Disposition | Count | Description |
 |-------------|-------|-------------|
-| **Mitigated** | 6 | Finding is valid but already addressed by existing controls |
-| **Not Applicable** | 7 | Finding does not apply to this application or stack |
-| **Accepted Risk** | 3 | Finding is valid, risk accepted with documented rationale |
-| **Remediation Planned** | 2 | Finding is valid, remediation scheduled |
+| **Mitigated** | 4 | TLS enforcement + HSTS, comprehensive audit logging, error handling (no stack traces in prod), strict CORS (no wildcard) |
+| **Partially Mitigated** | 3 | JWT hardening (strict algo + expiry, needs 512-bit key + refresh rotation), secret management (env-based + masking, needs SecretStr + secrets manager), rate limiting (60/min per IP, needs per-endpoint + Redis) |
+| **Accepted Risk (Dev)** | 3 | SQLite encryption, SQLite write contention, SSRF (hardcoded URLs) |
+| **Not Applicable** | 1 | File upload validation (no upload endpoints exist; security scaffolding ready) |
+| **Remediation Planned** | 3 | MFA (pyotp), passlib→argon2-cffi migration, HIPAA risk analysis documentation |
 
 ---
 
@@ -511,17 +577,19 @@ Sections 7-10 were added after running Charlotte's Web against itself, using the
 ### 7.1 Known CVEs in Dependencies (TB2 Application Service)
 **Attack:** Attacker exploits publicly disclosed vulnerabilities in installed packages.
 
-| Component | Version | CVE | Severity | Status |
-|-----------|---------|-----|----------|--------|
-| PyJWT | 2.12.1 | CVE-2026-32597 | HIGH | **Patched** (fixed in 2.12.0) |
-| SQLite | 3.50.4 | CVE-2022-31631 | CRITICAL | **Not Applicable** (PHP-specific, SQLAlchemy uses parameterized queries) |
-| Uvicorn | 0.41.0 | CVE-2020-7694 | MEDIUM | **Mitigated** (structured logging, no raw terminal output) |
-| Starlette (via FastAPI) | TBD | CVE-2024-47874 | MEDIUM | **Under Review** (verify bundled version) |
-| FastAPI | 0.135.1 | CVE-2024-40627, 42816, 42818 | HIGH | **Not Applicable** (affect fastapi-opa / fastapi-admin-pro, not installed) |
-| Python | 3.14.3 | CVE-2020-29396, CVE-2021-32052 | HIGH/MEDIUM | **Not Applicable** (affect Odoo / Django, not installed) |
-| Pydantic | 2.12.5 | CVE-2025-22151 | MEDIUM | **Not Applicable** (affects Strawberry GraphQL, not installed) |
+**OSV.dev Scan Results (2026-03-14):** 0 known CVEs across all 16 components (14 PyPI packages + Python 3.14.3 + SQLite 3.43.2). All versions are current releases as of mid-2025. The dependency posture is healthy.
 
-**Key Finding:** 7 of 11 CVEs flagged by NVD were false positives due to incorrect package attribution (CVEs assigned to third-party plugins, not the core libraries installed here).
+**Previous NVD keyword search results (now deprecated):** Earlier scans using NVD keyword matching flagged 11 CVEs, of which 7 were false positives due to incorrect package attribution (CVEs assigned to third-party plugins like fastapi-opa, fastapi-admin-pro, Odoo, Django, Strawberry GraphQL — none of which are installed). The migration to OSV.dev eliminated these false positives through ecosystem-aware, version-specific querying.
+
+### 7.2 Maintenance and Monitoring Notes
+
+| Component | Version | Risk | Action |
+|-----------|---------|------|--------|
+| passlib | 1.7.4 | **Maintenance risk** | Minimally maintained project. Migrate password hashing to argon2-cffi (Argon2id algorithm, OWASP recommended). Passlib can wrap argon2-cffi as a transitional step. |
+| SQLite | 3.43.2 | **Version age** | Released September 2023. Verify Python 3.14 distribution bundles an up-to-date SQLite version. Monitor for upstream CVEs. |
+| python-multipart | 0.0.22 | **Monitor** | No known CVEs at this version. Previous versions (0.0.5-0.0.6) had critical ReDoS vulnerabilities. Ensure input validation is enforced at the application layer. |
+
+**Recommended cadence:** Weekly `pip-audit` or Dependabot scanning. Pin all dependencies with exact versions and validate hashes.
 
 ---
 
@@ -539,9 +607,9 @@ Sections 7-10 were added after running Charlotte's Web against itself, using the
 **Current Disposition:** Accepted risk for development. Production guidance requires PostgreSQL with storage-level encryption.
 
 **Recommended Hardening:**
-- Development: Restrict file permissions (`chmod 600`, owned by app service account)
-- Production: Migrate to PostgreSQL with encrypted storage (AWS RDS encryption, Azure TDE)
-- Alternative: SQLCipher for encrypted SQLite if single-file deployment is required
+* Development: Restrict file permissions (`chmod 600`, owned by app service account)
+* Production: Migrate to PostgreSQL with encrypted storage (AWS RDS encryption, Azure TDE)
+* Alternative: SQLCipher for encrypted SQLite if single-file deployment is required
 
 ### 8.2 Data in Transit: TLS Enforcement (TB1 ↔ TB2 boundary)
 **Status: Mitigated**
@@ -580,7 +648,7 @@ If the application scope changes to include PHI, a full HIPAA gap analysis must 
 
 | Component | Current Risk | Mitigation |
 |-----------|-------------|-----------|
-| python-requests makes outbound calls to NVD API | **LOW** | Base URLs are hardcoded, not user-supplied |
+| python requests makes outbound calls to OSV.dev and NVD APIs | **LOW** | Base URLs are hardcoded, not user supplied |
 | No user-supplied URL input currently exists | **LOW** | No SSRF vector present |
 
 **Current Disposition:** Accepted risk. URL allowlisting recommended if user-controlled URLs are added in the future.
@@ -596,22 +664,30 @@ If the application scope changes to include PHI, a full HIPAA gap analysis must 
 | ⚠️ **HIGH** | Data at Rest 8.1 | SQLite encryption or PostgreSQL migration | TB3 | Accepted (Dev) |
 | ⚠️ **HIGH** | Authentication 9.1 | MFA implementation (pyotp/TOTP) | TB1 → TB2 | Planned |
 | ⚠️ **HIGH** | Tampering 2.2 | Finding audit trail + versioning | TB2 ↔ TB3 | Open |
-| ⚠️ **HIGH** | Repudiation 3.1 | SIEM + log encryption + hash chain | TB2 ↔ TB5 | Open |
-| ⚠️ **HIGH** | DoS 5.1 | Redis rate limiting + per-endpoint tuning | TB2 Middleware | Open |
-| ⚠️ **HIGH** | DoS 5.2 | NVD circuit breaker + caching + timeout | TB2 ↔ TB4 | Open |
+| ⚠️ **HIGH** | Repudiation 3.1 | SIEM + log encryption + hash chain | TB2 ↔ TB5 | Partial (logging exists, needs SIEM) |
+| ⚠️ **HIGH** | DoS 5.1 | Redis rate limiting + per-endpoint tuning | TB2 Middleware | Partial (60/min per IP exists) |
+| ⚠️ **HIGH** | DoS 5.2 | OSV.dev circuit breaker + caching + timeout | TB2 ↔ TB4 | Partial (retry + 30s timeout exists) |
 | ⚠️ **HIGH** | DoS 5.3 | Async job queue (Celery) | TB2 R_ASSESS | Open |
 | ⚠️ **HIGH** | Elevation 6.2 | API key scopes + per-org binding | TB1 → TB2 | Open |
-| **MITIGATED** | Data in Transit 8.2 | TLS enforcement + HSTS | TB1 ↔ TB2 | Mitigated |
-| **MITIGATED** | Supply Chain 7.1 | PyJWT patched, false positives identified | TB2 | Mitigated |
+| **MEDIUM** | Secret Exposure S-AI.2 | SecretStr + secrets manager | TB2 Config | Partial (key masking exists) |
+| **MEDIUM** | JWT Key Weakness S-AI.3 | 512-bit secret + refresh rotation | TB2 Auth | Partial (strict algo + expiry exists) |
+| **MEDIUM** | Alembic Integrity S-AI.4 | Signed commits + CI-only migrations | TB2 Deploy | Open |
+| **MEDIUM** | SQLite Contention S-AI.5 | WAL mode + PostgreSQL migration | TB3 | Accepted (Dev) |
+| **LOW** | File Upload S-AI.6 | Implement scaffolded controls when enabled | TB2 R_COMP | N/A (no upload endpoints) |
+| **MITIGATED** | Data in Transit 8.2 | TLS enforcement + HSTS + port 8443 | TB1 ↔ TB2 | Mitigated |
+| **MITIGATED** | Error Handling 4.2 | Debug disabled in prod, generic errors | TB2 | Mitigated |
+| **MITIGATED** | CORS 6.3 | Strict whitelist, no wildcard, TLS-only origins | TB2 Middleware | Mitigated |
+| **MITIGATED** | Request Tracing 3.2 | UUID per request, X-Request-ID header | TB2 Middleware | Mitigated |
+| **CLEAN** | Supply Chain 7.1 | 0 CVEs across 16 components (OSV.dev scan) | TB2 | No action needed |
 
 ---
 
 ## Threat Model Review Cadence
 
-- **Monthly:** Review critical/high-priority mitigations for completeness
-- **Quarterly:** Full threat model refresh (new features, architecture changes)
-- **Post-Incident:** Immediate update if any issue exploits a gap
-- **Last Review:** 2026-03-14 (self-assessment using Charlotte's Web threat modeling feature)
+* **Monthly:** Review critical/high-priority mitigations for completeness
+* **Quarterly:** Full threat model refresh (new features, architecture changes)
+* **Post-Incident:** Immediate update if any issue exploits a gap
+* **Last Review:** 2026-03-14 (self-assessment using Charlotte's Web threat modeling feature)
 
 ## ASCII Diagram Fallback
 
@@ -633,10 +709,10 @@ Use this if your Markdown viewer cannot render Mermaid.
     |
     +--> organizations
     +--> metadata_profiles
-    +--> components --> [Manifest Parser] --> [NVD]
+    +--> components --> [Manifest Parser] --> [NVD CPE]
     +--> assessments --> [Rules Engine] --> [Compliance/CWE Mapping]
     |                    |                    |
-    |                    +--> [NVD]           +--> [MITRE]
+    |                    +--> [OSV.dev]       +--> [MITRE]
     |                    +--> [Findings/Assessment writes]
     +--> evidence
     +--> risk --> [Risk Scoring Engine]
@@ -687,7 +763,8 @@ flowchart TD
 
     %% Trust Boundary: External Intel
     subgraph B4[Boundary: External Threat Intel]
-        NVD2[NVD API]
+        OSV2[OSV.dev API]
+        NVD2[NVD CPE API]
         MITRE2[MITRE mapping data]
     end
 
@@ -713,7 +790,7 @@ flowchart TD
     EP4 --> RULES
     RULES --> CTRLT
     EP4 --> CORR
-    CORR --> NVD2
+    CORR --> OSV2
     CORR --> MITRE2
     CORR --> SCORE
     SCORE --> FINDT
@@ -733,8 +810,42 @@ flowchart TD
 
 ### Threat-Model Prompts for This DFD
 
-- Input validation: How is malformed stack/manifest input rejected before correlation logic?
-- External dependency trust: What happens if NVD is unavailable or returns partial data?
-- Authorization scope: Can one org read another org's assessments/findings?
-- Integrity: How do we prevent tampering of assessment/finding records between creation and display?
-- DoS controls: Which endpoints are rate-limited and where are expensive calls cached?
+* Input validation: How is malformed stack/manifest input rejected before correlation logic?
+* External dependency trust: What happens if OSV.dev is unavailable or returns partial data?
+* Authorization scope: Can one org read another org's assessments/findings?
+* Integrity: How do we prevent tampering of assessment/finding records between creation and display?
+* DoS controls: Which endpoints are rate-limited and where are expensive calls cached?
+
+## AI-Generated Data Flow Diagram (2026-03-14)
+
+Simplified DFD generated by the AI threat model analysis, focused on component-level data flows and security boundaries.
+
+```mermaid
+graph LR
+    subgraph End User Environment
+        end_user(("End User / Client"))
+    end
+    subgraph Application Tier
+        fastapi_app["FastAPI Application (uvicorn)"]
+        auth_middleware["Auth Middleware (PyJWT + passlib)"]
+        rate_limiter["Rate Limiter (slowapi)"]
+        file_handler["File Upload Handler (python-multipart)"]
+        anthropic_client["Anthropic API Client"]
+        sqlalchemy_orm["SQLAlchemy ORM / Alembic"]
+    end
+    subgraph Data Layer
+        sqlite_db[("SQLite Database")]
+    end
+    subgraph External Services
+        anthropic_api{"Anthropic Claude API"}
+    end
+    end_user -->|HTTPS TLS 1.2+| rate_limiter
+    rate_limiter -->|HTTP internal routing| auth_middleware
+    auth_middleware -->|Validated JWT context| fastapi_app
+    fastapi_app -->|Multipart form data| file_handler
+    fastapi_app -->|REST/JSON prompt payload| anthropic_client
+    anthropic_client -->|HTTPS REST API Anthropic SDK| anthropic_api
+    anthropic_api -->|HTTPS REST API response| anthropic_client
+    fastapi_app -->|ORM method calls| sqlalchemy_orm
+    sqlalchemy_orm -->|SQLite file I/O unencrypted at rest| sqlite_db
+```

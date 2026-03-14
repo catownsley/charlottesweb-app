@@ -121,9 +121,9 @@ def metadata_profile_data(client, org_data):
                 "rbac_enabled": True,
             },
             "software_stack": {
-                "postgres": "15",
-                "nodejs": "20",
-                "python": "3.11",
+                "postgres": {"version": "15", "ecosystem": ""},
+                "nodejs": {"version": "20", "ecosystem": "npm"},
+                "python": {"version": "3.11", "ecosystem": "PyPI"},
             },
         },
     )

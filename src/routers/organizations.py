@@ -195,7 +195,7 @@ def delete_organization(
 
     Cascade order:
       1. Evidence records (direct FK to organizations, not ORM-cascaded)
-      2. Cached AI threat models and NVD results for this org
+      2. Cached AI threat models and vulnerability results for this org
       3. Organization + ORM-cascaded children (members, profiles, assessments, findings)
     """
     org = get_or_404(db, Organization, org_id, "Organization not found")
@@ -205,7 +205,7 @@ def delete_organization(
         # Evidence has a direct FK to organizations (not covered by ORM cascade)
         db.query(Evidence).filter(Evidence.organization_id == org_id).delete()
 
-        # Purge cached AI threat models / NVD results for this org so no
+        # Purge cached AI threat models / vulnerability results for this org so no
         # stale data lingers after the org is removed.
         db.query(CacheEntry).filter(CacheEntry.key.contains(org_id)).delete(
             synchronize_session="fetch"

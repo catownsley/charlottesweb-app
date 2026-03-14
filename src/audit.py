@@ -96,7 +96,7 @@ class AuditAction(StrEnum):
     ASSESSMENT_RUN = "assessment_run"  # Assessment executed
     ASSESSMENT_VIEWED = "assessment_viewed"  # Assessment results viewed
     ROADMAP_GENERATED = "roadmap_generated"  # Remediation roadmap created
-    NVD_QUERY = "nvd_query"  # NVD vulnerability database queried
+    NVD_QUERY = "nvd_query"  # Vulnerability database queried (OSV.dev; enum kept for audit log compat)
     THREAT_INTEL_QUERY = "threat_intel_query"  # Threat intel providers queried
 
     # Organization Management

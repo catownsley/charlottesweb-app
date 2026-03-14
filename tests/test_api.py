@@ -218,7 +218,10 @@ def test_get_prioritized_risk_backlog(client):
         "/api/v1/metadata-profiles",
         json={
             "organization_id": org_id,
-            "software_stack": {"openssl": "1.0.1", "apache-tomcat": "9.0.62"},
+            "software_stack": {
+                "openssl": {"version": "1.0.1", "ecosystem": ""},
+                "tomcat": {"version": "9.0.62", "ecosystem": "Maven"},
+            },
             "infrastructure": {
                 "encryption_at_rest": False,
                 "tls_enabled": False,
@@ -299,7 +302,7 @@ def test_get_assessment_status(client):
         "/api/v1/metadata-profiles",
         json={
             "organization_id": org_id,
-            "software_stack": {"openssl": "1.0.1"},
+            "software_stack": {"openssl": {"version": "1.0.1", "ecosystem": ""}},
         },
     )
     profile_id = profile_response.json()["id"]

@@ -6,9 +6,41 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from src.models import Assessment, Control, Finding, MetadataProfile
-from src.nvd_service import NVDApiError, NVDService
+from src.osv_service import OSVApiError, OSVService
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_software_stack(
+    raw_stack: dict[str, Any],
+) -> list[dict[str, str]]:
+    """Normalize a software_stack dict into a list of component dicts.
+
+    Handles both the legacy flat format {"name": "version"} and the new
+    ecosystem-aware format {"name": {"version": "x", "ecosystem": "Y"}}.
+
+    Returns:
+        List of dicts with keys: name, version, ecosystem
+    """
+    components: list[dict[str, str]] = []
+    for name, value in raw_stack.items():
+        name = str(name).strip()
+        if not name:
+            continue
+
+        if isinstance(value, dict):
+            version = str(value.get("version", "")).strip()
+            ecosystem = str(value.get("ecosystem", "")).strip()
+        else:
+            version = str(value).strip() if value is not None else ""
+            ecosystem = ""
+
+        if not version:
+            continue
+
+        components.append({"name": name, "version": version, "ecosystem": ecosystem})
+
+    return components
 
 
 class RulesEngine:
@@ -19,12 +51,12 @@ class RulesEngine:
 
         Args:
             db: Database session
-            nvd_api_key: Optional NVD API key for higher rate limits
+            nvd_api_key: Unused (kept for backward compatibility)
         """
         self.db = db
         # Use max_retries=1 during assessment creation to avoid blocking.
-        # The dedicated analyze-nvd endpoint uses full retries.
-        self.nvd_service = NVDService(api_key=nvd_api_key, max_retries=1)
+        # The dedicated analyze endpoint uses full retries.
+        self.osv_service = OSVService(max_retries=1)
 
     def run_assessment(self, assessment_id: str) -> list[Finding]:
         """
@@ -269,7 +301,7 @@ class RulesEngine:
     def _check_software_vulnerabilities(
         self, assessment: Assessment, metadata: MetadataProfile
     ) -> list[Finding]:
-        """Check software stack for known vulnerabilities using NVD API.
+        """Check software stack for known vulnerabilities using OSV API.
 
         Args:
             assessment: Current assessment
@@ -279,68 +311,75 @@ class RulesEngine:
             List of findings for vulnerable software components
         """
         findings: list[Finding] = []
-        software_stack: dict[str, Any] = metadata.software_stack or {}
+        raw_stack: dict[str, Any] = metadata.software_stack or {}
 
-        if not software_stack:
-            logger.info("No software stack provided, skipping NVD check")
+        if not raw_stack:
+            logger.info("No software stack provided, skipping vulnerability check")
             return findings
 
-        logger.info("Analyzing software stack: %s", software_stack)
+        components = normalize_software_stack(raw_stack)
+        if not components:
+            return findings
 
-        # Analyze stack for vulnerabilities
+        logger.info("Analyzing software stack: %d components", len(components))
+
         try:
-            vulnerabilities = self.nvd_service.analyze_software_stack(software_stack)
-        except NVDApiError as e:
-            logger.error("NVD API unavailable during assessment: %s", e)
+            vulnerabilities = self.osv_service.analyze_software_stack(components)
+        except OSVApiError as e:
+            logger.error("OSV API unavailable during assessment: %s", e)
             return findings
 
         # Look up relevant control for software vulnerabilities
-        # We'll map to "Malware Protection" control as a proxy for vuln management
         control = (
             self.db.query(Control)
             .filter(Control.id == "HIPAA.164.308(a)(5)(ii)(B)")
             .first()
         )
+        control_id = control.id if control else "HIPAA.164.308(a)(5)(ii)(B)"
 
-        if not control:
-            # Fallback: create findings without control mapping
-            control_id = "HIPAA.164.308(a)(5)(ii)(B)"
-        else:
-            control_id = control.id
+        for component_key, vulns in vulnerabilities.items():
+            for vuln in vulns:
+                vuln_id = vuln["vuln_id"]
+                # Use CVE alias if available, otherwise the OSV ID
+                cve_ids = [a for a in vuln["aliases"] if a.startswith("CVE-")]
+                display_id = cve_ids[0] if cve_ids else vuln_id
 
-        for component, cves in vulnerabilities.items():
-            for cve_data in cves:
-                severity = self.nvd_service.get_severity_from_cvss(
-                    cve_data["cvss_score"]
+                severity = self.osv_service.get_severity_from_cvss(vuln["cvss_score"])
+                priority_window = self.osv_service.get_priority_window_from_cvss(
+                    vuln["cvss_score"]
                 )
-                priority_window = self.nvd_service.get_priority_window_from_cvss(
-                    cve_data["cvss_score"]
+
+                description_text = vuln["summary"] or vuln["details"][:200]
+                fixed_str = (
+                    ", ".join(vuln["fixed_versions"][:3])
+                    if vuln["fixed_versions"]
+                    else "unknown"
                 )
 
                 finding = Finding(
                     assessment_id=assessment.id,
                     control_id=control_id,
-                    title=f"Vulnerable Software Detected: {component} ({cve_data['cve_id']})",
+                    external_id=display_id,
+                    title=f"Vulnerable Software: {component_key} ({display_id})",
                     description=(
-                        f"Known vulnerability found in {component}: {cve_data['description'][:200]}...\n\n"
-                        f"CVE ID: {cve_data['cve_id']}\n"
-                        f"Published: {cve_data['published_date']}"
+                        f"{description_text}\n\n"
+                        f"Vulnerability: {vuln_id}\n"
+                        f"Published: {vuln['published_date']}\n"
+                        f"Fixed in: {fixed_str}"
                     ),
                     severity=severity,
-                    cvss_score=cve_data["cvss_score"],
-                    cve_ids=[cve_data["cve_id"]],
-                    cwe_ids=cve_data["cwe_ids"],
+                    cvss_score=vuln["cvss_score"],
+                    cve_ids=cve_ids or [vuln_id],
+                    cwe_ids=vuln["cwe_ids"],
                     remediation_guidance=(
-                        f"Update {component} to a patched version that addresses {cve_data['cve_id']}. "
-                        f"Review NVD  (https://nvd.nist.gov/vuln/detail/{cve_data['cve_id']}) for "
-                        f"specific remediation guidance."
+                        f"Update {component_key.split('@')[0]} to a patched version "
+                        f"(fixed in: {fixed_str}). "
+                        f"See https://osv.dev/vulnerability/{vuln_id}"
                     ),
                     priority_window=priority_window,
                     owner="DevOps",
                 )
                 findings.append(finding)
-                logger.info(
-                    "Created finding for %s in %s", cve_data["cve_id"], component
-                )
+                logger.info("Created finding for %s in %s", display_id, component_key)
 
         return findings

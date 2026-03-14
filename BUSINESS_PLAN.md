@@ -12,7 +12,7 @@ This document outlines the complete business plan for CharlottesWeb, a multi-fra
 
 CharlottesWeb is a Compliance Intelligence platform for organizations handling regulated data (PHI, PII, financial records). Companies processing sensitive data often lack in-house security leadership yet face significant regulatory, financial, and reputational risk in the event of a breach.
 
-CharlottesWeb automates regulatory mapping by ingesting structured metadata about an organization's data types, data flows, infrastructure, and application stack. The platform correlates applicable regulatory requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) with real-world exploitable vulnerabilities (via NVD/CVE/CWE), secure coding risk patterns, and infrastructure misconfigurations to produce a prioritized remediation roadmap and audit-ready evidence package.
+CharlottesWeb automates regulatory mapping by ingesting structured metadata about an organization's data types, data flows, infrastructure, and application stack. The platform correlates applicable regulatory requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) with real world exploitable vulnerabilities (via OSV.dev/CVE/CWE), secure coding risk patterns, and infrastructure misconfigurations to produce a prioritized remediation roadmap and audit-ready evidence package.
 
 **Our goal:** Become the automated compliance intelligence and audit preparation layer for modern companies building on AWS, Azure, and AI-enabled stacks that handle regulated data.
 
@@ -32,7 +32,7 @@ Most compliance tools map controls to frameworks. CharlottesWeb maps:
 
 - Regulatory requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA)
 - Infrastructure components
-- Known vulnerabilities (CVE via NVD)
+* Known vulnerabilities (CVE via OSV.dev)
 - Common weakness patterns (CWE)
 - Application-layer risk patterns
 - Misconfiguration exposure
@@ -107,7 +107,7 @@ Most compliance tools map controls to frameworks. CharlottesWeb maps:
 
 - Multi-framework regulatory mapping (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA)
 - Cross-framework control correlation
-- NVD ingestion (CVE correlation)
+* OSV.dev ingestion (CVE correlation)
 - CWE ingestion
 - CIS Benchmark alignment
 - NIST CSF crosswalk
@@ -204,7 +204,7 @@ User uploads architecture metadata. Within minutes, they receive:
 ### Phase 1 (Lean Build)
 
 - **Founder** (Domain Expert, Advisory Lead)
-- **Backend Engineer** (Python, NVD ingestion, API design)
+* **Backend Engineer** (Python, vulnerability intelligence, API design)
 - **Frontend Engineer** (Dashboard + reporting interface)
 - **Security Research Contributor** (CWE/CVE correlation logic)
 

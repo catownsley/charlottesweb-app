@@ -415,14 +415,15 @@
 
         .component-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 50px;
+            grid-template-columns: 1fr 1fr 140px 50px;
             gap: 10px;
             margin-bottom: 15px;
             align-items: end;
             position: relative;
         }
 
-        .component-row input {
+        .component-row input,
+        .component-row select {
             width: 100%;
             padding: 10px;
             border: 2px solid #3d3556;
@@ -434,6 +435,7 @@
             color: #e0d8f0;
         }
 
+        .component-row select:focus,
         .component-row input:focus {
             outline: none;
             border-color: #9333ea;
@@ -1011,6 +1013,11 @@
                 .replace(/'/g, '&#039;');
         }
 
+        function escapeJsString(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
         // Tab switching logic
         document.querySelectorAll('.tab-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -1103,17 +1110,19 @@
 
             entries.forEach(([name, versionOrObj]) => {
                 const componentName = String(name || '').trim();
-                // software_stack values can be a string ("1.0") or object ({"version": "1.0"})
+                // software_stack values can be a string ("1.0") or object ({"version": "1.0", "ecosystem": "PyPI"})
                 let componentVersion = '';
+                let componentEcosystem = '';
                 if (typeof versionOrObj === 'object' && versionOrObj !== null) {
                     componentVersion = String(versionOrObj.version || '').trim();
+                    componentEcosystem = String(versionOrObj.ecosystem || '').trim();
                 } else {
                     componentVersion = String(versionOrObj || '').trim();
                 }
                 if (!componentName || !componentVersion) {
                     return;
                 }
-                addComponentRow(componentName, componentVersion);
+                addComponentRow(componentName, componentVersion, false, componentEcosystem);
             });
 
             if (document.querySelectorAll('.component-row').length === 0) {
@@ -1180,10 +1189,11 @@
                 data.components.forEach((component) => {
                     const name = String(component.name || '').trim();
                     const version = String(component.version || '').trim();
+                    const ecosystem = String(component.ecosystem || '').trim();
                     if (!name || !version) {
                         return;
                     }
-                    addComponentRow(name, version);
+                    addComponentRow(name, version, false, ecosystem);
                 });
 
                 if (document.querySelectorAll('.component-row').length === 0) {
@@ -1221,6 +1231,7 @@
             data.components.forEach((component) => {
                 const name = String(component.name || '').trim();
                 const version = String(component.version || '').trim();
+                const ecosystem = String(component.ecosystem || '').trim();
                 const key = name.toLowerCase();
 
                 if (!name || !version) {
@@ -1230,9 +1241,12 @@
                 const existing = existingByName.get(key);
                 if (existing && existing.versionInput) {
                     existing.versionInput.value = version;
+                    // Update ecosystem on merge too
+                    const ecoSelect = existing.versionInput.closest('.component-row')?.querySelector('.component-ecosystem');
+                    if (ecoSelect && ecosystem) ecoSelect.value = ecosystem;
                     mergedCount += 1;
                 } else {
-                    addComponentRow(name, version);
+                    addComponentRow(name, version, false, ecosystem);
                     addedCount += 1;
                 }
             });
@@ -1294,12 +1308,22 @@
         /**
          * Add a new component input row
          */
-        function addComponentRow(initialName = '', initialVersion = '', autoFocus = false) {
+        function addComponentRow(initialName = '', initialVersion = '', autoFocus = false, initialEcosystem = '') {
             componentCounter++;
 
             const row = document.createElement('div');
             row.className = 'component-row';
             row.id = `component-${componentCounter}`;
+
+            const ecosystemOptions = [
+                '', 'PyPI', 'Maven', 'npm', 'Go', 'crates.io',
+                'NuGet', 'RubyGems', 'Packagist'
+            ];
+            const ecosystemOptionsHtml = ecosystemOptions.map(eco => {
+                const selected = eco === initialEcosystem ? ' selected' : '';
+                const label = eco || 'Ecosystem...';
+                return `<option value="${eco}"${selected}>${label}</option>`;
+            }).join('');
 
             row.innerHTML = `
                 <div class="input-with-suggestions">
@@ -1325,6 +1349,12 @@
                         value="${initialVersion.replace(/"/g, '&quot;')}"
                     >
                     <div class="version-suggestions"></div>
+                </div>
+                <div>
+                    <div class="component-label">Ecosystem</div>
+                    <select class="component-ecosystem" title="Package ecosystem for vulnerability lookup">
+                        ${ecosystemOptionsHtml}
+                    </select>
                 </div>
                 <button type="button" class="delete-component">
                     ×
@@ -1610,14 +1640,22 @@
             'charlottesweb': {
                 orgName: "Charlotte's Web",
                 components: [
-                    {name: 'Python', version: '3.14.3'},
-                    {name: 'FastAPI', version: '0.135.1'},
-                    {name: 'Uvicorn', version: '0.41.0'},
-                    {name: 'Pydantic', version: '2.12.5'},
-                    {name: 'SQLAlchemy', version: '2.0.48'},
-                    {name: 'PyJWT', version: '2.12.1'},
-                    {name: 'python-requests', version: '2.32.5'},
-                    {name: 'SQLite', version: '3.50.4'}
+                    {name: 'fastapi', version: '0.135.1', ecosystem: 'PyPI'},
+                    {name: 'uvicorn', version: '0.41.0', ecosystem: 'PyPI'},
+                    {name: 'pydantic', version: '2.12.5', ecosystem: 'PyPI'},
+                    {name: 'pydantic-settings', version: '2.13.1', ecosystem: 'PyPI'},
+                    {name: 'sqlalchemy', version: '2.0.48', ecosystem: 'PyPI'},
+                    {name: 'alembic', version: '1.18.4', ecosystem: 'PyPI'},
+                    {name: 'pyjwt', version: '2.12.1', ecosystem: 'PyPI'},
+                    {name: 'passlib', version: '1.7.4', ecosystem: 'PyPI'},
+                    {name: 'slowapi', version: '0.1.9', ecosystem: 'PyPI'},
+                    {name: 'python-multipart', version: '0.0.22', ecosystem: 'PyPI'},
+                    {name: 'anthropic', version: '0.84.0', ecosystem: 'PyPI'},
+                    {name: 'requests', version: '2.32.5', ecosystem: 'PyPI'},
+                    {name: 'defusedxml', version: '0.7.1', ecosystem: 'PyPI'},
+                    {name: 'python-dateutil', version: '2.9.0.post0', ecosystem: 'PyPI'},
+                    {name: 'Python', version: '3.14.3', ecosystem: ''},
+                    {name: 'SQLite', version: '3.43.2', ecosystem: ''}
                 ]
             }
         };
@@ -1751,39 +1789,25 @@
         };
 
         // Load sample stack: direct component list or pom.xml into textarea
+        // Pending direct component stack (set when user picks a non-pom.xml sample).
+        // Consumed by the Merge/Replace buttons alongside pom.xml content.
+        let pendingComponentStack = null;
+
         sampleManifestSelect.addEventListener('change', () => {
             const selectedKey = sampleManifestSelect.value;
             if (!selectedKey) return;
 
             // Check if this is a direct component stack (non-pom.xml)
             if (SAMPLE_COMPONENT_STACKS[selectedKey]) {
-                const stack = SAMPLE_COMPONENT_STACKS[selectedKey];
-                componentsContainer.innerHTML = '';
-                componentCounter = 0;
-                if (stack.orgName) orgNameInput.value = stack.orgName;
+                pendingComponentStack = SAMPLE_COMPONENT_STACKS[selectedKey];
+                // Clear the textarea so it doesn't conflict
                 manifestContentInput.value = '';
-
-                let idx = 0;
-                function addNext() {
-                    if (idx >= stack.components.length) {
-                        sampleManifestSelect.value = '';
-                        return;
-                    }
-                    const comp = stack.components[idx++];
-                    addComponentBtn.click();
-                    setTimeout(() => {
-                        const lastRow = componentsContainer.lastElementChild;
-                        if (lastRow) {
-                            lastRow.querySelector('.component-name').value = comp.name;
-                            lastRow.querySelector('.component-version').value = comp.version;
-                        }
-                        addNext();
-                    }, 50);
-                }
-                addNext();
+                manifestFileInput.value = '';
                 return;
             }
 
+            // pom.xml sample — put content in the textarea for merge/replace
+            pendingComponentStack = null;
             if (!SAMPLE_MANIFESTS[selectedKey]) return;
 
             manifestContentInput.value = SAMPLE_MANIFESTS[selectedKey];
@@ -1806,9 +1830,71 @@
             return content;
         }
 
-        // Merge button: add manifest components into existing list
+        /**
+         * Populate component rows from a direct component stack (non-pom.xml).
+         */
+        function populateFromComponentStack(stack, { replaceExisting = true } = {}) {
+            if (stack.orgName) orgNameInput.value = stack.orgName;
+
+            if (replaceExisting) {
+                componentsContainer.innerHTML = '';
+                stack.components.forEach(comp => {
+                    const name = String(comp.name || '').trim();
+                    const version = String(comp.version || '').trim();
+                    const ecosystem = String(comp.ecosystem || '').trim();
+                    if (name && version) addComponentRow(name, version, false, ecosystem);
+                });
+                if (document.querySelectorAll('.component-row').length === 0) {
+                    addComponentRow();
+                }
+                return;
+            }
+
+            // Merge mode
+            const existingRows = Array.from(document.querySelectorAll('.component-row'));
+            const existingByName = new Map();
+            existingRows.forEach(row => {
+                const ni = row.querySelector('.component-name');
+                const vi = row.querySelector('.component-version');
+                const n = ni && ni.value ? ni.value.trim().toLowerCase() : '';
+                const v = vi && vi.value ? vi.value.trim() : '';
+                if (!n && !v) { row.remove(); return; }
+                if (n && !existingByName.has(n)) existingByName.set(n, { nameInput: ni, versionInput: vi });
+            });
+
+            stack.components.forEach(comp => {
+                const name = String(comp.name || '').trim();
+                const version = String(comp.version || '').trim();
+                const ecosystem = String(comp.ecosystem || '').trim();
+                const key = name.toLowerCase();
+                if (!name || !version) return;
+
+                const existing = existingByName.get(key);
+                if (existing && existing.versionInput) {
+                    existing.versionInput.value = version;
+                    const ecoSelect = existing.versionInput.closest('.component-row')?.querySelector('.component-ecosystem');
+                    if (ecoSelect && ecosystem) ecoSelect.value = ecosystem;
+                } else {
+                    addComponentRow(name, version, false, ecosystem);
+                }
+            });
+
+            if (document.querySelectorAll('.component-row').length === 0) {
+                addComponentRow();
+            }
+        }
+
+        // Merge button: add manifest/sample components into existing list
         mergeManifestBtn.addEventListener('click', async (e) => {
             e.preventDefault();
+
+            if (pendingComponentStack) {
+                populateFromComponentStack(pendingComponentStack, { replaceExisting: false });
+                pendingComponentStack = null;
+                sampleManifestSelect.value = '';
+                return;
+            }
+
             const content = await getManifestContent();
             if (!content) {
                 alert('Please select a sample, upload a pom.xml, or paste content first.');
@@ -1830,9 +1916,17 @@
             }
         });
 
-        // Replace button: clear list and populate from manifest
+        // Replace button: clear list and populate from manifest/sample
         replaceManifestBtn.addEventListener('click', async (e) => {
             e.preventDefault();
+
+            if (pendingComponentStack) {
+                populateFromComponentStack(pendingComponentStack, { replaceExisting: true });
+                pendingComponentStack = null;
+                sampleManifestSelect.value = '';
+                return;
+            }
+
             const content = await getManifestContent();
             if (!content) {
                 alert('Please select a sample, upload a pom.xml, or paste content first.');
@@ -1902,10 +1996,12 @@
                 for (const row of componentRows) {
                     const nameInput = row.querySelector('.component-name');
                     const versionInput = row.querySelector('.component-version');
+                    const ecosystemSelect = row.querySelector('.component-ecosystem');
                     let name = nameInput.value.trim();
                     let version = versionInput.value.trim();
+                    const ecosystem = ecosystemSelect ? ecosystemSelect.value : '';
 
-                    console.log(`Component row: name="${name}", version="${version}"`);
+                    console.log(`Component row: name="${name}", version="${version}", ecosystem="${ecosystem}"`);
 
                     // Skip empty rows (both fields empty)
                     if (!name && !version) {
@@ -1999,8 +2095,10 @@
                         );
                     }
 
-                    console.log(`  → Adding component: ${name} ${version}`);
-                    stack[name] = version;
+                    console.log(`  → Adding component: ${name} ${version} (${ecosystem})`);
+                    stack[name] = ecosystem
+                        ? { version: version, ecosystem: ecosystem }
+                        : version;
                 }
 
                 console.log('Final stack:', stack);
@@ -2436,9 +2534,15 @@
                     </div>
                 </div>
                 <p><strong>Organization:</strong> ${org.name} (ID: ${org.id})
-                    <button onclick="deleteOrganization('${org.id}', '${escapeHtml(org.name)}')" style="margin-left: 12px; background: #4a1c1c; color: #f0a0a0; border: 1px solid #6b3535; padding: 2px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;" title="Delete this organization and all associated data">Delete Org</button>
+                    <button onclick="deleteOrganization('${org.id}', '${escapeJsString(org.name)}')" style="margin-left: 12px; background: #4a1c1c; color: #f0a0a0; border: 1px solid #6b3535; padding: 2px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;" title="Delete this organization and all associated data">Delete Org</button>
                 </p>
-                <p><strong>Components:</strong> ${Object.keys(stack).map(k => `${k} ${stack[k]}`).join(', ')}</p>
+                <p><strong>Components:</strong> ${Object.keys(stack).map(k => {
+                    const v = stack[k];
+                    if (typeof v === 'object' && v !== null) {
+                        return v.ecosystem ? `${k} ${v.version} (${v.ecosystem})` : `${k} ${v.version}`;
+                    }
+                    return `${k} ${v}`;
+                }).join(', ')}</p>
 
                 <div style="background: #1a2e25; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #10b981;">
                     <h4 style="margin-top: 0; color: #6ee7b7;">Evidence Automation Ready</h4>
