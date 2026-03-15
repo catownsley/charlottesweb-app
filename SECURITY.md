@@ -202,7 +202,6 @@ CORS_ALLOW_CREDENTIALS=true
 ### 10. HTTPS/TLS
 
 #### Transport Layer Security
-- **Certificates:** [`certs/`](certs/) directory
 - **Development:** Self-signed certificates
 - **Production:** Use Let's Encrypt or commercial CA
 
