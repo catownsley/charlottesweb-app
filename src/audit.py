@@ -35,6 +35,8 @@ from typing import Any
 
 from fastapi import Request
 
+from src.utils import sanitize_log_value
+
 # Configure dedicated audit logger (separate from application logs)
 # Name: "audit" - allows separation in log aggregation systems
 audit_logger = logging.getLogger("audit")
@@ -224,8 +226,12 @@ def log_audit_event(
             ),  # From RequestIDMiddleware
             "ip": request.client.host if request.client else None,  # Source IP
             "method": request.method,  # HTTP method (GET, POST, etc.)
-            "path": str(request.url.path),  # Request path (don't include query params)
-            "user_agent": request.headers.get("user-agent"),  # Client identification
+            "path": sanitize_log_value(
+                str(request.url.path), max_length=500
+            ),  # Request path (don't include query params)
+            "user_agent": sanitize_log_value(
+                request.headers.get("user-agent", ""), max_length=500
+            ),  # Client identification
         }
 
     # User identification (for user-specific actions)

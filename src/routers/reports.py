@@ -238,6 +238,11 @@ def download_assessment_report(
     if not report_path.exists():
         raise HTTPException(status_code=404, detail="Report file not found")
 
+    # Guard against path traversal — report must be inside expected directory.
+    expected_dir = REPORT_OUTPUT_DIR.resolve()
+    if not report_path.resolve().is_relative_to(expected_dir):
+        raise HTTPException(status_code=403, detail="Invalid report path")
+
     log_audit_event(
         action=AuditAction.DATA_READ,
         request=request,

@@ -7,6 +7,8 @@ from typing import Any, TypedDict
 
 import requests
 
+from src.utils import sanitize_log_value
+
 logger = logging.getLogger(__name__)
 
 
@@ -162,7 +164,11 @@ class OSVService:
                     raise last_error
 
                 if response.status_code == 400:
-                    raise OSVApiError(f"OSV API bad request: {response.text}")
+                    logger.warning(
+                        "OSV API 400 response: %s",
+                        sanitize_log_value(response.text),
+                    )
+                    raise OSVApiError("OSV API bad request (invalid query parameters)")
 
                 response.raise_for_status()
                 return response.json()
@@ -289,9 +295,9 @@ class OSVService:
 
         logger.info(
             "OSV query: %s/%s@%s → %d vulnerabilities",
-            ecosystem,
-            name,
-            version,
+            sanitize_log_value(ecosystem),
+            sanitize_log_value(name),
+            sanitize_log_value(version),
             len(all_vulns),
         )
         return all_vulns

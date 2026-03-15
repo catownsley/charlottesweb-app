@@ -19,10 +19,11 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.audit import AuditAction, log_audit_event
+from src.cache import ai_threat_model_cache, nvd_cache
 from src.config import settings
 from src.database import get_db, get_or_404
 from src.middleware import get_api_key_optional, limiter
-from src.models import CacheEntry, Evidence, Organization, OrganizationMember
+from src.models import Evidence, Organization, OrganizationMember
 from src.schemas import (
     OrganizationCreate,
     OrganizationOnboardingCreate,
@@ -205,11 +206,11 @@ def delete_organization(
         # Evidence has a direct FK to organizations (not covered by ORM cascade)
         db.query(Evidence).filter(Evidence.organization_id == org_id).delete()
 
-        # Purge cached AI threat models / vulnerability results for this org so no
-        # stale data lingers after the org is removed.
-        db.query(CacheEntry).filter(CacheEntry.key.contains(org_id)).delete(
-            synchronize_session="fetch"
-        )
+        # Purge cached AI threat models / vulnerability results for this org.
+        # Clear entire namespaces rather than substring-matching org_id in keys,
+        # which could over-delete unrelated entries (CWE-943).
+        nvd_cache.invalidate(key=None, db=db)
+        ai_threat_model_cache.invalidate(key=None, db=db)
 
         db.delete(org)
         db.commit()
