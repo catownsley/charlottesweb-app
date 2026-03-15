@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from src.models import Assessment, Control, Finding, MetadataProfile
 from src.osv_service import OSVApiError, OSVService
+from src.utils import sanitize_log_value
 
 logger = logging.getLogger(__name__)
 
@@ -380,6 +381,10 @@ class RulesEngine:
                     owner="DevOps",
                 )
                 findings.append(finding)
-                logger.info("Created finding for %s in %s", display_id, component_key)
+                logger.info(
+                    "Created finding for %s in %s",
+                    sanitize_log_value(display_id),
+                    sanitize_log_value(component_key),
+                )
 
         return findings

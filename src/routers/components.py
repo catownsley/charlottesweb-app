@@ -31,7 +31,7 @@ def suggest_component_names(
         Dictionary with a list of suggested component names
     """
     prefix_normalized = prefix.lower().strip()
-    if len(prefix_normalized) < 2:
+    if len(prefix_normalized) < 2 or len(prefix_normalized) > 100:
         return {"components": []}
 
     bounded_limit = max(1, min(limit, 20))
@@ -65,7 +65,7 @@ def get_component_versions(
     """
     component_lower = component_name.lower().strip()
 
-    if not component_lower or len(component_lower) < 2:
+    if not component_lower or len(component_lower) < 2 or len(component_lower) > 100:
         return {"versions": []}
 
     # Fetch a large set so prefix filtering has enough to work with

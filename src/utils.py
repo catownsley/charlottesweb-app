@@ -117,6 +117,21 @@ def sanitize_filename(filename: str, *, max_length: int = 255) -> str:
     return filename
 
 
+def sanitize_log_value(value: str, *, max_length: int = 200) -> str:
+    """Sanitize a value before including it in log messages.
+
+    Strips newlines, carriage returns, and control characters to prevent
+    log injection attacks (CWE-117).  Truncates to *max_length* so a
+    single malicious field cannot bloat log storage.
+    """
+    value = str(value)
+    value = _CONTROL_CHAR_RE.sub("", value)
+    value = value.replace("\n", "\\n").replace("\r", "\\r")
+    if len(value) > max_length:
+        value = value[:max_length] + "...[truncated]"
+    return value
+
+
 def escape_for_html(text: str) -> str:
     """HTML-escape a string for safe rendering in innerHTML contexts."""
     return html.escape(str(text), quote=True)
