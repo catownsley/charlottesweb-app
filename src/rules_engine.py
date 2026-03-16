@@ -18,7 +18,7 @@ def normalize_software_stack(
     """Normalize a software_stack dict into a list of component dicts.
 
     Handles three formats:
-      1. Ecosystem-aware: {"django": {"version": "4.2", "ecosystem": "PyPI"}}
+      1. Dict with version key: {"django": {"version": "4.2"}}
       2. Flat with name as key: {"python": "3.11"}
       3. Flat with label as key: {"backend": "FastAPI 0.135.1"}
 
@@ -28,7 +28,7 @@ def normalize_software_stack(
     the value is the version (format 2).
 
     Returns:
-        List of dicts with keys: name, version, ecosystem
+        List of dicts with keys: name, version, and optionally ecosystem
     """
     components: list[dict[str, str]] = []
     for key, value in raw_stack.items():
@@ -56,7 +56,10 @@ def normalize_software_stack(
         if not name or not version:
             continue
 
-        components.append({"name": name, "version": version, "ecosystem": ecosystem})
+        comp: dict[str, str] = {"name": name, "version": version}
+        if ecosystem:
+            comp["ecosystem"] = ecosystem
+        components.append(comp)
 
     return components
 

@@ -1118,8 +1118,8 @@ class TestComponents:
         assert data["total_components"] == 2
 
         components = {item["name"]: item["version"] for item in data["components"]}
-        assert components["spring-core"] == "6.1.12"
-        assert components["postgresql"] == "42.7.4"
+        assert components["org.springframework:spring-core"] == "6.1.12"
+        assert components["org.postgresql:postgresql"] == "42.7.4"
 
     def test_ingest_manifest_invalid_xml(self, client):
         """Test manifest ingestion rejects invalid XML payloads."""

@@ -1110,19 +1110,16 @@
 
             entries.forEach(([name, versionOrObj]) => {
                 const componentName = String(name || '').trim();
-                // software_stack values can be a string ("1.0") or object ({"version": "1.0", "ecosystem": "PyPI"})
                 let componentVersion = '';
-                let componentEcosystem = '';
                 if (typeof versionOrObj === 'object' && versionOrObj !== null) {
                     componentVersion = String(versionOrObj.version || '').trim();
-                    componentEcosystem = String(versionOrObj.ecosystem || '').trim();
                 } else {
                     componentVersion = String(versionOrObj || '').trim();
                 }
                 if (!componentName || !componentVersion) {
                     return;
                 }
-                addComponentRow(componentName, componentVersion, false, componentEcosystem);
+                addComponentRow(componentName, componentVersion);
             });
 
             if (document.querySelectorAll('.component-row').length === 0) {
@@ -1189,11 +1186,10 @@
                 data.components.forEach((component) => {
                     const name = String(component.name || '').trim();
                     const version = String(component.version || '').trim();
-                    const ecosystem = String(component.ecosystem || '').trim();
                     if (!name || !version) {
                         return;
                     }
-                    addComponentRow(name, version, false, ecosystem);
+                    addComponentRow(name, version);
                 });
 
                 if (document.querySelectorAll('.component-row').length === 0) {
@@ -1231,7 +1227,6 @@
             data.components.forEach((component) => {
                 const name = String(component.name || '').trim();
                 const version = String(component.version || '').trim();
-                const ecosystem = String(component.ecosystem || '').trim();
                 const key = name.toLowerCase();
 
                 if (!name || !version) {
@@ -1241,12 +1236,9 @@
                 const existing = existingByName.get(key);
                 if (existing && existing.versionInput) {
                     existing.versionInput.value = version;
-                    // Update ecosystem on merge too
-                    const ecoSelect = existing.versionInput.closest('.component-row')?.querySelector('.component-ecosystem');
-                    if (ecoSelect && ecosystem) ecoSelect.value = ecosystem;
                     mergedCount += 1;
                 } else {
-                    addComponentRow(name, version, false, ecosystem);
+                    addComponentRow(name, version);
                     addedCount += 1;
                 }
             });
@@ -1308,22 +1300,12 @@
         /**
          * Add a new component input row
          */
-        function addComponentRow(initialName = '', initialVersion = '', autoFocus = false, initialEcosystem = '') {
+        function addComponentRow(initialName = '', initialVersion = '', autoFocus = false) {
             componentCounter++;
 
             const row = document.createElement('div');
             row.className = 'component-row';
             row.id = `component-${componentCounter}`;
-
-            const ecosystemOptions = [
-                '', 'PyPI', 'Maven', 'npm', 'Go', 'crates.io',
-                'NuGet', 'RubyGems', 'Packagist'
-            ];
-            const ecosystemOptionsHtml = ecosystemOptions.map(eco => {
-                const selected = eco === initialEcosystem ? ' selected' : '';
-                const label = eco || 'Ecosystem...';
-                return `<option value="${eco}"${selected}>${label}</option>`;
-            }).join('');
 
             row.innerHTML = `
                 <div class="input-with-suggestions">
@@ -1332,8 +1314,8 @@
                         type="text"
                         class="component-name"
                         placeholder="e.g., postgres"
-                        maxlength="50"
-                        title="Letters, numbers, underscores, dashes only (no dots)"
+                        maxlength="120"
+                        title="Package name"
                         value="${initialName.replace(/"/g, '&quot;')}"
                     >
                     <div class="component-suggestions"></div>
@@ -1349,12 +1331,6 @@
                         value="${initialVersion.replace(/"/g, '&quot;')}"
                     >
                     <div class="version-suggestions"></div>
-                </div>
-                <div>
-                    <div class="component-label">Ecosystem</div>
-                    <select class="component-ecosystem" title="Package ecosystem for vulnerability lookup">
-                        ${ecosystemOptionsHtml}
-                    </select>
                 </div>
                 <button type="button" class="delete-component">
                     ×
@@ -1640,22 +1616,22 @@
             'charlottesweb': {
                 orgName: "Charlotte's Web",
                 components: [
-                    {name: 'fastapi', version: '0.135.1', ecosystem: 'PyPI'},
-                    {name: 'uvicorn', version: '0.41.0', ecosystem: 'PyPI'},
-                    {name: 'pydantic', version: '2.12.5', ecosystem: 'PyPI'},
-                    {name: 'pydantic-settings', version: '2.13.1', ecosystem: 'PyPI'},
-                    {name: 'sqlalchemy', version: '2.0.48', ecosystem: 'PyPI'},
-                    {name: 'alembic', version: '1.18.4', ecosystem: 'PyPI'},
-                    {name: 'pyjwt', version: '2.12.1', ecosystem: 'PyPI'},
-                    {name: 'passlib', version: '1.7.4', ecosystem: 'PyPI'},
-                    {name: 'slowapi', version: '0.1.9', ecosystem: 'PyPI'},
-                    {name: 'python-multipart', version: '0.0.22', ecosystem: 'PyPI'},
-                    {name: 'anthropic', version: '0.84.0', ecosystem: 'PyPI'},
-                    {name: 'requests', version: '2.32.5', ecosystem: 'PyPI'},
-                    {name: 'defusedxml', version: '0.7.1', ecosystem: 'PyPI'},
-                    {name: 'python-dateutil', version: '2.9.0.post0', ecosystem: 'PyPI'},
-                    {name: 'Python', version: '3.14.3', ecosystem: ''},
-                    {name: 'SQLite', version: '3.43.2', ecosystem: ''}
+                    {name: 'fastapi', version: '0.135.1'},
+                    {name: 'uvicorn', version: '0.41.0'},
+                    {name: 'pydantic', version: '2.12.5'},
+                    {name: 'pydantic-settings', version: '2.13.1'},
+                    {name: 'sqlalchemy', version: '2.0.48'},
+                    {name: 'alembic', version: '1.18.4'},
+                    {name: 'pyjwt', version: '2.12.1'},
+                    {name: 'passlib', version: '1.7.4'},
+                    {name: 'slowapi', version: '0.1.9'},
+                    {name: 'python-multipart', version: '0.0.22'},
+                    {name: 'anthropic', version: '0.84.0'},
+                    {name: 'requests', version: '2.32.5'},
+                    {name: 'defusedxml', version: '0.7.1'},
+                    {name: 'python-dateutil', version: '2.9.0.post0'},
+                    {name: 'Python', version: '3.14.3'},
+                    {name: 'SQLite', version: '3.43.2'}
                 ]
             }
         };
@@ -1841,8 +1817,7 @@
                 stack.components.forEach(comp => {
                     const name = String(comp.name || '').trim();
                     const version = String(comp.version || '').trim();
-                    const ecosystem = String(comp.ecosystem || '').trim();
-                    if (name && version) addComponentRow(name, version, false, ecosystem);
+                    if (name && version) addComponentRow(name, version);
                 });
                 if (document.querySelectorAll('.component-row').length === 0) {
                     addComponentRow();
@@ -1865,17 +1840,14 @@
             stack.components.forEach(comp => {
                 const name = String(comp.name || '').trim();
                 const version = String(comp.version || '').trim();
-                const ecosystem = String(comp.ecosystem || '').trim();
                 const key = name.toLowerCase();
                 if (!name || !version) return;
 
                 const existing = existingByName.get(key);
                 if (existing && existing.versionInput) {
                     existing.versionInput.value = version;
-                    const ecoSelect = existing.versionInput.closest('.component-row')?.querySelector('.component-ecosystem');
-                    if (ecoSelect && ecosystem) ecoSelect.value = ecosystem;
                 } else {
-                    addComponentRow(name, version, false, ecosystem);
+                    addComponentRow(name, version);
                 }
             });
 
@@ -1986,22 +1958,23 @@
                 const defaultedVersions = [];  // Track versions we auto-selected
                 const droppedComponents = [];  // Components skipped due to missing version
 
-                // Validation patterns (match backend)
-                // Allow dots for names like "node.js", "vue.js", "ASP.NET"
-                // encodeURIComponent() is used before any URL/API usage
-                const componentPattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
-                const versionPattern = /^[a-zA-Z0-9._-]+$/;
+                // Input validation: allowlist + length limits.
+                // Permits Unicode letters/numbers, plus common package name chars
+                // (dots, hyphens, underscores, colons, slashes, @, +).
+                // Output escaping (escapeHtml) is applied at render time.
+                const nameAllowlist = /^[\p{L}\p{N}][\p{L}\p{N}.:\/_@+\s-]*$/u;
+                const versionAllowlist = /^[\p{L}\p{N}][\p{L}\p{N}.+_-]*$/u;
+                const maxNameLength = 120;
+                const maxVersionLength = 40;
 
                 // Collect all components
                 for (const row of componentRows) {
                     const nameInput = row.querySelector('.component-name');
                     const versionInput = row.querySelector('.component-version');
-                    const ecosystemSelect = row.querySelector('.component-ecosystem');
                     let name = nameInput.value.trim();
                     let version = versionInput.value.trim();
-                    const ecosystem = ecosystemSelect ? ecosystemSelect.value : '';
 
-                    console.log(`Component row: name="${name}", version="${version}", ecosystem="${ecosystem}"`);
+                    console.log(`Component row: name="${name}", version="${version}"`);
 
                     // Skip empty rows (both fields empty)
                     if (!name && !version) {
@@ -2079,26 +2052,20 @@
                         }
                     }
 
-                    // Validate name if provided
-                    if (name && !componentPattern.test(name)) {
+                    // Allowlist validation
+                    if (name && (name.length > maxNameLength || !nameAllowlist.test(name))) {
                         throw new Error(
-                            `Invalid component name: "${name}". ` +
-                            `Use letters, numbers, dots, underscores, and hyphens only. Must start with a letter or number.`
+                            `Invalid component name: "${name}".`
+                        );
+                    }
+                    if (version && (version.length > maxVersionLength || !versionAllowlist.test(version))) {
+                        throw new Error(
+                            `Invalid version for "${name}": "${version}".`
                         );
                     }
 
-                    // Validate version if provided
-                    if (version && !versionPattern.test(version)) {
-                        throw new Error(
-                            `Invalid version for "${name}": "${version}". ` +
-                            `Use letters, numbers, dots, dashes, and underscores.`
-                        );
-                    }
-
-                    console.log(`  → Adding component: ${name} ${version} (${ecosystem})`);
-                    stack[name] = ecosystem
-                        ? { version: version, ecosystem: ecosystem }
-                        : version;
+                    console.log(`  → Adding component: ${name} ${version}`);
+                    stack[name] = version;
                 }
 
                 console.log('Final stack:', stack);
@@ -2273,7 +2240,7 @@
                 }
 
                 const demoComponents = [
-                    {name: 'apache-tomcat', version: '9.0.62'},
+                    {name: 'tomcat', version: '9.0.62'},
                     {name: 'openssl', version: '1.0.1'},
                     {name: 'jenkins', version: '2.375.1'}
                 ];
@@ -2407,7 +2374,7 @@
                             <strong>Remediation:</strong> ${guidanceText}
                         </div>
                         ${finding.external_id ? `<p style="margin: 8px 0 0 0; font-size: 12px; color: #c4b5fd;">
-                            <a href="https://nvd.nist.gov/vuln/detail/${finding.external_id}" target="_blank" rel="noopener noreferrer">
+                            <a href="https://nvd.nist.gov/vuln/detail/${encodeURIComponent(finding.external_id)}" target="_blank" rel="noopener noreferrer">
                                 View full details on NVD
                             </a>
                         </p>` : ''}
@@ -2493,7 +2460,7 @@
             // Show notification if versions were auto-selected
             if (defaultedVersions && defaultedVersions.length > 0) {
                 const versionsList = defaultedVersions
-                    .map(dv => `<strong>${dv.name}</strong> → ${dv.version}`)
+                    .map(dv => `<strong>${escapeHtml(dv.name)}</strong> → ${escapeHtml(dv.version)}`)
                     .join(', ');
                 html += `
                 <div style="background: #2d2145; border: 1px solid #6b3fa0; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #c9a0ff;">
@@ -2505,7 +2472,7 @@
             if (orgReused) {
                 html += `
                 <div style="background: #252038; border: 1px solid #4a3d6b; border-radius: 4px; padding: 12px; margin-bottom: 12px; color: #c4b5fd;">
-                    <strong>Using existing organization:</strong> Found a prior record for <strong>${org.name}</strong> and resumed saved evidence progress.
+                    <strong>Using existing organization:</strong> Found a prior record for <strong>${escapeHtml(org.name)}</strong> and resumed saved evidence progress.
                 </div>`;
             }
 
@@ -2516,8 +2483,8 @@
                 </div>
                 ${runStatus ? `
                 <div style="background: #252038; border-left: 4px solid #9333ea; padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 14px;">
-                    <strong>Run Status:</strong> ${runStatus.status} • ${runStatus.progress_percent}% • ${runStatus.current_step}<br>
-                    <strong>Assessment ID:</strong> ${runStatus.assessment_id} • <strong>Findings:</strong> ${runStatus.findings_count}
+                    <strong>Run Status:</strong> ${escapeHtml(runStatus.status)} • ${escapeHtml(String(runStatus.progress_percent))}% • ${escapeHtml(runStatus.current_step)}<br>
+                    <strong>Assessment ID:</strong> ${escapeHtml(runStatus.assessment_id)} • <strong>Findings:</strong> ${escapeHtml(String(runStatus.findings_count))}
                 </div>` : ''}
                 <div class="stats">
                     <div class="stat-box">
@@ -2533,16 +2500,10 @@
                         <div class="stat-label">Evidence<br>Automation</div>
                     </div>
                 </div>
-                <p><strong>Organization:</strong> ${org.name} (ID: ${org.id})
-                    <button onclick="deleteOrganization('${org.id}', '${escapeJsString(org.name)}')" style="margin-left: 12px; background: #4a1c1c; color: #f0a0a0; border: 1px solid #6b3535; padding: 2px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;" title="Delete this organization and all associated data">Delete Org</button>
+                <p><strong>Organization:</strong> ${escapeHtml(org.name)} (ID: ${escapeHtml(org.id)})
+                    <button onclick="deleteOrganization('${escapeJsString(org.id)}', '${escapeJsString(org.name)}')" style="margin-left: 12px; background: #4a1c1c; color: #f0a0a0; border: 1px solid #6b3535; padding: 2px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;" title="Delete this organization and all associated data">Delete Org</button>
                 </p>
-                <p><strong>Components:</strong> ${Object.keys(stack).map(k => {
-                    const v = stack[k];
-                    if (typeof v === 'object' && v !== null) {
-                        return v.ecosystem ? `${k} ${v.version} (${v.ecosystem})` : `${k} ${v.version}`;
-                    }
-                    return `${k} ${v}`;
-                }).join(', ')}</p>
+                <p><strong>Components:</strong> ${Object.keys(stack).map(k => `${escapeHtml(k)} ${escapeHtml(stack[k])}`).join(', ')}</p>
 
                 <div style="background: #1a2e25; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #10b981;">
                     <h4 style="margin-top: 0; color: #6ee7b7;">Evidence Automation Ready</h4>

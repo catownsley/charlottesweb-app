@@ -255,15 +255,16 @@ class OSVService:
     def query_package(
         self,
         name: str,
-        ecosystem: str,
         version: str,
+        ecosystem: str = "",
     ) -> list[VulnerabilityResult]:
         """Query OSV for vulnerabilities affecting a specific package version.
 
         Args:
-            name: Package name (e.g., "django", "kafka-clients")
-            ecosystem: Package ecosystem (e.g., "PyPI", "Maven")
+            name: Package name (e.g., "django", "org.apache.commons:commons-text")
             version: Package version string
+            ecosystem: Optional ecosystem (e.g., "Maven"). Only needed when the
+                       name uses an ecosystem-specific format like groupId:artifactId.
 
         Returns:
             List of vulnerability results
@@ -295,8 +296,7 @@ class OSVService:
                 break
 
         logger.info(
-            "OSV query: %s/%s@%s → %d vulnerabilities",
-            sanitize_log_value(ecosystem),
+            "OSV query: %s@%s → %d vulnerabilities",
             sanitize_log_value(name),
             sanitize_log_value(version),
             len(all_vulns),
@@ -334,7 +334,7 @@ class OSVService:
             component_key = f"{name}@{version}"
 
             try:
-                vulns = self.query_package(name, ecosystem, version)
+                vulns = self.query_package(name, version, ecosystem)
                 if vulns:
                     results[component_key] = vulns
             except OSVApiError:
