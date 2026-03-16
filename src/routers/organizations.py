@@ -30,6 +30,7 @@ from src.schemas import (
     OrganizationOnboardingResponse,
     OrganizationResponse,
 )
+from src.utils import sanitize_log_value
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/organizations", tags=["organizations"])
@@ -216,7 +217,12 @@ def delete_organization(
         db.commit()
     except Exception as e:
         db.rollback()
-        logger.error("Failed to delete organization %s: %s", org_id, e, exc_info=True)
+        logger.error(
+            "Failed to delete organization %s: %s",
+            sanitize_log_value(org_id),
+            sanitize_log_value(str(e)),
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=500,
             detail="Failed to delete organization. Please try again.",

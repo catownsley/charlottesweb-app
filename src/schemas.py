@@ -60,7 +60,10 @@ class OrganizationOnboardingResponse(BaseModel):
 
 
 # Metadata Profile schemas
-_COMPONENT_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
+# Allowlist: Unicode letters/numbers, plus common package name characters.
+# Permits Maven coordinates (com.google:protobuf), scoped npm (@angular/core), etc.
+_COMPONENT_NAME_RE = re.compile(r"^[\w@][\w.:\/@+\s-]*$", re.UNICODE)
+_MAX_COMPONENT_NAME_LEN = 120
 
 
 class MetadataProfileCreate(BaseModel):
@@ -79,20 +82,14 @@ class MetadataProfileCreate(BaseModel):
     def validate_component_names(
         cls, v: dict[str, Any] | None
     ) -> dict[str, Any] | None:
-        """Validate component names in software_stack.
-
-        Accepts both legacy flat format {"name": "version"} and new
-        ecosystem-aware format {"name": {"version": "x", "ecosystem": "Y"}}.
-        """
+        """Validate component names in software_stack."""
         if v is None:
             return v
         for name in v:
-            if not _COMPONENT_NAME_RE.match(name):
-                raise ValueError(
-                    f'Invalid component name: "{name}". '
-                    "Use letters, numbers, dots, underscores, and hyphens only. "
-                    "Must start with a letter or number."
-                )
+            if len(name) > _MAX_COMPONENT_NAME_LEN or not _COMPONENT_NAME_RE.match(
+                name
+            ):
+                raise ValueError(f'Invalid component name: "{name}".')
         return v
 
 

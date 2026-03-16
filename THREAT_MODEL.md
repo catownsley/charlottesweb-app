@@ -490,83 +490,56 @@ if not member:
 
 ---
 
-## AI-Generated STRIDE Findings (2026-03-14)
+## AI-Generated STRIDE Findings (2026-03-16)
 
-The following threats were identified by running Charlotte's Web against its own stack. They supplement the manual STRIDE analysis in sections 1-6 with findings specific to the current deployment.
+The following 12 threats were identified by running Charlotte's Web against its own stack (27 findings, 16 components, model: claude-sonnet-4-6). They supplement the manual STRIDE analysis in sections 1-6.
 
-### S-AI.1 JWT Without Transport Security [HIGH] — Spoofing
-**Threat:** JWT tokens issued without confirmed transport security can be intercepted and replayed.
-**Component:** PyJWT token issuance and validation in FastAPI
-**Mitigation:** Enforce HTTPS-only via uvicorn SSL certificates or TLS-terminating reverse proxy. Set Secure flag on all auth cookies. Reject plaintext HTTP requests.
-**Cross-reference:** See section 8.2 (TLS Enforcement) — currently mitigated with HTTPSEnforcementMiddleware + HSTS.
-
-### S-AI.2 Secret Exposure via Logging or Config [MEDIUM] — Information Disclosure
-**Threat:** Anthropic API key, JWT secret, and database credentials stored as environment variables may be exposed through misconfigured logging, error responses, or container inspection.
-**Component:** pydantic-settings configuration, Anthropic client, PyJWT secret
-**Current controls:** Audit logging already masks API keys to last 4 characters and never logs passwords or PHI. Production mode hides stack traces and detailed errors. `.env` files excluded from git. Optional Fernet encryption for `.env` files available (`src/encryption.py`).
-**Remaining gap:** Config fields do not use pydantic `SecretStr` type, so accidental serialization of the full config object could leak secrets. No external secrets manager integrated.
-**Mitigation:** Adopt `SecretStr` for secret config fields. Integrate a secrets manager (AWS Secrets Manager, HashiCorp Vault) for production.
-**Current Disposition:** Partially mitigated. Secrets management upgrade planned.
-
-### S-AI.3 JWT Secret Key Weakness [MEDIUM] — Elevation of Privilege
-**Threat:** Weak or predictable JWT secret key allows an attacker to forge tokens with elevated role claims.
-**Component:** PyJWT token signing, FastAPI dependency injection for auth
-**Current controls:** Development auto-generates secret via `secrets.token_urlsafe(32)` (256-bit entropy). Production requires explicitly set `SECRET_KEY` (startup validation fails without it). Algorithm strictly set to HS256 (no `none` accepted). Token expiry enforced (default 60 minutes). JWT infrastructure built but not yet wired to user session flow.
-**Remaining gap:** No refresh token rotation. No minimum key length enforcement beyond startup check. Secret stored in environment variable, not a secrets manager.
-**Mitigation:** Increase to 512-bit secret. Add refresh token rotation. Store in secrets manager for production.
-**Cross-reference:** See section 6.2 (API Key Privilege Escalation).
-
-### S-AI.4 Alembic Migration Integrity [MEDIUM] — Tampering
-**Threat:** Migration scripts run during deployment without integrity verification. A supply-chain or insider threat could introduce schema changes that exfiltrate or corrupt data.
-**Component:** Alembic migration pipeline
-**Mitigation:** Store migration files in version control with signed commits (GPG-signed tags). Run migrations only from CI/CD with a dedicated least-privilege database account.
-
-### S-AI.5 SQLite Write Contention [MEDIUM] — Denial of Service
-**Threat:** SQLite does not support concurrent write access. Under moderate load, write contention causes SQLITE_BUSY errors, resulting in effective denial of service for write operations.
-**Component:** SQLite database, SQLAlchemy connection pool
-**Mitigation:** Enable WAL mode (`PRAGMA journal_mode=WAL`) to improve read/write concurrency. For production workloads with >1 uvicorn worker, migrate to PostgreSQL.
-**Current Disposition:** Accepted risk for development. Production PostgreSQL migration planned.
-
-### S-AI.6 File Upload Validation [LOW] — Elevation of Privilege
-**Threat:** python-multipart file upload handling without strict content-type and size validation can be abused to upload malicious files.
-**Component:** python-multipart file upload endpoints in FastAPI
-**Current controls:** No file upload endpoints currently exist. Evidence attachment accepts HTTPS URLs only (validated and sanitized). Security scaffolding for future file uploads is documented in `src/routers/evidence.py` (allowed extensions, 25MB limit, UUID-based filenames, path traversal prevention, ClamAV integration points).
-**Remaining gap:** When file uploads are enabled, the scaffolding must be implemented before going live.
-**Mitigation:** Implement the scaffolded security controls before enabling any file upload endpoint.
-**Cross-reference:** See section 5.4 (Large Manifest Parsing).
+| ID | Severity | Category | Threat | Status |
+|----|----------|----------|--------|--------|
+| S-AI.1 | CRITICAL | Tampering | HTTP traffic without mandatory TLS allows interception/modification of requests, tokens, and payloads | **Mitigated** (HTTPSEnforcementMiddleware + HSTS + port 8443 TLS) |
+| S-AI.2 | HIGH | Spoofing | JWT crit header bypass (PyJWT) allows forged tokens with weak algorithms | **Mitigated** (PyJWT 2.12.1 installed, strict HS256 pinning, 60-min expiry) |
+| S-AI.3 | HIGH | Spoofing | Absent MFA means stolen credentials yield full account access | **Planned** (TOTP via pyotp) |
+| S-AI.4 | HIGH | Tampering | SQLite on filesystem with no encryption at rest; host compromise = full data access | **Accepted (Dev)** Production requires PostgreSQL/SQLCipher |
+| S-AI.5 | HIGH | DoS | SlowAPI is sole DoS control; no upstream proxy to enforce connection-level limits | **Partial** (rate limiting exists, no reverse proxy) |
+| S-AI.6 | HIGH | DoS | python-multipart ReDoS can stall the async event loop | **Mitigated** (python-multipart 0.0.22 patches ReDoS; CVE-2024-24762/CVE-2024-53981) |
+| S-AI.7 | HIGH | Elevation | SQLite has no database-level RBAC; leaked connection string = full table access | **Accepted (Dev)** PostgreSQL migration planned |
+| S-AI.8 | HIGH | Elevation | FastAPI CSRF (CVE-2021-32677) on cookie-authenticated endpoints | **Mitigated** (FastAPI 0.135.1 includes fix from 0.65.2+; API uses Bearer tokens, not cookies) |
+| S-AI.9 | MEDIUM | Repudiation | Insufficient audit logging prevents forensic investigation | **Partial** (JSON structured audit logging exists with request correlation, API key masking; needs SIEM + append-only sink) |
+| S-AI.10 | MEDIUM | Info Disclosure | requests library may leak Proxy-Authorization headers on redirects | **Mitigated** (requests 2.32.5 includes fix; verify=True never overridden) |
+| S-AI.11 | MEDIUM | Info Disclosure | Verbose error responses may leak stack traces or SQL fragments | **Mitigated** (global exception handler returns generic 500; debug=False in production) |
+| S-AI.12 | MEDIUM | Elevation | Alembic migrations run with same DB connection as app; no review gate | **Open** Needs dedicated DDL-only DB user and CI-only execution |
 
 ---
 
-## AI-Generated Remediation Roadmap (2026-03-14)
+## AI-Generated Remediation Roadmap (2026-03-16)
 
-Priority-ordered remediation steps from the AI threat model analysis:
+Priority-ordered remediation steps from the AI threat model analysis (27 findings, 16 components):
 
-| Step | Action | Rationale |
-|------|--------|-----------|
-| 1 | **Enable TLS 1.2+ on all endpoints:** configure uvicorn with SSL certificates or deploy nginx/Caddy as TLS-terminating reverse proxy. Redirect HTTP to HTTPS. Disable TLS 1.0/1.1 and weak ciphers. | Plaintext HTTP undermines every other control. Direct HIPAA 164.312(e)(1) violation. **Status: Mitigated** (HTTPSEnforcementMiddleware + HSTS + port 8443 TLS binding) |
-| 2 | **Encrypt data at rest:** SQLCipher for SQLite or migrate to PostgreSQL with native encryption. Set database file permissions to 600. Deploy as non-root user. | Unencrypted data at rest violates HIPAA 164.312(a)(2)(iv). |
-| 3 | **Harden JWT secret key:** increase to 512-bit secret via `secrets.token_hex(64)`, store in secrets manager, add refresh token rotation. | Forgeable JWT enables full authentication bypass. **Partially mitigated:** strict HS256 validation, 60-min expiry, and production startup validation already enforced. |
-| 4 | **Ship audit logs to append-only store:** integrate SIEM (Splunk, ELK, Datadog) with 180-day retention. Add hash chain for tamper evidence. Encrypt audit log at rest. | Audit log tampering/loss undermines forensics. HIPAA 164.312(b). **Partially mitigated:** comprehensive JSON structured audit logging already in place (auth, data access, assessments, security alerts, request ID correlation, API key masking). Gap is file-based storage without SIEM or encryption. |
-| 5 | **Implement TOTP-based MFA (pyotp):** enforce before JWT issuance. Provide backup codes. | Most effective single control against credential compromise. HIPAA access control requirement. |
-| 6 | **Centralize secrets management:** move JWT secret, Anthropic API key, and database credentials to a secrets manager. Use `SecretStr` in pydantic-settings. | Prevents secret leakage via logs or error responses. **Partially mitigated:** 12-factor env-based config, `.env` excluded from git, optional Fernet encryption for `.env` files, audit logger already masks API keys. Gap is no `SecretStr` types and no external secrets manager. |
-| 7 | **Replace passlib with argon2-cffi:** configure Argon2id with OWASP parameters (memory=64MB, iterations=3, parallelism=4). Migrate existing hashes on next login via rehash-on-verify. | passlib is minimally maintained; Argon2id is OWASP-recommended. |
-| 8 | **Document formal HIPAA Risk Analysis:** asset inventory, threat identification, vulnerability assessment, impact/likelihood analysis, risk determination. Use this threat model as input artifact. | HIPAA 164.308(a)(1)(ii)(A) requires documented risk analysis. |
+| Step | Action | Rationale | Status |
+|------|--------|-----------|--------|
+| 1 | **Enable TLS 1.2+ on all endpoints:** deploy nginx/Caddy as TLS-terminating reverse proxy. Enforce HTTPS-only with HSTS. Disable direct Uvicorn internet exposure. | Missing TLS exposes all data to interception. Direct HIPAA 164.312(e)(1) violation. All other controls undermined without encrypted transport. | **Mitigated** (HTTPSEnforcementMiddleware + HSTS + port 8443 TLS binding) |
+| 2 | **Verify and pin python-multipart 0.0.22** with hash pinning. Confirm UPLOAD_KEEP_FILENAME is False. Deploy nginx client_max_body_size and timeout limits upstream of Uvicorn. | Path traversal (CVE-2026-24486, CRITICAL) + ReDoS create unauthenticated attack surface. Path traversal can lead to RCE. | **Mitigated** (0.0.22 installed; no file upload endpoints exist) |
+| 3 | **Implement mandatory MFA (TOTP via pyotp)** for all user accounts. Two-step login: password verification issues pre-auth token; TOTP exchanges for full session JWT. | Single-factor auth is next most likely attack vector after transport. HIPAA 164.312(a)(1) gap. | **Planned** |
+| 4 | **Implement structured audit logging middleware** that records all authentication events, endpoint access, and error conditions to an append-only log sink. Configure 180-day minimum retention. | Without audit logs, cannot detect attacks, perform forensics, or demonstrate HIPAA 164.312(b) compliance. | **Partial** (JSON structured logging exists with request correlation and key masking; needs SIEM + append-only sink) |
+| 5 | **Enable SQLite encryption** using SQLCipher with env-injected key, or migrate to PostgreSQL with pgcrypto and role-based access control separating DDL user from DML user. | Database file fully readable by any OS-level access. HIPAA 164.312(a)(2)(iv). | **Accepted (Dev)** PostgreSQL planned for production |
+| 6 | **Rotate JWT signing secrets.** Assert minimum 32-byte secret at startup. Set 15-minute token expiry with refresh rotation. Pin algorithms=['HS256'] in all decode calls. | Weak JWT secrets combined with crit-header bypass represent spoofing risk. | **Partial** (strict HS256 + 60-min expiry enforced; needs key length assertion + refresh rotation) |
+| 7 | **Document formal HIPAA Risk Analysis** covering: asset inventory, threat identification, vulnerability assessment, impact/likelihood analysis, risk determination. Use this threat model as input artifact. | HIPAA 164.308(a)(1)(ii)(A) foundational requirement. Regulators treat absence as systemic compliance failure. | **Planned** |
 
 ---
 
 ## Self-Assessment Summary
 
-Sections 7-10 were added after running Charlotte's Web against itself, using the platform's own threat modeling feature to analyze its own dependency stack. Updated 2026-03-14 using OSV.dev ecosystem-aware vulnerability scanning (replaced NVD keyword matching which produced false positives). AI-generated findings were verified against the actual codebase to correct assumptions about absent controls that are in fact implemented (TLS, audit logging, error handling, CORS, algorithm validation).
+Sections 7-10 were added after running Charlotte's Web against itself, using the platform's own threat modeling feature to analyze its own dependency stack. Updated 2026-03-16 using OSV.dev cross-ecosystem vulnerability scanning (replaced NVD keyword matching which produced false positives). AI-generated findings were verified against the actual codebase to correct assumptions about absent controls that are in fact implemented (TLS, audit logging, error handling, CORS, algorithm validation).
 
-**AI Threat Model Summary (2026-03-14):** 5 compliance findings analyzed, 13 STRIDE threats identified (7 HIGH, 6 MEDIUM), 0 CVEs across all 16 components. All risk is architectural and configuration driven. After verification against the actual codebase, several AI-reported gaps were found to be already mitigated (TLS enforcement, audit logging, error handling, CORS). See the AI-Generated STRIDE Findings and Remediation Roadmap sections above for the corrected analysis.
+**AI Threat Model Summary (2026-03-16):** 27 findings analyzed across 16 components, 12 STRIDE threats identified (1 CRITICAL, 7 HIGH, 3 MEDIUM), 6 components with known CVEs. Risk is both architectural/configuration and dependency driven. After verification against the actual codebase, several AI-reported gaps were found to be already mitigated (TLS enforcement, audit logging, error handling, CORS, PyJWT crit header, FastAPI CSRF, python-multipart ReDoS, requests redirect leaks). See the AI-Generated STRIDE Findings and Remediation Roadmap sections above for the corrected analysis.
 
 | Disposition | Count | Description |
 |-------------|-------|-------------|
-| **Mitigated** | 4 | TLS enforcement + HSTS, comprehensive audit logging, error handling (no stack traces in prod), strict CORS (no wildcard) |
-| **Partially Mitigated** | 3 | JWT hardening (strict algo + expiry, needs 512-bit key + refresh rotation), secret management (env-based + masking, needs SecretStr + secrets manager), rate limiting (60/min per IP, needs per-endpoint + Redis) |
-| **Accepted Risk (Dev)** | 3 | SQLite encryption, SQLite write contention, SSRF (hardcoded URLs) |
-| **Not Applicable** | 1 | File upload validation (no upload endpoints exist; security scaffolding ready) |
-| **Remediation Planned** | 3 | MFA (pyotp), passlib→argon2-cffi migration, HIPAA risk analysis documentation |
+| **Mitigated** | 6 | TLS enforcement + HSTS, python-multipart ReDoS (0.0.22), PyJWT crit header (2.12.1), FastAPI CSRF (0.135.1), requests redirect leak (2.32.5), error handling (no stack traces in prod) |
+| **Partially Mitigated** | 2 | Audit logging (JSON structured logging exists, needs SIEM + append-only sink), rate limiting (60/min per IP, needs reverse proxy + per-endpoint tuning) |
+| **Accepted Risk (Dev)** | 2 | SQLite encryption at rest, SQLite RBAC (PostgreSQL migration planned for production) |
+| **Open** | 1 | Alembic migrations need dedicated DDL-only DB user and CI-only execution |
+| **Remediation Planned** | 3 | MFA (pyotp), passlib to argon2-cffi migration, HIPAA risk analysis documentation |
 
 ---
 
@@ -577,9 +550,18 @@ Sections 7-10 were added after running Charlotte's Web against itself, using the
 ### 7.1 Known CVEs in Dependencies (TB2 Application Service)
 **Attack:** Attacker exploits publicly disclosed vulnerabilities in installed packages.
 
-**OSV.dev Scan Results (2026-03-14):** 0 known CVEs across all 16 components (14 PyPI packages + Python 3.14.3 + SQLite 3.43.2). All versions are current releases as of mid-2025. The dependency posture is healthy.
+**OSV.dev Scan Results (2026-03-16):** 6 components with known CVEs across 16 components (14 PyPI packages + Python 3.14.3 + SQLite 3.43.2). Cross-ecosystem scanning via OSV.dev surfaces advisories from Debian, Ubuntu, openSUSE, and GHSA databases. Several findings are scanner false positives (version already patched) or namespace confusion (npm vs PyPI).
 
-**Previous NVD keyword search results (now deprecated):** Earlier scans using NVD keyword matching flagged 11 CVEs, of which 7 were false positives due to incorrect package attribution (CVEs assigned to third-party plugins like fastapi-opa, fastapi-admin-pro, Odoo, Django, Strawberry GraphQL — none of which are installed). The migration to OSV.dev eliminated these false positives through ecosystem-aware, version-specific querying.
+| Component | Version | CVEs | Severity | Status |
+|-----------|---------|------|----------|--------|
+| sqlalchemy | 2.0.48 | UBUNTU-CVE-2019-7164, UBUNTU-CVE-2019-7548 | LOW | **False positive** (CVEs affect 1.2.x/1.3.x, not 2.0.x; suppress with justification) |
+| python-multipart | 0.0.22 | DEBIAN-CVE-2024-24762, DEBIAN-CVE-2024-53981, DEBIAN-CVE-2026-24486, UBUNTU-CVE-2026-24486, openSUSE-SU-2026:10333-1 | HIGH | **Mitigated** (0.0.22 patches path traversal + ReDoS; confirm PyPI build, not distro repackage) |
+| pyjwt | 2.12.1 | DEBIAN-CVE-2025-45768, DEBIAN-CVE-2026-32597, UBUNTU-CVE-2026-32597, UBUNTU-CVE-2025-45768, MAL-2025-48036 | HIGH | **Mitigated** (2.12.1 includes crit header fix; MAL-2025-48036 is npm namespace, not PyPI) |
+| fastapi | 0.135.1 | DEBIAN-CVE-2021-32677, UBUNTU-CVE-2021-32677, UBUNTU-CVE-2024-40627 | MEDIUM | **Mitigated** (0.135.1 is above 0.65.2 fix; CVE-2024-40627 is fastapi-opa, not core FastAPI) |
+| requests | 2.32.5 | DEBIAN-CVE-2023-32681, DEBIAN-CVE-2024-35195, DEBIAN-CVE-2024-47081, UBUNTU-CVE-2024-35195 | MEDIUM | **Mitigated** (2.32.5 includes all fixes; verify=True never overridden) |
+| uvicorn | 0.41.0 | MAL-2025-4901 | LOW | **False positive** (MAL references npm package, not PyPI uvicorn; pin hashes in requirements.txt) |
+
+**Previous NVD keyword search results (now deprecated):** Earlier scans using NVD keyword matching flagged 11 CVEs, of which 7 were false positives due to incorrect package attribution. The migration to OSV.dev cross-ecosystem scanning surfaces real advisories but also includes cross-distribution and namespace-squatting findings that require triage.
 
 ### 7.2 Maintenance and Monitoring Notes
 
@@ -678,7 +660,7 @@ If the application scope changes to include PHI, a full HIPAA gap analysis must 
 | **MITIGATED** | Error Handling 4.2 | Debug disabled in prod, generic errors | TB2 | Mitigated |
 | **MITIGATED** | CORS 6.3 | Strict whitelist, no wildcard, TLS-only origins | TB2 Middleware | Mitigated |
 | **MITIGATED** | Request Tracing 3.2 | UUID per request, X-Request-ID header | TB2 Middleware | Mitigated |
-| **CLEAN** | Supply Chain 7.1 | 0 CVEs across 16 components (OSV.dev scan) | TB2 | No action needed |
+| **TRIAGED** | Supply Chain 7.1 | 6 components with CVEs (4 mitigated/false positive, 2 monitor) | TB2 | Mitigated (see 7.1 table) |
 
 ---
 
@@ -687,7 +669,7 @@ If the application scope changes to include PHI, a full HIPAA gap analysis must 
 * **Monthly:** Review critical/high-priority mitigations for completeness
 * **Quarterly:** Full threat model refresh (new features, architecture changes)
 * **Post-Incident:** Immediate update if any issue exploits a gap
-* **Last Review:** 2026-03-14 (self-assessment using Charlotte's Web threat modeling feature)
+* **Last Review:** 2026-03-16 (self-assessment using Charlotte's Web threat modeling feature, 27 findings across 16 components)
 
 ## ASCII Diagram Fallback
 
@@ -816,36 +798,34 @@ flowchart TD
 * Integrity: How do we prevent tampering of assessment/finding records between creation and display?
 * DoS controls: Which endpoints are rate-limited and where are expensive calls cached?
 
-## AI-Generated Data Flow Diagram (2026-03-14)
+## AI-Generated Data Flow Diagram (2026-03-16)
 
-Simplified DFD generated by the AI threat model analysis, focused on component-level data flows and security boundaries.
+Simplified DFD generated by the AI threat model analysis (27 findings, 16 components, claude-sonnet-4-6), focused on component-level data flows and security boundaries.
 
 ```mermaid
 graph LR
     subgraph End User Environment
-        end_user(("End User / Client"))
+        end_user(("End User (Browser / API Client)"))
     end
     subgraph Application Tier
-        fastapi_app["FastAPI Application (uvicorn)"]
-        auth_middleware["Auth Middleware (PyJWT + passlib)"]
-        rate_limiter["Rate Limiter (slowapi)"]
-        file_handler["File Upload Handler (python-multipart)"]
-        anthropic_client["Anthropic API Client"]
-        sqlalchemy_orm["SQLAlchemy ORM / Alembic"]
+        fastapi_app["FastAPI Application (Uvicorn)"]
+        slowapi["SlowAPI Rate Limiter (Middleware)"]
+        jwt_auth["JWT Auth Middleware (PyJWT)"]
+        multipart["Multipart File Parser (python-multipart)"]
+        alembic["Alembic Migration Runner"]
     end
     subgraph Data Layer
-        sqlite_db[("SQLite Database")]
+        sqlite_db[("SQLite Database (SQLAlchemy ORM)")]
     end
     subgraph External Services
         anthropic_api{"Anthropic Claude API"}
     end
-    end_user -->|HTTPS TLS 1.2+| rate_limiter
-    rate_limiter -->|HTTP internal routing| auth_middleware
-    auth_middleware -->|Validated JWT context| fastapi_app
-    fastapi_app -->|Multipart form data| file_handler
-    fastapi_app -->|REST/JSON prompt payload| anthropic_client
-    anthropic_client -->|HTTPS REST API Anthropic SDK| anthropic_api
-    anthropic_api -->|HTTPS REST API response| anthropic_client
-    fastapi_app -->|ORM method calls| sqlalchemy_orm
-    sqlalchemy_orm -->|SQLite file I/O unencrypted at rest| sqlite_db
+    end_user -->|HTTPS (TLS 1.2+) REST API requests| fastapi_app
+    end_user -->|HTTPS credentials (login/JWT)| fastapi_app
+    fastapi_app -->|Internal middleware chain| slowapi
+    fastapi_app -->|Internal middleware chain Bearer token| jwt_auth
+    fastapi_app -->|Internal multipart form/file data| multipart
+    fastapi_app -->|SQLAlchemy ORM JDBC/SQL (local file)| sqlite_db
+    alembic -->|DDL migrations SQL| sqlite_db
+    fastapi_app -->|HTTPS REST prompt and response data| anthropic_api
 ```

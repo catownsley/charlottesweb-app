@@ -101,19 +101,25 @@ def parse_pom_xml(content: str) -> list[dict[str, str]]:
         if not artifact_id or not version:
             continue
 
-        name = artifact_id.lower().strip()
-        if not name:
+        # Use groupId:artifactId for Maven (OSV requires this format)
+        if group_id:
+            name = f"{group_id.strip()}:{artifact_id.strip()}"
+        else:
+            name = artifact_id.strip()
+        name_lower = name.lower()
+        if not name_lower:
             continue
 
-        if name in by_name and by_name[name] != version:
-            duplicates[name] += 1
-            name = f"{name}_{duplicates[name] + 1}"
+        if name_lower in by_name and by_name[name_lower][1] != version:
+            duplicates[name_lower] += 1
+            name_lower = f"{name_lower}_{duplicates[name_lower] + 1}"
+            name = f"{name}_{duplicates[name.lower()] + 1}"
 
-        by_name[name] = version
+        by_name[name_lower] = (name, version)
 
     components = [
-        {"name": name, "version": by_name[name], "ecosystem": "Maven"}
-        for name in sorted(by_name)
+        {"name": info[0], "version": info[1], "ecosystem": "Maven"}
+        for _, info in sorted(by_name.items())
     ]
 
     if not components:

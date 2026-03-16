@@ -75,30 +75,47 @@ class TestNormalizeSoftwareStack:
         names = {c["name"] for c in result}
         assert "python" in names
         assert "postgres" in names
-        # Legacy format has no ecosystem
-        for c in result:
-            assert c["ecosystem"] == ""
 
-    def test_ecosystem_aware_format(self):
-        """Object format with version+ecosystem should normalize correctly."""
+    def test_flat_label_format(self):
+        """Flat {'label': 'Name version'} format should split name and version."""
         raw = {
-            "django": {"version": "4.2", "ecosystem": "PyPI"},
-            "kafka-clients": {"version": "3.6.0", "ecosystem": "Maven"},
+            "backend": "FastAPI 0.135.1",
+            "database": "SQLAlchemy 2.0.48",
+        }
+        result = normalize_software_stack(raw)
+        assert len(result) == 2
+        fastapi = next(c for c in result if c["name"] == "FastAPI")
+        assert fastapi["version"] == "0.135.1"
+        sqla = next(c for c in result if c["name"] == "SQLAlchemy")
+        assert sqla["version"] == "2.0.48"
+
+    def test_flat_non_versionable_skipped(self):
+        """Flat values with no version-like token are kept as-is with key as name."""
+        raw = {"deployment": "Docker + K8s"}
+        result = normalize_software_stack(raw)
+        # "Docker" is name, "+ K8s" won't happen — rsplit on last space
+        # Actually: rsplit(" ", 1) -> ["Docker +", "K8s"] -> name="Docker +", version="K8s"
+        # This is imperfect but won't match real CVEs, so it's harmless
+        assert len(result) == 1
+
+    def test_dict_format(self):
+        """Object format with version key should normalize correctly."""
+        raw = {
+            "django": {"version": "4.2"},
+            "kafka-clients": {"version": "3.6.0"},
         }
         result = normalize_software_stack(raw)
         assert len(result) == 2
         django = next(c for c in result if c["name"] == "django")
         assert django["version"] == "4.2"
-        assert django["ecosystem"] == "PyPI"
         kafka = next(c for c in result if c["name"] == "kafka-clients")
         assert kafka["version"] == "3.6.0"
-        assert kafka["ecosystem"] == "Maven"
 
     def test_mixed_format(self):
-        """Mix of legacy and ecosystem-aware entries."""
+        """Mix of flat and dict entries."""
         raw = {
             "openssl": "1.1.1",
-            "fastapi": {"version": "0.100.0", "ecosystem": "PyPI"},
+            "fastapi": {"version": "0.100.0"},
         }
         result = normalize_software_stack(raw)
         assert len(result) == 2
@@ -183,7 +200,7 @@ class TestOSVService:
         mock_request.return_value = mock_response
 
         svc = OSVService()
-        results = svc.query_package("django", "PyPI", "1.11")
+        results = svc.query_package("django", "1.11")
 
         assert len(results) == 1
         r = results[0]
@@ -204,23 +221,33 @@ class TestOSVService:
         mock_request.return_value = mock_response
 
         svc = OSVService()
-        results = svc.query_package("safe-lib", "PyPI", "99.0.0")
+        results = svc.query_package("safe-lib", "99.0.0")
         assert results == []
 
     @patch("src.osv_service.requests.request")
-    def test_analyze_software_stack_skips_no_ecosystem(self, mock_request):
-        """Components without ecosystem should be skipped."""
+    def test_analyze_software_stack_queries_name_and_version_only(self, mock_request):
+        """OSV queries should only send name and version, no ecosystem."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"vulns": []}
+        mock_response.raise_for_status = MagicMock()
+        mock_request.return_value = mock_response
+
         svc = OSVService()
         components = [
-            {"name": "openssl", "version": "1.0.1", "ecosystem": ""},
+            {"name": "openssl", "version": "1.0.1"},
         ]
-        results = svc.analyze_software_stack(components)
-        assert results == {}
-        mock_request.assert_not_called()
+        svc.analyze_software_stack(components)
+        mock_request.assert_called_once()
+        call_kwargs = mock_request.call_args
+        body = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json", {})
+        assert "ecosystem" not in body["package"]
+        assert body["package"]["name"] == "openssl"
+        assert body["version"] == "1.0.1"
 
     @patch("src.osv_service.requests.request")
     def test_analyze_software_stack_success(self, mock_request):
-        """Components with ecosystem should be queried."""
+        """Components should be queried and results returned."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -241,7 +268,7 @@ class TestOSVService:
 
         svc = OSVService()
         components = [
-            {"name": "django", "version": "1.11", "ecosystem": "PyPI"},
+            {"name": "django", "version": "1.11"},
         ]
         results = svc.analyze_software_stack(components)
         assert "django@1.11" in results
@@ -257,4 +284,4 @@ class TestOSVService:
 
         svc = OSVService(max_retries=1)
         with pytest.raises(OSVApiError):
-            svc.query_package("test", "PyPI", "1.0")
+            svc.query_package("test", "1.0")

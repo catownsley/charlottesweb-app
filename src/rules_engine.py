@@ -17,29 +17,49 @@ def normalize_software_stack(
 ) -> list[dict[str, str]]:
     """Normalize a software_stack dict into a list of component dicts.
 
-    Handles both the legacy flat format {"name": "version"} and the new
-    ecosystem-aware format {"name": {"version": "x", "ecosystem": "Y"}}.
+    Handles three formats:
+      1. Dict with version key: {"django": {"version": "4.2"}}
+      2. Flat with name as key: {"python": "3.11"}
+      3. Flat with label as key: {"backend": "FastAPI 0.135.1"}
+
+    For flat values containing a space (format 3), the last whitespace-
+    delimited token is treated as the version and everything before it as
+    the package name.  If there is no space, the dict key is the name and
+    the value is the version (format 2).
 
     Returns:
-        List of dicts with keys: name, version, ecosystem
+        List of dicts with keys: name, version, and optionally ecosystem
     """
     components: list[dict[str, str]] = []
-    for name, value in raw_stack.items():
-        name = str(name).strip()
-        if not name:
+    for key, value in raw_stack.items():
+        key = str(key).strip()
+        if not key:
             continue
 
         if isinstance(value, dict):
+            name = str(value.get("name", key)).strip() or key
             version = str(value.get("version", "")).strip()
             ecosystem = str(value.get("ecosystem", "")).strip()
         else:
-            version = str(value).strip() if value is not None else ""
+            raw_value = str(value).strip() if value is not None else ""
+            if " " in raw_value:
+                # "FastAPI 0.135.1" -> name="FastAPI", version="0.135.1"
+                parts = raw_value.rsplit(" ", 1)
+                name = parts[0].strip()
+                version = parts[1].strip()
+            else:
+                # "3.11" -> key is the name, value is the version
+                name = key
+                version = raw_value
             ecosystem = ""
 
-        if not version:
+        if not name or not version:
             continue
 
-        components.append({"name": name, "version": version, "ecosystem": ecosystem})
+        comp: dict[str, str] = {"name": name, "version": version}
+        if ecosystem:
+            comp["ecosystem"] = ecosystem
+        components.append(comp)
 
     return components
 
