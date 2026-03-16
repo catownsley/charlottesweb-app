@@ -268,12 +268,13 @@ class OSVService:
         Returns:
             List of vulnerability results
         """
+        package: dict[str, str] = {"name": name}
+        if ecosystem:
+            package["ecosystem"] = ecosystem
+
         body: dict[str, Any] = {
             "version": version,
-            "package": {
-                "name": name,
-                "ecosystem": ecosystem,
-            },
+            "package": package,
         }
 
         all_vulns: list[VulnerabilityResult] = []
@@ -326,7 +327,7 @@ class OSVService:
             version = comp.get("version", "")
             ecosystem = comp.get("ecosystem", "")
 
-            if not name or not version or not ecosystem:
+            if not name or not version:
                 logger.warning("Skipping component with missing fields: %s", comp)
                 continue
 

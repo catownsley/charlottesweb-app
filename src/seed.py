@@ -870,10 +870,9 @@ def seed_controls() -> None:
         applications={"primary": "Medical Translation AI"},
         access_controls={"auth": "mTLS + API Keys", "rbac": "Kubernetes role-based"},
         software_stack={
-            "backend": "FastAPI 0.135.1",
-            "database": "SQLAlchemy 2.0.48",
-            "security": "python-jose 3.5.0",
-            "deployment": "Docker + K8s",
+            "fastapi": {"version": "0.135.1", "ecosystem": "PyPI"},
+            "sqlalchemy": {"version": "2.0.48", "ecosystem": "PyPI"},
+            "python-jose": {"version": "3.5.0", "ecosystem": "PyPI"},
         },
     )
     db.add(profile)

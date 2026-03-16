@@ -42,6 +42,13 @@ def test_db(tmp_path):
             requirement="Test requirement",
             category="Technical Safeguards",
         ),
+        Control(
+            id="HIPAA.164.308(a)(5)(ii)(B)",
+            framework="HIPAA_Security_Rule",
+            title="Security Awareness and Training",
+            requirement="Test requirement",
+            category="Administrative Safeguards",
+        ),
     ]
     for c in controls:
         db.add(c)
@@ -219,7 +226,7 @@ def test_get_prioritized_risk_backlog(client):
         json={
             "organization_id": org_id,
             "software_stack": {
-                "openssl": {"version": "1.0.1", "ecosystem": ""},
+                "openssl": {"version": "1.0.1", "ecosystem": "Alpine"},
                 "tomcat": {"version": "9.0.62", "ecosystem": "Maven"},
             },
             "infrastructure": {

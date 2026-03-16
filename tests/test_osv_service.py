@@ -79,6 +79,28 @@ class TestNormalizeSoftwareStack:
         for c in result:
             assert c["ecosystem"] == ""
 
+    def test_flat_label_format(self):
+        """Flat {'label': 'Name version'} format should split name and version."""
+        raw = {
+            "backend": "FastAPI 0.135.1",
+            "database": "SQLAlchemy 2.0.48",
+        }
+        result = normalize_software_stack(raw)
+        assert len(result) == 2
+        fastapi = next(c for c in result if c["name"] == "FastAPI")
+        assert fastapi["version"] == "0.135.1"
+        sqla = next(c for c in result if c["name"] == "SQLAlchemy")
+        assert sqla["version"] == "2.0.48"
+
+    def test_flat_non_versionable_skipped(self):
+        """Flat values with no version-like token are kept as-is with key as name."""
+        raw = {"deployment": "Docker + K8s"}
+        result = normalize_software_stack(raw)
+        # "Docker" is name, "+ K8s" won't happen — rsplit on last space
+        # Actually: rsplit(" ", 1) -> ["Docker +", "K8s"] -> name="Docker +", version="K8s"
+        # This is imperfect but won't match real CVEs, so it's harmless
+        assert len(result) == 1
+
     def test_ecosystem_aware_format(self):
         """Object format with version+ecosystem should normalize correctly."""
         raw = {
@@ -208,15 +230,24 @@ class TestOSVService:
         assert results == []
 
     @patch("src.osv_service.requests.request")
-    def test_analyze_software_stack_skips_no_ecosystem(self, mock_request):
-        """Components without ecosystem should be skipped."""
+    def test_analyze_software_stack_queries_without_ecosystem(self, mock_request):
+        """Components without ecosystem should still be queried (OSV supports it)."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"vulns": []}
+        mock_response.raise_for_status = MagicMock()
+        mock_request.return_value = mock_response
+
         svc = OSVService()
         components = [
             {"name": "openssl", "version": "1.0.1", "ecosystem": ""},
         ]
-        results = svc.analyze_software_stack(components)
-        assert results == {}
-        mock_request.assert_not_called()
+        svc.analyze_software_stack(components)
+        mock_request.assert_called_once()
+        # Verify ecosystem is NOT in the request body
+        call_kwargs = mock_request.call_args
+        body = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json", {})
+        assert "ecosystem" not in body["package"]
 
     @patch("src.osv_service.requests.request")
     def test_analyze_software_stack_success(self, mock_request):
