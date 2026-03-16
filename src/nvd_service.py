@@ -12,6 +12,8 @@ from typing import Any
 
 import requests
 
+from src.utils import sanitize_log_value
+
 logger = logging.getLogger(__name__)
 
 
@@ -185,7 +187,10 @@ class NVDService:
         if cache_key in self._cache:
             cached_data, cached_time = self._cache[cache_key]
             if datetime.now(UTC) - cached_time < self._cache_ttl:
-                logger.info("Cache hit for component versions: %s", component_name)
+                logger.info(
+                    "Cache hit for component versions: %s",
+                    sanitize_log_value(component_name),
+                )
                 return cached_data
 
         try:
@@ -223,12 +228,15 @@ class NVDService:
             logger.info(
                 "Found %d versions for %s from CPE dictionary",
                 len(top_versions),
-                component_name,
+                sanitize_log_value(component_name),
             )
             return top_versions
 
         except NVDApiError:
-            logger.error("NVD API unavailable for version lookup: %s", component_name)
+            logger.error(
+                "NVD API unavailable for version lookup: %s",
+                sanitize_log_value(component_name),
+            )
             return []
         except Exception as e:
             logger.error("Error fetching versions from NVD: %s", e)
@@ -262,7 +270,8 @@ class NVDService:
             cached_data, cached_time = self._cache[cache_key]
             if datetime.now(UTC) - cached_time < self._cache_ttl:
                 logger.info(
-                    "Cache hit for component suggestions: %s", normalized_prefix
+                    "Cache hit for component suggestions: %s",
+                    sanitize_log_value(normalized_prefix),
                 )
                 return cached_data
 
@@ -312,7 +321,7 @@ class NVDService:
         except NVDApiError:
             logger.error(
                 "NVD API unavailable for component suggestions: %s",
-                normalized_prefix,
+                sanitize_log_value(normalized_prefix),
             )
             return []
         except Exception as e:
