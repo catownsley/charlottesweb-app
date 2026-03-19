@@ -403,6 +403,56 @@ class NVDService:
             )
             return []
 
+    @staticmethod
+    def _parse_nvd_cve(cve: dict[str, Any]) -> dict[str, Any]:
+        """Parse a single NVD CVE record into VulnerabilityResult format."""
+        cve_id = cve.get("id", "")
+
+        # Extract description (English)
+        summary = ""
+        for desc in cve.get("descriptions", []):
+            if desc.get("lang") == "en":
+                summary = desc.get("value", "")
+                break
+
+        # Extract CVSS score and severity
+        cvss_score = None
+        cvss_severity = None
+        metrics = cve.get("metrics", {})
+        for metric_key in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
+            for metric in metrics.get(metric_key, []):
+                if metric.get("type") == "Primary":
+                    cvss_data = metric.get("cvssData", {})
+                    cvss_score = cvss_data.get("baseScore")
+                    cvss_severity = cvss_data.get(
+                        "baseSeverity", metric.get("baseSeverity")
+                    )
+                    break
+            if cvss_score is not None:
+                break
+
+        # Extract CWE IDs
+        cwe_ids: list[str] = []
+        for weakness in cve.get("weaknesses", []):
+            for desc in weakness.get("description", []):
+                val = desc.get("value", "")
+                if val.startswith("CWE-"):
+                    cwe_ids.append(val)
+
+        return {
+            "vuln_id": cve_id,
+            "aliases": [cve_id],
+            "summary": summary,
+            "details": summary,
+            "cvss_score": cvss_score,
+            "cvss_severity": ((cvss_severity or "").upper() if cvss_severity else None),
+            "cwe_ids": list(set(cwe_ids)),
+            "published_date": cve.get("published", ""),
+            "fixed_versions": [],
+            "source": "NVD",
+            "url": f"https://nvd.nist.gov/vuln/detail/{cve_id}",
+        }
+
     def get_cves_for_component(
         self,
         component_name: str,
@@ -441,78 +491,17 @@ class NVDService:
 
         try:
             # cpeName requires exact values; virtualMatchString supports wildcards
-            if version:
-                param_key = "cpeName"
-            else:
-                param_key = "virtualMatchString"
+            param_key = "cpeName" if version else "virtualMatchString"
             params: dict[str, str | int] = {
                 param_key: cpe_name,
                 "resultsPerPage": max_results,
             }
             data = self._request_with_retry(params, url=self.CVE_URL)
 
-            results: list[dict[str, Any]] = []
-            for vuln_entry in data.get("vulnerabilities", []):
-                cve = vuln_entry.get("cve", {})
-                cve_id = cve.get("id", "")
-
-                # Extract description (English)
-                descriptions = cve.get("descriptions", [])
-                summary = ""
-                for desc in descriptions:
-                    if desc.get("lang") == "en":
-                        summary = desc.get("value", "")
-                        break
-
-                # Extract CVSS score and severity
-                cvss_score = None
-                cvss_severity = None
-                metrics = cve.get("metrics", {})
-                for metric_key in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
-                    metric_list = metrics.get(metric_key, [])
-                    for metric in metric_list:
-                        if metric.get("type") == "Primary":
-                            cvss_data = metric.get("cvssData", {})
-                            cvss_score = cvss_data.get("baseScore")
-                            cvss_severity = cvss_data.get("baseSeverity")
-                            if not cvss_severity:
-                                cvss_severity = metric.get("baseSeverity")
-                            break
-                    if cvss_score is not None:
-                        break
-
-                # Extract CWE IDs
-                cwe_ids: list[str] = []
-                for weakness in cve.get("weaknesses", []):
-                    for desc in weakness.get("description", []):
-                        val = desc.get("value", "")
-                        if val.startswith("CWE-"):
-                            cwe_ids.append(val)
-
-                # Extract published date
-                published = cve.get("published", "")
-
-                # Extract references for URL
-                refs = cve.get("references", [])
-                url = f"https://nvd.nist.gov/vuln/detail/{cve_id}"
-
-                results.append(
-                    {
-                        "vuln_id": cve_id,
-                        "aliases": [cve_id],
-                        "summary": summary,
-                        "details": summary,
-                        "cvss_score": cvss_score,
-                        "cvss_severity": (
-                            (cvss_severity or "").upper() if cvss_severity else None
-                        ),
-                        "cwe_ids": list(set(cwe_ids)),
-                        "published_date": published,
-                        "fixed_versions": [],
-                        "source": "NVD",
-                        "url": url,
-                    }
-                )
+            results = [
+                self._parse_nvd_cve(entry.get("cve", {}))
+                for entry in data.get("vulnerabilities", [])
+            ]
 
             logger.info(
                 "NVD CVE query: %s → %d vulnerabilities",
