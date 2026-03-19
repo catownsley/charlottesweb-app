@@ -1461,7 +1461,8 @@
                     const versions = data.versions || [];
 
                     if (versions.length === 0) {
-                        versionSuggestionsBox.classList.remove('show');
+                        versionSuggestionsBox.innerHTML = '<div class="suggestion" style="color: #6b6080; cursor: default; font-style: italic;">No versions listed in the NVD</div>';
+                        versionSuggestionsBox.classList.add('show');
                         return;
                     }
 
@@ -2039,10 +2040,9 @@
                                 versionInput.value = version;
                                 console.log(`  → Auto-selected version ${version} for ${name}`);
                             } else {
-                                // No version found — skip this component instead of failing
-                                droppedComponents.push(name);
-                                console.log(`  → Skipping "${name}": no version found in NVD`);
-                                continue;
+                                // No version in NVD — include without version, scan for all known vulns
+                                version = '';
+                                console.log(`  → No versions in NVD for "${name}", including without version`);
                             }
                         } catch (err) {
                             // Network/API error — skip rather than fail the whole query

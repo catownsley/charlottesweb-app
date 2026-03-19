@@ -5,7 +5,9 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from src.config import settings
 from src.models import Assessment, Control, Finding, MetadataProfile
+from src.nvd_service import NVDService
 from src.osv_service import OSVApiError, OSVService
 from src.utils import sanitize_log_value
 
@@ -53,7 +55,7 @@ def normalize_software_stack(
                 version = raw_value
             ecosystem = ""
 
-        if not name or not version:
+        if not name:
             continue
 
         comp: dict[str, str] = {"name": name, "version": version}
@@ -78,6 +80,7 @@ class RulesEngine:
         # Use max_retries=1 during assessment creation to avoid blocking.
         # The dedicated analyze endpoint uses full retries.
         self.osv_service = OSVService(max_retries=1)
+        self.nvd_service = NVDService(api_key=settings.nvd_api_key)
 
     def run_assessment(self, assessment_id: str) -> list[Finding]:
         """
@@ -345,7 +348,9 @@ class RulesEngine:
         logger.info("Analyzing software stack: %d components", len(components))
 
         try:
-            vulnerabilities = self.osv_service.analyze_software_stack(components)
+            vulnerabilities = self.osv_service.analyze_software_stack(
+                components, nvd_service=self.nvd_service
+            )
         except OSVApiError as e:
             logger.error("OSV API unavailable during assessment: %s", e)
             return findings
