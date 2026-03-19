@@ -27,7 +27,7 @@ from src.config import settings
 from src.database import get_db
 from src.middleware import get_api_key_optional, limiter
 from src.models import Assessment, Finding, MetadataProfile
-from src.utils import to_str
+from src.utils import sanitize_log_value, to_str
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +171,10 @@ def get_ai_threat_model(
     if not force:
         cached = ai_threat_model_cache.get(cache_key, db)
         if cached is not None:
-            logger.info("AI threat model cache hit for org=%s", organization_id)
+            logger.info(
+                "AI threat model cache hit for org=%s",
+                sanitize_log_value(str(organization_id)),
+            )
             cached["_cached"] = True
             return cached
 

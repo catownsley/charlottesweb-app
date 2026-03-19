@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 
 from src.config import settings
 from src.models import Assessment, Control, Finding, MetadataProfile
-from src.utils import to_str
+from src.utils import sanitize_log_value, to_str
 
 logger = logging.getLogger(__name__)
 
@@ -318,8 +318,8 @@ def generate_ai_threat_model(
 
     logger.info(
         "Generating AI threat model for org=%s assessment=%s",
-        organization_id,
-        assessment_id_str,
+        sanitize_log_value(str(organization_id)),
+        sanitize_log_value(str(assessment_id_str)),
     )
 
     with client.messages.stream(
@@ -349,7 +349,9 @@ def generate_ai_threat_model(
     try:
         threat_model: dict[str, Any] = json.loads(result_text)
     except json.JSONDecodeError as e:
-        logger.error("Failed to parse AI threat model response: %s", e)
+        logger.error(
+            "Failed to parse AI threat model response: %s", sanitize_log_value(str(e))
+        )
         raise ValueError("AI model returned invalid JSON") from e
 
     # --- Attach metadata ---

@@ -51,6 +51,7 @@ from src.models import (
     Organization,
     OrganizationMember,
 )
+from src.utils import sanitize_log_value
 
 logger = logging.getLogger(__name__)
 
@@ -418,7 +419,7 @@ except Exception as e:
     # Log static file mounting error but continue (API still works)
     logger.warning(
         "Failed to mount static files: %s. Web UI will not be available.",
-        e,
+        sanitize_log_value(str(e)),
     )
 
 

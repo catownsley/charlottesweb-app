@@ -86,7 +86,7 @@ class NVDService:
                     "NVD API request failed (attempt %d/%d): %s",
                     attempt + 1,
                     attempts,
-                    e,
+                    sanitize_log_value(str(e)),
                 )
                 if attempt < attempts - 1:
                     time.sleep(RATE_LIMIT_BACKOFF_SECONDS)
@@ -239,7 +239,9 @@ class NVDService:
             )
             return []
         except Exception as e:
-            logger.error("Error fetching versions from NVD: %s", e)
+            logger.error(
+                "Error fetching versions from NVD: %s", sanitize_log_value(str(e))
+            )
             return []
 
     def get_component_suggestions(
@@ -314,7 +316,7 @@ class NVDService:
             logger.info(
                 "Extracted %d component suggestions for prefix: %s",
                 len(top_components),
-                normalized_prefix,
+                sanitize_log_value(normalized_prefix),
             )
             return top_components
 
@@ -325,5 +327,8 @@ class NVDService:
             )
             return []
         except Exception as e:
-            logger.error("Error extracting component suggestions from NVD: %s", e)
+            logger.error(
+                "Error extracting component suggestions from NVD: %s",
+                sanitize_log_value(str(e)),
+            )
             return []

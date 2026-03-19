@@ -179,7 +179,7 @@ class OSVService:
                     "OSV API request failed (attempt %d/%d): %s",
                     attempt + 1,
                     attempts,
-                    e,
+                    sanitize_log_value(str(e)),
                 )
                 if attempt < attempts - 1:
                     time.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
@@ -328,7 +328,10 @@ class OSVService:
             ecosystem = comp.get("ecosystem", "")
 
             if not name or not version:
-                logger.warning("Skipping component with missing fields: %s", comp)
+                logger.warning(
+                    "Skipping component with missing fields: %s",
+                    sanitize_log_value(str(comp)),
+                )
                 continue
 
             component_key = f"{name}@{version}"
@@ -339,7 +342,9 @@ class OSVService:
                     results[component_key] = vulns
             except OSVApiError:
                 failed.append(component_key)
-                logger.error("OSV API failed for: %s", component_key)
+                logger.error(
+                    "OSV API failed for: %s", sanitize_log_value(component_key)
+                )
 
         if failed and not results:
             raise OSVApiError(
@@ -351,7 +356,7 @@ class OSVService:
             logger.warning(
                 "Partial OSV results: %d failed (%s), %d succeeded",
                 len(failed),
-                ", ".join(failed),
+                sanitize_log_value(", ".join(failed)),
                 len(results),
             )
 
