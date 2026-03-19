@@ -179,7 +179,7 @@ class OSVService:
                     "OSV API request failed (attempt %d/%d): %s",
                     attempt + 1,
                     attempts,
-                    e,
+                    sanitize_log_value(str(e)),
                 )
                 if attempt < attempts - 1:
                     time.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
@@ -274,9 +274,10 @@ class OSVService:
             package["ecosystem"] = ecosystem
 
         body: dict[str, Any] = {
-            "version": version,
             "package": package,
         }
+        if version:
+            body["version"] = version
 
         all_vulns: list[VulnerabilityResult] = []
         page_token: str | None = None
@@ -296,9 +297,8 @@ class OSVService:
                 break
 
         logger.info(
-            "OSV query: %s@%s → %d vulnerabilities",
-            sanitize_log_value(name),
-            sanitize_log_value(version),
+            "OSV query: %s → %d vulnerabilities",
+            sanitize_log_value(f"{name}@{version}" if version else name),
             len(all_vulns),
         )
         return all_vulns
@@ -306,12 +306,18 @@ class OSVService:
     def analyze_software_stack(
         self,
         components: list[dict[str, str]],
+        nvd_service: Any = None,
     ) -> dict[str, list[VulnerabilityResult]]:
         """Analyze a software stack for known vulnerabilities.
+
+        Queries OSV first (best for open-source packages). For any component
+        where OSV returns no results, falls back to NVD CVE API (covers
+        proprietary software like Cisco, Oracle, Microsoft, etc.).
 
         Args:
             components: List of component dicts with keys:
                 name, version, ecosystem
+            nvd_service: Optional NVDService instance for fallback queries
 
         Returns:
             Dictionary mapping "name@version" to list of vulnerabilities
@@ -321,27 +327,62 @@ class OSVService:
         """
         results: dict[str, list[VulnerabilityResult]] = {}
         failed: list[str] = []
+        osv_misses: list[dict[str, str]] = []
+        osv_api_failed = False
 
         for comp in components:
             name = comp.get("name", "")
             version = comp.get("version", "")
             ecosystem = comp.get("ecosystem", "")
 
-            if not name or not version:
-                logger.warning("Skipping component with missing fields: %s", comp)
+            if not name:
+                logger.warning(
+                    "Skipping component with missing name: %s",
+                    sanitize_log_value(str(comp)),
+                )
                 continue
 
-            component_key = f"{name}@{version}"
+            component_key = f"{name}@{version}" if version else name
 
             try:
                 vulns = self.query_package(name, version, ecosystem)
                 if vulns:
                     results[component_key] = vulns
+                else:
+                    osv_misses.append(comp)
             except OSVApiError:
+                osv_api_failed = True
                 failed.append(component_key)
-                logger.error("OSV API failed for: %s", component_key)
+                osv_misses.append(comp)
+                logger.error(
+                    "OSV API failed for: %s", sanitize_log_value(component_key)
+                )
 
-        if failed and not results:
+        # NVD fallback for components OSV couldn't cover
+        if osv_misses and nvd_service:
+            logger.info(
+                "Trying NVD fallback for %d components with no OSV results",
+                len(osv_misses),
+            )
+            for i, comp in enumerate(osv_misses):
+                # Pace NVD requests to avoid rate limiting (30s window)
+                if i > 0:
+                    time.sleep(RETRY_BACKOFF_SECONDS)
+                name = comp.get("name", "")
+                version = comp.get("version", "")
+                component_key = f"{name}@{version}" if version else name
+
+                if component_key in results:
+                    continue
+
+                nvd_vulns = nvd_service.get_cves_for_component(name, version)
+                if nvd_vulns:
+                    results[component_key] = nvd_vulns
+                    # Remove from failed list if NVD succeeded
+                    if component_key in failed:
+                        failed.remove(component_key)
+
+        if osv_api_failed and failed and not results:
             raise OSVApiError(
                 f"OSV API unavailable. Failed to analyze: {', '.join(failed)}. "
                 "Try again in a few minutes."
@@ -349,9 +390,9 @@ class OSVService:
 
         if failed:
             logger.warning(
-                "Partial OSV results: %d failed (%s), %d succeeded",
+                "Partial results: %d failed (%s), %d succeeded",
                 len(failed),
-                ", ".join(failed),
+                sanitize_log_value(", ".join(failed)),
                 len(results),
             )
 

@@ -36,6 +36,7 @@ class NVDService:
     """Service for querying NVD CPE dictionary for component/version discovery."""
 
     CPE_URL = "https://services.nvd.nist.gov/rest/json/cpes/2.0"
+    CVE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
     def __init__(
         self, api_key: str | None = None, max_retries: int = RATE_LIMIT_RETRY_ATTEMPTS
@@ -86,7 +87,7 @@ class NVDService:
                     "NVD API request failed (attempt %d/%d): %s",
                     attempt + 1,
                     attempts,
-                    e,
+                    sanitize_log_value(str(e)),
                 )
                 if attempt < attempts - 1:
                     time.sleep(RATE_LIMIT_BACKOFF_SECONDS)
@@ -170,6 +171,70 @@ class NVDService:
         except (ValueError, AttributeError):
             return (0,)
 
+    def _discover_cpe_identity(
+        self, component_name: str
+    ) -> tuple[str, str, str] | None:
+        """Discover the real CPE type:vendor:product for a component name.
+
+        Uses NVD keywordSearch to find the actual CPE entry, then extracts
+        the vendor and product fields. Caches the result as a runtime alias
+        so subsequent lookups are instant.
+
+        Args:
+            component_name: Lowercase component name (e.g., 'javamail')
+
+        Returns:
+            Tuple of (cpe_type, vendor, product) or None if not found
+        """
+        cache_key = f"cpe_identity:{component_name}"
+        if cache_key in self._cache:
+            cached_data, cached_time = self._cache[cache_key]
+            if datetime.now(UTC) - cached_time < self._cache_ttl:
+                return cached_data  # type: ignore[return-value]
+
+        try:
+            params: dict[str, str | int] = {
+                "keywordSearch": component_name,
+                "resultsPerPage": VERSION_SEARCH_MAX_RESULTS,
+            }
+            data = self._request_with_retry(params, url=self.CPE_URL)
+
+            for product_entry in data.get("products", []):
+                cpe = product_entry.get("cpe", {})
+                cpe_name = cpe.get("cpeName", "")
+                parts = cpe_name.split(":")
+                if len(parts) < 6:
+                    continue
+
+                cpe_type = parts[2].strip().lower()
+                vendor = parts[3].strip().lower()
+                product = parts[4].strip().lower()
+
+                if product == component_name or vendor == component_name:
+                    result = (cpe_type, vendor, product)
+                    self._cache[cache_key] = (result, datetime.now(UTC))  # type: ignore[assignment]
+                    logger.info(
+                        "Discovered CPE identity for %s: %s:%s:%s",
+                        sanitize_log_value(component_name),
+                        cpe_type,
+                        sanitize_log_value(vendor),
+                        sanitize_log_value(product),
+                    )
+                    return result
+
+            logger.warning(
+                "Could not discover CPE identity for: %s",
+                sanitize_log_value(component_name),
+            )
+            return None
+
+        except NVDApiError:
+            logger.warning(
+                "NVD API unavailable for CPE discovery: %s",
+                sanitize_log_value(component_name),
+            )
+            return None
+
     def get_known_versions(
         self, component_name: str, max_versions: int = DEFAULT_MAX_RESULTS
     ) -> list[str]:
@@ -199,7 +264,12 @@ class NVDService:
             if aliases:
                 cpe_type, cpe_vendor, cpe_product = aliases[0]
             else:
-                cpe_type, cpe_vendor, cpe_product = "a", comp_lower, comp_lower
+                # Discover the real vendor:product via keywordSearch
+                discovered = self._discover_cpe_identity(comp_lower)
+                if discovered:
+                    cpe_type, cpe_vendor, cpe_product = discovered
+                else:
+                    cpe_type, cpe_vendor, cpe_product = "a", comp_lower, comp_lower
 
             cpe_match = f"cpe:2.3:{cpe_type}:{cpe_vendor}:{cpe_product}:*"
 
@@ -239,7 +309,9 @@ class NVDService:
             )
             return []
         except Exception as e:
-            logger.error("Error fetching versions from NVD: %s", e)
+            logger.error(
+                "Error fetching versions from NVD: %s", sanitize_log_value(str(e))
+            )
             return []
 
     def get_component_suggestions(
@@ -314,7 +386,7 @@ class NVDService:
             logger.info(
                 "Extracted %d component suggestions for prefix: %s",
                 len(top_components),
-                normalized_prefix,
+                sanitize_log_value(normalized_prefix),
             )
             return top_components
 
@@ -325,5 +397,130 @@ class NVDService:
             )
             return []
         except Exception as e:
-            logger.error("Error extracting component suggestions from NVD: %s", e)
+            logger.error(
+                "Error extracting component suggestions from NVD: %s",
+                sanitize_log_value(str(e)),
+            )
+            return []
+
+    @staticmethod
+    def _parse_nvd_cve(cve: dict[str, Any]) -> dict[str, Any]:
+        """Parse a single NVD CVE record into VulnerabilityResult format."""
+        cve_id = cve.get("id", "")
+
+        # Extract description (English)
+        summary = ""
+        for desc in cve.get("descriptions", []):
+            if desc.get("lang") == "en":
+                summary = desc.get("value", "")
+                break
+
+        # Extract CVSS score and severity
+        cvss_score = None
+        cvss_severity = None
+        metrics = cve.get("metrics", {})
+        for metric_key in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
+            for metric in metrics.get(metric_key, []):
+                if metric.get("type") == "Primary":
+                    cvss_data = metric.get("cvssData", {})
+                    cvss_score = cvss_data.get("baseScore")
+                    cvss_severity = cvss_data.get(
+                        "baseSeverity", metric.get("baseSeverity")
+                    )
+                    break
+            if cvss_score is not None:
+                break
+
+        # Extract CWE IDs
+        cwe_ids: list[str] = []
+        for weakness in cve.get("weaknesses", []):
+            for desc in weakness.get("description", []):
+                val = desc.get("value", "")
+                if val.startswith("CWE-"):
+                    cwe_ids.append(val)
+
+        return {
+            "vuln_id": cve_id,
+            "aliases": [cve_id],
+            "summary": summary,
+            "details": summary,
+            "cvss_score": cvss_score,
+            "cvss_severity": ((cvss_severity or "").upper() if cvss_severity else None),
+            "cwe_ids": list(set(cwe_ids)),
+            "published_date": cve.get("published", ""),
+            "fixed_versions": [],
+            "source": "NVD",
+            "url": f"https://nvd.nist.gov/vuln/detail/{cve_id}",
+        }
+
+    def get_cves_for_component(
+        self,
+        component_name: str,
+        version: str = "",
+        max_results: int = 50,
+    ) -> list[dict[str, Any]]:
+        """Query NVD CVE API for vulnerabilities affecting a component.
+
+        Used as a fallback when OSV has no data (e.g., proprietary software).
+        Resolves the component to its CPE identity, then queries for CVEs.
+
+        Args:
+            component_name: Component name (e.g., 'bams', 'java')
+            version: Optional version string
+            max_results: Maximum CVEs to return
+
+        Returns:
+            List of vulnerability dicts matching VulnerabilityResult format
+        """
+        comp_lower = component_name.lower()
+        aliases = self._CPE_ALIASES.get(comp_lower)
+        if aliases:
+            cpe_type, cpe_vendor, cpe_product = aliases[0]
+        else:
+            discovered = self._discover_cpe_identity(comp_lower)
+            if discovered:
+                cpe_type, cpe_vendor, cpe_product = discovered
+            else:
+                logger.warning(
+                    "Cannot query NVD CVEs: unknown CPE for %s",
+                    sanitize_log_value(component_name),
+                )
+                return []
+
+        cpe_name = f"cpe:2.3:{cpe_type}:{cpe_vendor}:{cpe_product}:{version or '*'}:*:*:*:*:*:*:*"
+
+        try:
+            # cpeName requires exact values; virtualMatchString supports wildcards
+            param_key = "cpeName" if version else "virtualMatchString"
+            params: dict[str, str | int] = {
+                param_key: cpe_name,
+                "resultsPerPage": max_results,
+            }
+            data = self._request_with_retry(params, url=self.CVE_URL)
+
+            results = [
+                self._parse_nvd_cve(entry.get("cve", {}))
+                for entry in data.get("vulnerabilities", [])
+            ]
+
+            logger.info(
+                "NVD CVE query: %s → %d vulnerabilities",
+                sanitize_log_value(
+                    f"{component_name}@{version}" if version else component_name
+                ),
+                len(results),
+            )
+            return results
+
+        except NVDApiError:
+            logger.error(
+                "NVD CVE API unavailable for: %s",
+                sanitize_log_value(component_name),
+            )
+            return []
+        except Exception as e:
+            logger.error(
+                "Error querying NVD CVEs: %s",
+                sanitize_log_value(str(e)),
+            )
             return []

@@ -6,6 +6,8 @@ from typing import Any, cast
 
 import requests
 
+from src.utils import sanitize_log_value
+
 logger = logging.getLogger(__name__)
 
 
@@ -109,7 +111,10 @@ class DependabotService:
                     if parsed:
                         results.append(parsed)
                 except Exception as e:
-                    logger.warning("Failed to parse dependabot alert: %s", e)
+                    logger.warning(
+                        "Failed to parse dependabot alert: %s",
+                        sanitize_log_value(str(e)),
+                    )
                     continue
 
             # Cache results
@@ -118,10 +123,12 @@ class DependabotService:
             return results
 
         except requests.exceptions.RequestException as e:
-            logger.error("GitHub API request failed: %s", e)
+            logger.error("GitHub API request failed: %s", sanitize_log_value(str(e)))
             return []
         except Exception as e:
-            logger.error("Error processing Dependabot response: %s", e)
+            logger.error(
+                "Error processing Dependabot response: %s", sanitize_log_value(str(e))
+            )
             return []
 
     def _parse_alert(self, alert: dict[str, Any]) -> dict[str, Any] | None:
@@ -178,7 +185,9 @@ class DependabotService:
             }
 
         except Exception as e:
-            logger.warning("Error parsing dependabot alert: %s", e)
+            logger.warning(
+                "Error parsing dependabot alert: %s", sanitize_log_value(str(e))
+            )
             return None
 
     def _infer_cwes(self, package_name: str, description: str) -> list[str]:

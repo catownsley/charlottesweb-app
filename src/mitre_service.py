@@ -19,6 +19,8 @@ from typing import Any
 
 import requests
 
+from src.utils import sanitize_log_value
+
 logger = logging.getLogger(__name__)
 
 
@@ -135,7 +137,9 @@ class MITREService:
             return data
 
         except requests.exceptions.RequestException as e:
-            logger.error("Failed to fetch MITRE ATT&CK data: %s", e)
+            logger.error(
+                "Failed to fetch MITRE ATT&CK data: %s", sanitize_log_value(str(e))
+            )
             # Return empty structure if fetch fails
             return {"objects": []}
 

@@ -221,8 +221,8 @@ def log_audit_event(
     # Correlate with request ID for distributed tracing
     if request:
         log_entry["request"] = {
-            "id": getattr(
-                request.state, "request_id", None
+            "id": sanitize_log_value(
+                str(getattr(request.state, "request_id", ""))
             ),  # From RequestIDMiddleware
             "ip": request.client.host if request.client else None,  # Source IP
             "method": request.method,  # HTTP method (GET, POST, etc.)

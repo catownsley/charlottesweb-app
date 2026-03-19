@@ -123,11 +123,15 @@ class TestNormalizeSoftwareStack:
     def test_empty_stack(self):
         assert normalize_software_stack({}) == []
 
-    def test_skips_empty_versions(self):
+    def test_includes_empty_versions(self):
+        """Components without versions are included for versionless scanning."""
         raw = {"python": "", "java": "17"}
         result = normalize_software_stack(raw)
-        assert len(result) == 1
-        assert result[0]["name"] == "java"
+        assert len(result) == 2
+        assert result[0]["name"] == "python"
+        assert result[0]["version"] == ""
+        assert result[1]["name"] == "java"
+        assert result[1]["version"] == "17"
 
     def test_skips_blank_names(self):
         raw = {"": "1.0", "  ": "2.0"}
