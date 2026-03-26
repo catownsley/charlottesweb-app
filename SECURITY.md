@@ -376,45 +376,59 @@ SECURITY: CORS allows all origins (*) in production!
 
 ---
 
-## Compliance Mapping
+## Security Controls for Regulated Environments
 
-### HIPAA 164.312(b) - Audit Controls
-**Met by**: Audit logging with structured event tracking, JSON structured logs, request tracing
+Charlotte's Web ingests only software metadata (component names, versions, infrastructure details). It does not process, store, or transmit PHI, PII, or other regulated data. However, if you deploy this application in a regulated environment, the following security controls are in place and can be referenced in your compliance documentation.
 
-**Evidence:**
-- All authentication events logged
-- All data access (CRUD) operations recorded
-- Request metadata captured (IP, user agent, timestamp)
-- API key usage tracked (last 4 characters only)
+### Authentication and Access Control
 
-### SOC 2 CC6.1 - Logical Access Controls
-**Met by**: API key authentication, JWT tokens, password hashing, rate limiting
+| Control | Implementation | Relevant Frameworks |
+|---|---|---|
+| API key authentication | Cryptographically secure key generation, constant time comparison | SOC 2 CC6.1, NIST AC-3, PCI DSS 7/8 |
+| OAuth/OIDC (ready for integration) | RS256 token validation via JWKS, issuer/audience verification | SOC 2 CC6.1, NIST IA-2, PCI DSS 8 |
+| JWT session tokens | HS256 signed, configurable expiry | SOC 2 CC6.1, NIST IA-5 |
+| Password hashing | bcrypt with dynamic salt rounds | NIST IA-5, PCI DSS 8.3 |
+| Rate limiting | Per-IP throttling (60 req/min default) via slowapi | SOC 2 CC6.1, NIST SC-5 |
 
-**Evidence:**
-- Multi-layer authentication (API keys + JWT)
-- Cryptographically secure key generation
-- bcrypt password hashing with dynamic salt
-- Per-IP rate limiting to prevent brute force
+### Audit and Monitoring
 
-### SOC 2 CC7.1 - System Monitoring
-**Met by**: Audit logs, security alerts, request tracing, startup validation
+| Control | Implementation | Relevant Frameworks |
+|---|---|---|
+| Structured audit logging | JSON formatted, all auth and CRUD events recorded | SOC 2 CC7.1, NIST AU-2/AU-3, HIPAA 164.312(b) |
+| Request tracing | Unique request ID propagated across log entries | SOC 2 CC7.1, NIST AU-3 |
+| Authentication event logging | Login attempts, failures, key usage (last 4 chars only) | NIST AU-2, PCI DSS 10.2 |
+| Startup configuration validation | 7 security checks run at boot, warnings logged for misconfigurations | NIST CM-6, SOC 2 CC8.1 |
 
-**Evidence:**
-- Real-time security event logging
-- Request ID propagation for incident investigation
-- Configuration validation at application startup
-- Automated dependency vulnerability scanning
+### Data Protection
+
+| Control | Implementation | Relevant Frameworks |
+|---|---|---|
+| TLS/HTTPS enforcement | All connections require TLS, HSTS header enabled | NIST SC-8, PCI DSS 4.1, HIPAA 164.312(e)(1) |
+| Security headers | CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy | OWASP A05 |
+| Input validation | Pydantic schema validation on all API inputs | NIST SI-10, OWASP A03 |
+| Parameterized queries | SQLAlchemy ORM prevents SQL injection | OWASP A03, NIST SI-10 |
+| Secrets management | Environment variable based, never hardcoded or logged | NIST SC-28, PCI DSS 6.5 |
+
+### Supply Chain and Dependency Security
+
+| Control | Implementation | Relevant Frameworks |
+|---|---|---|
+| Static analysis (SAST) | Bandit + CodeQL on every PR | NIST SA-11, PCI DSS 6.3 |
+| Dependency vulnerability scanning | pip-audit against OSV.dev database | NIST SI-2, SOC 2 CC7.1 |
+| Dependency hash pinning | SHA256 hashes in requirements.lock, verified in CI | NIST SI-7, OWASP A06 |
+| Pinned dependency versions | All direct and transitive dependencies version locked | NIST CM-7, OWASP A06 |
 
 ### OWASP Top 10 2021 Coverage
 
 | Vulnerability | Mitigation |
 |---|---|
-| **A01 - Broken Access Control** | API keys, JWT, rate limiting |
-| **A02 - Cryptographic Failures** | bcrypt hashing, HS256 tokens, TLS/HTTPS |
-| **A03 - Injection** | Pydantic validation, parameterized queries |
-| **A05 - Security Misconfiguration** | Startup validation, secure defaults |
-| **A06 - Vulnerable Components** | pip-audit (automated), pinned versions |
-| **A09 - Logging & Monitoring** | Audit logs with request tracing |
+| **A01 Broken Access Control** | API keys, JWT, OAuth/OIDC ready, rate limiting |
+| **A02 Cryptographic Failures** | bcrypt hashing, RS256/HS256 tokens, TLS enforcement |
+| **A03 Injection** | Pydantic validation, parameterized queries (SQLAlchemy) |
+| **A05 Security Misconfiguration** | Startup validation, secure defaults, security headers |
+| **A06 Vulnerable Components** | pip-audit, CodeQL, Bandit, hash pinned dependencies |
+| **A08 Software and Data Integrity** | SHA256 hash verification, SAST in CI pipeline |
+| **A09 Logging and Monitoring** | Structured audit logs, request tracing, auth event tracking |
 
 ---
 
