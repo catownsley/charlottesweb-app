@@ -249,6 +249,57 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 60
 
     # ========================================================================
+    # OAUTH / OIDC (External Identity Provider)
+    # ========================================================================
+    # Enable for customer deployments where an external IdP (Okta, Azure AD,
+    # Google Workspace) handles user authentication.
+    #
+    # When enabled, the app validates Bearer tokens issued by the external IdP
+    # instead of using local API key authentication.
+    #
+    # When disabled (default), existing API key auth is used.
+    #
+    # Setup:
+    #   1. Register CharlottesWeb as an application in your IdP
+    #   2. Set the following environment variables
+    #   3. Set OAUTH_ENABLED=true
+    #
+    # Example (Okta):
+    #   OAUTH_ENABLED=true
+    #   OAUTH_ISSUER_URL=https://your-org.okta.com/oauth2/default
+    #   OAUTH_CLIENT_ID=0oa1b2c3d4e5f6g7h8
+    #   OAUTH_CLIENT_SECRET=AbCdEf...  (for client credentials / backend flows)
+    #   OAUTH_AUDIENCE=api://charlottesweb
+    #
+    # Example (Azure AD):
+    #   OAUTH_ENABLED=true
+    #   OAUTH_ISSUER_URL=https://login.microsoftonline.com/{tenant-id}/v2.0
+    #   OAUTH_CLIENT_ID=your-app-registration-client-id
+    #   OAUTH_AUDIENCE=api://charlottesweb
+
+    # Master toggle for OAuth/OIDC authentication
+    oauth_enabled: bool = False
+
+    # IdP issuer URL (used to discover JWKS endpoint via .well-known/openid-configuration)
+    oauth_issuer_url: str = ""
+
+    # Client ID registered with the IdP
+    oauth_client_id: str = ""
+
+    # Client secret (needed for client credentials flow / backend token exchange)
+    oauth_client_secret: str = ""
+
+    # Expected audience claim in tokens (validates tokens are intended for this app)
+    oauth_audience: str = ""
+
+    # Required scopes for API access (space-separated in tokens, list here)
+    oauth_scopes: list[str] = []
+
+    # JWKS URI override (auto-discovered from issuer if not set)
+    # Only set this if your IdP doesn't support .well-known/openid-configuration
+    oauth_jwks_uri: str = ""
+
+    # ========================================================================
     # EXTERNAL SERVICES
     # ========================================================================
 
@@ -412,5 +463,18 @@ def validate_security_config() -> list[str]:
                 "[WARNING] SECURITY: Rate limiting disabled in production. "
                 "Set RATE_LIMIT_ENABLED=true to prevent abuse"
             )
+
+        # Check 7: OAuth configuration completeness
+        if settings.oauth_enabled:
+            if not settings.oauth_issuer_url:
+                warnings.append(
+                    "[CRITICAL] SECURITY: OAUTH_ENABLED=true but OAUTH_ISSUER_URL not set. "
+                    "Set OAUTH_ISSUER_URL to your IdP issuer URL"
+                )
+            if not settings.oauth_audience:
+                warnings.append(
+                    "[WARNING] SECURITY: OAUTH_ENABLED=true but OAUTH_AUDIENCE not set. "
+                    "Set OAUTH_AUDIENCE to validate tokens are intended for this app"
+                )
 
     return warnings

@@ -10,6 +10,7 @@ alembic==1.18.4
 
 # Security
 PyJWT==2.12.1                     # JWT token handling
+cryptography==46.0.5              # RS256 token validation (external IdP/OAuth)
 passlib[bcrypt]==1.7.4           # Password hashing
 slowapi==0.1.9                    # Rate limiting
 python-multipart==0.0.22          # Form data parsing
