@@ -36,7 +36,7 @@ Metadata Input → Rules Engine → Vulnerability Correlation → Risk Scoring �
 **Purpose:** Map organizational profile to applicable regulatory requirements across frameworks.
 
 **Logic:**
-- Parse applicable regulatory frameworks (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA)
+- Parse applicable regulatory frameworks (HIPAA, NIST 800-53, GDPR, SOX, SOC 2, PCI DSS, FedRAMP, APRA CPS 234, CCPA)
 - Map framework-specific requirements to canonical controls
 - Apply conditional logic based on metadata (e.g., "handles payment data" → PCI-relevant considerations, "EU data subjects" → GDPR)
 - Generate cross-framework control applicability matrix
@@ -128,7 +128,7 @@ residual_risk = threat_pressure × (1 - control_confidence/100) × blast_radius
 **Long-term Product Direction:**
 - Customer describes data sourcing, processing, storage, destruction, and geolocation.
 - System infers applicable regulations and required controls automatically.
-- Multi-framework mapping (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) is supported in current releases.
+- Multi-framework mapping (HIPAA, NIST 800-53, GDPR, SOX, SOC 2, PCI DSS, FedRAMP, APRA CPS 234, CCPA) is supported in current releases.
 
 #### 4.3 Interactive Threat Modeling
 **Purpose:** Generate STRIDE-based threat models with interactive data flow diagrams from assessment data.
@@ -425,7 +425,7 @@ GET /api/v1/controls/{control_id}
 
 ## Open Questions & Future Considerations
 
-1. **Multi-framework support:** Implemented via `Framework` and `FrameworkRequirement` tables with 7 frameworks (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) and 87 cross-framework mappings.
+1. **Multi-framework support:** Implemented via `Framework` and `FrameworkRequirement` tables with 9 frameworks (HIPAA, NIST 800-53, GDPR, SOX, SOC 2, PCI DSS, FedRAMP, APRA CPS 234, CCPA) and 127 cross-framework mappings.
 2. **Evidence ingestion:** Should we pull evidence automatically via API (e.g., AWS IAM snapshots) or require manual upload?
 3. **AI/ML risk module:** How to assess AI model bias, training data privacy, and inference security?
 4. **Global expansion:** GDPR, PIPEDA, LGPD. Different data privacy frameworks require localized rule engines.
@@ -439,6 +439,8 @@ GET /api/v1/controls/{control_id}
 - [NIST 800-53 Rev 5](https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final)
 - [GDPR](https://gdpr-info.eu/)
 - [SOX](https://www.congress.gov/bill/107th-congress/house-bill/3763)
+- [SOC 2 Trust Services Criteria](https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2)
+- [PCI DSS v4.0](https://www.pcisecuritystandards.org/standards/pci-dss/)
 - [FedRAMP](https://www.fedramp.gov/)
 - [APRA CPS 234](https://www.apra.gov.au/information-security)
 - [CCPA](https://oag.ca.gov/privacy/ccpa)

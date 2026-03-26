@@ -87,6 +87,20 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             jurisdiction="US-CA",
             source_url="https://oag.ca.gov/privacy/ccpa",
         ),
+        Framework(
+            code="SOC2",
+            name="SOC 2 Type II",
+            version="2017",
+            jurisdiction="US",
+            source_url="https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2",
+        ),
+        Framework(
+            code="PCI_DSS",
+            name="PCI DSS",
+            version="4.0",
+            jurisdiction="Global",
+            source_url="https://www.pcisecuritystandards.org/standards/pci-dss/",
+        ),
     ]
 
     for fw in frameworks:
@@ -124,6 +138,8 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Information Security Risk Assessment",
             None,
         ),
+        ("HIPAA.164.308(a)(1)(ii)(A)", "SOC2", "CC3.2", "Risk Assessment", None),
+        ("HIPAA.164.308(a)(1)(ii)(A)", "PCI_DSS", "12.3.1", "Risk Assessment", None),
         # --- Access Control ---
         ("HIPAA.164.312(a)(1)", "HIPAA", "164.312(a)(1)", "Access Control", None),
         ("HIPAA.164.312(a)(1)", "NIST_800_53", "AC-2", "Account Management", None),
@@ -143,6 +159,14 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Access Management",
             None,
         ),
+        (
+            "HIPAA.164.312(a)(1)",
+            "SOC2",
+            "CC6.1",
+            "Logical and Physical Access Controls",
+            None,
+        ),
+        ("HIPAA.164.312(a)(1)", "PCI_DSS", "7.2.1", "Access Control Model", None),
         # --- Encryption at Rest ---
         (
             "HIPAA.164.312(a)(2)(iv)",
@@ -180,6 +204,14 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Cryptographic Controls",
             None,
         ),
+        ("HIPAA.164.312(a)(2)(iv)", "SOC2", "CC6.7", "Data Encryption at Rest", None),
+        (
+            "HIPAA.164.312(a)(2)(iv)",
+            "PCI_DSS",
+            "3.5.1",
+            "Protect Stored Account Data",
+            None,
+        ),
         # --- Transmission Security ---
         (
             "HIPAA.164.312(e)(1)",
@@ -210,6 +242,14 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Cryptographic Techniques - Transit",
             None,
         ),
+        ("HIPAA.164.312(e)(1)", "SOC2", "CC6.7", "Data Encryption in Transit", None),
+        (
+            "HIPAA.164.312(e)(1)",
+            "PCI_DSS",
+            "4.2.1",
+            "Strong Cryptography for Transmission",
+            None,
+        ),
         # --- Audit Controls ---
         ("HIPAA.164.312(b)", "HIPAA", "164.312(b)", "Audit Controls", None),
         ("HIPAA.164.312(b)", "NIST_800_53", "AU-2", "Event Logging", None),
@@ -223,6 +263,8 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
         ),
         ("HIPAA.164.312(b)", "SOX", "ITGC-3", "IT Operations and Monitoring", None),
         ("HIPAA.164.312(b)", "APRA_CPS_234", "Section 33", "Testing of Controls", None),
+        ("HIPAA.164.312(b)", "SOC2", "CC7.2", "System Monitoring", None),
+        ("HIPAA.164.312(b)", "PCI_DSS", "10.2.1", "Audit Log Coverage", None),
         # --- Malware Protection ---
         (
             "HIPAA.164.308(a)(5)(ii)(B)",
@@ -245,6 +287,20 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Malicious Code Protection",
             "Low",
         ),
+        (
+            "HIPAA.164.308(a)(5)(ii)(B)",
+            "SOC2",
+            "CC7.1",
+            "Detection of Malicious Activity",
+            None,
+        ),
+        (
+            "HIPAA.164.308(a)(5)(ii)(B)",
+            "PCI_DSS",
+            "5.2.1",
+            "Anti-Malware Solution",
+            None,
+        ),
         # --- Data Backup ---
         (
             "HIPAA.164.308(a)(7)(ii)(A)",
@@ -256,6 +312,14 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
         ("HIPAA.164.308(a)(7)(ii)(A)", "NIST_800_53", "CP-9", "System Backup", None),
         ("HIPAA.164.308(a)(7)(ii)(A)", "FedRAMP", "CP-9", "System Backup", "Low"),
         ("HIPAA.164.308(a)(7)(ii)(A)", "SOX", "ITGC-5", "Backup and Recovery", None),
+        ("HIPAA.164.308(a)(7)(ii)(A)", "SOC2", "A1.2", "Recovery and Continuity", None),
+        (
+            "HIPAA.164.308(a)(7)(ii)(A)",
+            "PCI_DSS",
+            "9.4.5",
+            "Backup of Stored Data",
+            None,
+        ),
         # --- Incident Response ---
         (
             "HIPAA.164.308(a)(6)(ii)",
@@ -280,6 +344,14 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Notification of Security Incidents",
             None,
         ),
+        ("HIPAA.164.308(a)(6)(ii)", "SOC2", "CC7.3", "Incident Response", None),
+        (
+            "HIPAA.164.308(a)(6)(ii)",
+            "PCI_DSS",
+            "12.10.1",
+            "Incident Response Plan",
+            None,
+        ),
         # --- Physical Access ---
         (
             "HIPAA.164.310(a)(1)",
@@ -302,6 +374,8 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Physical Access Authorizations",
             "Low",
         ),
+        ("HIPAA.164.310(a)(1)", "SOC2", "CC6.4", "Physical Access Restrictions", None),
+        ("HIPAA.164.310(a)(1)", "PCI_DSS", "9.1.1", "Physical Security Controls", None),
         # --- Workforce Authorization ---
         (
             "HIPAA.164.308(a)(3)(ii)(A)",
@@ -324,14 +398,32 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Authorized Personnel Controls",
             None,
         ),
+        (
+            "HIPAA.164.308(a)(3)(ii)(A)",
+            "SOC2",
+            "CC6.2",
+            "User Access Provisioning",
+            None,
+        ),
+        (
+            "HIPAA.164.308(a)(3)(ii)(A)",
+            "PCI_DSS",
+            "7.2.2",
+            "Access Assignment Based on Job Function",
+            None,
+        ),
         # --- Healthcare: API Auth ---
         ("HC.SC-2.1", "HIPAA", "164.312(d)", "Person or Entity Authentication", None),
         ("HC.SC-2.1", "NIST_800_53", "IA-2", "Identification and Authentication", None),
         ("HC.SC-2.1", "FedRAMP", "IA-2", "Identification and Authentication", "Low"),
+        ("HC.SC-2.1", "SOC2", "CC6.1", "Authentication Controls", None),
+        ("HC.SC-2.1", "PCI_DSS", "8.3.1", "Multi-Factor Authentication", None),
         # --- Healthcare: TLS ---
         ("HC.SC-7.1", "HIPAA", "164.312(e)(1)", "Transmission Security", None),
         ("HC.SC-7.1", "NIST_800_53", "SC-8", "Transmission Confidentiality", None),
         ("HC.SC-7.1", "FedRAMP", "SC-8", "Transmission Confidentiality", "Moderate"),
+        ("HC.SC-7.1", "SOC2", "CC6.7", "Transmission Encryption", None),
+        ("HC.SC-7.1", "PCI_DSS", "4.2.1", "Strong Cryptography for Transmission", None),
         # --- Healthcare: Encryption at Rest ---
         ("HC.SC-4.1", "HIPAA", "164.312(a)(2)(iv)", "Encryption at Rest", None),
         (
@@ -348,9 +440,13 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Encryption of Personal Data at Rest",
             None,
         ),
+        ("HC.SC-4.1", "SOC2", "CC6.7", "Encryption of Data at Rest", None),
+        ("HC.SC-4.1", "PCI_DSS", "3.5.1", "Protect Stored Account Data", None),
         # --- Healthcare: Key Management ---
         ("HC.SC-12.1", "HIPAA", "164.312(a)(2)(iv)", "Encryption Key Management", None),
         ("HC.SC-12.1", "NIST_800_53", "SC-12", "Cryptographic Key Management", None),
+        ("HC.SC-12.1", "SOC2", "CC6.7", "Cryptographic Key Management", None),
+        ("HC.SC-12.1", "PCI_DSS", "3.6.1", "Key Management Procedures", None),
         # --- Healthcare: Ephemeral Storage ---
         ("HC.SC-7.2", "HIPAA", "164.312(a)(1)", "Data Minimization", None),
         (
@@ -361,15 +457,21 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             None,
         ),
         ("HC.SC-7.2", "GDPR", "Art. 5(1)(e)", "Storage Limitation Principle", None),
+        ("HC.SC-7.2", "SOC2", "CC6.5", "Data Retention and Disposal", None),
+        ("HC.SC-7.2", "PCI_DSS", "3.2.1", "Data Retention Limits", None),
         # --- Healthcare: Access Logging ---
         ("HC.AU-6.1", "HIPAA", "164.312(b)", "Audit Controls", None),
         ("HC.AU-6.1", "NIST_800_53", "AU-6", "Audit Record Review", None),
         ("HC.AU-6.1", "FedRAMP", "AU-6", "Audit Record Review", "Low"),
         ("HC.AU-6.1", "SOX", "ITGC-3", "IT Operations Monitoring", None),
+        ("HC.AU-6.1", "SOC2", "CC7.2", "Audit Log Review", None),
+        ("HC.AU-6.1", "PCI_DSS", "10.4.1", "Audit Log Review", None),
         # --- Healthcare: Secure Deletion ---
         ("HC.SC-13.1", "HIPAA", "164.310(d)(2)(i)", "Disposal of ePHI", None),
         ("HC.SC-13.1", "NIST_800_53", "MP-6", "Media Sanitization", None),
         ("HC.SC-13.1", "GDPR", "Art. 17", "Right to Erasure", None),
+        ("HC.SC-13.1", "SOC2", "CC6.5", "Secure Data Disposal", None),
+        ("HC.SC-13.1", "PCI_DSS", "9.4.6", "Destruction of Data", None),
         # --- Healthcare: De-identification ---
         ("HC.UI-1.1", "HIPAA", "164.514(a)", "De-identification Standard", None),
         (
@@ -379,6 +481,8 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Processing Not Requiring Identification",
             None,
         ),
+        ("HC.UI-1.1", "SOC2", "CC6.1", "Data Minimization Controls", None),
+        ("HC.UI-1.1", "PCI_DSS", "3.4.1", "Render PAN Unreadable", None),
         # --- Healthcare: IAM Least Privilege ---
         (
             "HC.SC-2.2",
@@ -396,6 +500,8 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Access Management - Least Privilege",
             None,
         ),
+        ("HC.SC-2.2", "SOC2", "CC6.3", "Least Privilege Access", None),
+        ("HC.SC-2.2", "PCI_DSS", "7.2.1", "Restrict Access to Need-to-Know", None),
         # --- Healthcare: Input Validation ---
         (
             "HC.SC-3.1",
@@ -406,6 +512,8 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
         ),
         ("HC.SC-3.1", "NIST_800_53", "SI-10", "Information Input Validation", None),
         ("HC.SC-3.1", "FedRAMP", "SI-10", "Information Input Validation", "Moderate"),
+        ("HC.SC-3.1", "SOC2", "CC7.1", "Input Validation Controls", None),
+        ("HC.SC-3.1", "PCI_DSS", "6.2.4", "Input Validation in Software", None),
         # --- Healthcare: Secret Management ---
         (
             "HC.SC-12.2",
@@ -415,6 +523,8 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             None,
         ),
         ("HC.SC-12.2", "NIST_800_53", "SC-12", "Cryptographic Key Establishment", None),
+        ("HC.SC-12.2", "SOC2", "CC6.7", "Secret and Key Management", None),
+        ("HC.SC-12.2", "PCI_DSS", "3.6.1", "Cryptographic Key Procedures", None),
         # --- Healthcare: Incident Response ---
         ("HC.AU-2.1", "HIPAA", "164.308(a)(6)(ii)", "Security Incident Response", None),
         ("HC.AU-2.1", "NIST_800_53", "IR-4", "Incident Handling", None),
@@ -427,11 +537,15 @@ def _seed_frameworks(db: Session) -> None:  # noqa: C901
             "Notification of Security Incidents",
             None,
         ),
+        ("HC.AU-2.1", "SOC2", "CC7.3", "Incident Detection and Response", None),
+        ("HC.AU-2.1", "PCI_DSS", "12.10.1", "Incident Response Plan", None),
         # --- Healthcare: Network Segmentation ---
         ("HC.SC-7.3", "HIPAA", "164.312(e)(1)", "Network Security", None),
         ("HC.SC-7.3", "NIST_800_53", "SC-7", "Boundary Protection", None),
         ("HC.SC-7.3", "FedRAMP", "SC-7", "Boundary Protection", "Low"),
         ("HC.SC-7.3", "APRA_CPS_234", "Section 23", "Network Security Controls", None),
+        ("HC.SC-7.3", "SOC2", "CC6.6", "Network Security Controls", None),
+        ("HC.SC-7.3", "PCI_DSS", "1.2.1", "Network Segmentation Controls", None),
     ]
 
     for control_id, fw_code, citation, citation_title, baseline in mappings:

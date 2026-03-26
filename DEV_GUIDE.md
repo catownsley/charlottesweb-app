@@ -584,7 +584,7 @@ scripts/
 This MVP covers the full request cycle:
 
 1. **Metadata Intake** → Organization + MetadataProfile models
-2. **Control Mapping** → 23 canonical controls across 7 frameworks (87 mappings)
+2. **Control Mapping** → 23 canonical controls across 9 frameworks (127 mappings)
 3. **Rules Engine** → 5 implemented rules that map metadata to findings:
 - Access Control (MFA check)
 - Encryption at Rest
@@ -708,3 +708,5 @@ uvicorn src.main:app --port 8001
 - [SQLAlchemy Docs](https://docs.sqlalchemy.org/)
 - [NIST 800-53 Rev 5](https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final)
 - [HIPAA Security Rule](https://www.hhs.gov/hipaa/for-professionals/security/index.html)
+- [SOC 2 Trust Services Criteria](https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2)
+- [PCI DSS v4.0](https://www.pcisecuritystandards.org/standards/pci-dss/)
