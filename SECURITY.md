@@ -19,6 +19,8 @@ This guide covers the security controls built into CharlottesWeb, including conf
 | **Secrets Management** | Environment-based configuration, zero secrets in code | Active |
 | **CodeQL + Bandit SAST** | Automated code scanning in CI/CD pipeline | Active |
 | **pip-audit Scanning** | Dependency vulnerability detection (blocks CVEs) | Active |
+| **Dependency Hash Verification** | SHA256 hash pinning prevents supply chain tampering | Active |
+| **OAuth/OIDC** | External IdP token validation for enterprise deployment | Ready |
 | **Startup Validation** | Configuration security checks at boot | Active |
 
 ---
@@ -323,6 +325,22 @@ No known vulnerabilities found
 - **CVE-2024-23342** (March 2026): Replaced python-jose → PyJWT
 - Eliminated Minerva timing attack in ecdsa transitive dependency
 - Reduced attack surface by 80% (4 deps → 0 deps for HS256)
+
+#### 4. Dependency Hash Verification (Supply Chain Security)
+- **File:** [`requirements.lock`](requirements.lock)
+- **Workflow:** Security Scan (PR Quick)
+- **Purpose:** Prevent supply chain attacks by verifying SHA256 hashes of all dependencies
+- **How it works:** `requirements.lock` contains pinned versions AND cryptographic hashes for every package (including transitive dependencies). CI runs `pip install --require-hashes --dry-run` to verify that packages on PyPI match the expected hashes. If a package has been tampered with or swapped, the hash won't match and the build fails.
+
+**Regenerating after dependency changes:**
+```bash
+pip-compile --generate-hashes --output-file=requirements.lock requirements.txt
+```
+
+**What this protects against:**
+- Compromised package on PyPI (supply chain attack)
+- Dependency confusion (attacker publishes a package with the same name on a public registry)
+- Unauthorized modification of packages after publication
 
 ### Startup Security Validation
 

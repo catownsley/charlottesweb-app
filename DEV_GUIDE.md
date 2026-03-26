@@ -11,8 +11,8 @@ cd /Users/ct/Python/charlottesweb-app
 python3.14 -m venv ../.venv
 source ../.venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (with hash verification for supply chain security)
+pip install --require-hashes -r requirements.lock
 pip install -r requirements-dev.txt
 ```
 
@@ -284,6 +284,16 @@ curl -H "Authorization: Bearer <token-from-idp>" https://api.example.com/api/v1/
 Token validation includes: RS256 signature verification against IdP JWKS, expiration check, issuer validation, and audience validation. All auth failure responses return a generic message; specific failure reasons are logged server-side only.
 
 When `OAUTH_ENABLED=false` (default), API key authentication is used.
+
+### Dependency Integrity (Supply Chain Security)
+
+Dependencies are hash-pinned in `requirements.lock` to prevent supply chain attacks. If you add or upgrade a dependency in `requirements.txt`, regenerate the lock file:
+
+```bash
+pip-compile --generate-hashes --output-file=requirements.lock requirements.txt
+```
+
+Always commit both `requirements.txt` and `requirements.lock` together. CI verifies hashes on every PR.
 
 ### Rate Limiting
 
