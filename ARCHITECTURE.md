@@ -328,7 +328,11 @@ GET /api/v1/controls/{control_id}
 ```
 
 ### Authentication
-- JWT-based (Auth0, Supabase, or custom)
+- Pluggable auth architecture: API keys (current prototype) or OAuth/OIDC (enterprise deployment)
+- OAuth/OIDC infrastructure built and ready for integration with external IdP
+- Token validation supports RS256 via JWKS (Okta, Azure AD, Google Workspace, any OIDC provider)
+- Toggled via environment variables; no code changes needed to switch auth modes
+- Current prototype uses API key authentication (no IdP configured)
 - Role-based access control (admin, member, viewer)
 
 ### Rate Limiting
