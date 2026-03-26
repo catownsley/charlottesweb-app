@@ -259,6 +259,32 @@ Use the API key in requests:
 curl -H "X-API-Key: your-api-key" http://localhost:8000/api/v1/organizations
 ```
 
+### OAuth/OIDC Authentication (Enterprise Deployment)
+
+The OAuth/OIDC infrastructure is built and ready for integration, but the current
+prototype does not use an external IdP. API key authentication is used for
+development and demo purposes. When deploying to a customer environment with an
+identity provider (Okta, Azure AD, Google Workspace), configure the following:
+
+```bash
+# In .env file
+OAUTH_ENABLED=true
+OAUTH_ISSUER_URL=https://your-org.okta.com/oauth2/default
+OAUTH_CLIENT_ID=your-app-client-id
+OAUTH_CLIENT_SECRET=your-app-client-secret
+OAUTH_AUDIENCE=api://charlottesweb
+```
+
+When enabled, the app validates Bearer tokens from the IdP instead of API keys:
+
+```bash
+curl -H "Authorization: Bearer <token-from-idp>" https://api.example.com/api/v1/organizations
+```
+
+Token validation includes: RS256 signature verification against IdP JWKS, expiration check, issuer validation, and audience validation. All auth failure responses return a generic message; specific failure reasons are logged server-side only.
+
+When `OAUTH_ENABLED=false` (default), API key authentication is used.
+
 ### Rate Limiting
 
 Rate limiting is **enabled** by default (60 requests/minute per IP). To adjust:

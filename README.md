@@ -32,7 +32,7 @@ Requires an Anthropic API key. See [DEV_GUIDE.md](DEV_GUIDE.md) for setup.
 ## Security First
 
 **Production-ready security controls:**
-* API key authentication
+* Pluggable authentication (API keys for prototype; OAuth/OIDC ready for enterprise IdP integration)
 * Rate limiting (60 req/min default)
 * Audit logging
 * Security headers (HSTS, CSP, etc.)

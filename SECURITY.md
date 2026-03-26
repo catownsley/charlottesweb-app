@@ -55,6 +55,36 @@ API_KEY_REQUIRED=true
 VALID_API_KEYS=key1,key2,key3
 ```
 
+#### OAuth/OIDC Authentication (Enterprise, Ready for Integration)
+- **Location:** [`src/security.py`](src/security.py), [`src/config.py`](src/config.py)
+- **Purpose:** Enable token-based auth via external identity providers for customer deployments
+- **Status:** Infrastructure built and tested; no IdP configured in the prototype. Activate by setting environment variables when deploying to a customer environment with an IdP.
+- **How it works:**
+- Set `OAUTH_ENABLED=true` and configure IdP settings
+- App fetches IdP public keys (JWKS) and caches them
+- Bearer tokens validated: RS256 signature, expiration, issuer, audience
+- All auth errors return generic "Authentication failed" to prevent information leakage
+- Specific failure reasons (expired, wrong audience, wrong issuer) logged server-side
+- Exception chains suppressed (`raise from None`) to prevent token data in tracebacks
+
+**Supported Providers:** Okta, Azure AD, Google Workspace, or any OIDC-compliant IdP
+
+**Configuration:**
+```bash
+# .env
+OAUTH_ENABLED=true
+OAUTH_ISSUER_URL=https://your-org.okta.com/oauth2/default
+OAUTH_CLIENT_ID=your-app-client-id
+OAUTH_AUDIENCE=api://charlottesweb
+```
+
+**Using Bearer Tokens:**
+```bash
+curl -H "Authorization: Bearer <token>" https://api.example.com/api/v1/organizations
+```
+
+**Pluggable Auth:** The `get_current_auth()` dependency automatically routes to OAuth or API key validation based on configuration. Endpoints do not need to change.
+
 ### 2. Rate Limiting
 
 #### Per-IP Rate Limiting
