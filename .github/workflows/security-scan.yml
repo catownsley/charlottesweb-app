@@ -82,4 +82,4 @@ jobs:
 
       - name: Verify dependency integrity (hash check)
         run: |
-          pip install --require-hashes --dry-run -r requirements.lock
+          pip install --no-deps --require-hashes --dry-run -r requirements.lock

@@ -330,7 +330,7 @@ No known vulnerabilities found
 - **File:** [`requirements.lock`](requirements.lock)
 - **Workflow:** Security Scan (PR Quick)
 - **Purpose:** Prevent supply chain attacks by verifying SHA256 hashes of all dependencies
-- **How it works:** `requirements.lock` contains pinned versions AND cryptographic hashes for every package (including transitive dependencies). CI runs `pip install --require-hashes --dry-run` to verify that packages on PyPI match the expected hashes. If a package has been tampered with or swapped, the hash won't match and the build fails.
+- **How it works:** `requirements.lock` contains pinned versions AND cryptographic hashes for every package (including transitive dependencies). CI runs `pip install --no-deps --require-hashes --dry-run` to verify that packages on PyPI match the expected hashes. The `--no-deps` flag prevents pip from resolving platform specific transitive dependencies not in the lock file (e.g., `greenlet` on Linux). If a package has been tampered with or swapped, the hash won't match and the build fails.
 
 **Regenerating after dependency changes:**
 ```bash
