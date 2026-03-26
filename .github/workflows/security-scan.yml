@@ -79,3 +79,7 @@ jobs:
       - name: Scan dependencies for vulnerabilities
         run: |
           pip-audit -r requirements.txt --desc --ignore-vuln CVE-2026-4539  # pygments: no fix available, local-access-only regex complexity
+
+      - name: Verify dependency integrity (hash check)
+        run: |
+          pip install --no-deps --require-hashes --dry-run -r requirements.lock
