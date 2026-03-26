@@ -2,7 +2,7 @@
 
 > AI-Powered Threat Modeling and Automated Compliance for Applications that Protect Regulated Data
 
-Charlotte's Web combines AI-driven threat analysis with multi-framework compliance automation**. Use metadata about your software stack (applications and infrastructure) to get a complete STRIDE threat model in minutes, while simultaneously mapping your stack against HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, and CCPA. Real vulnerabilities from your actual software stack are correlated with regulatory controls to produce prioritized, actionable remediation roadmaps.
+Charlotte's Web combines AI-driven threat analysis with multi-framework compliance automation**. Use metadata about your software stack (applications and infrastructure) to get a complete STRIDE threat model in minutes, while simultaneously mapping your stack against HIPAA, NIST 800-53, GDPR, SOX, SOC 2, PCI DSS, FedRAMP, APRA CPS 234, and CCPA. Real vulnerabilities from your actual software stack are correlated with regulatory controls to produce prioritized, actionable remediation roadmaps.
 
 ## AI Threat Model
 
@@ -23,7 +23,7 @@ Requires an Anthropic API key. See [DEV_GUIDE.md](DEV_GUIDE.md) for setup.
 **Compliance mapped to real exploitability.** Most tools tell you what controls you need. We tell you which vulnerabilities in your actual stack create regulatory risk.
 
 * **Metadata-only intake:** zero PHI ingestion
-* **Multi-framework regulatory mapping:** HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA
+* **Multi-framework regulatory mapping:** HIPAA, NIST 800-53, GDPR, SOX, SOC 2, PCI DSS, FedRAMP, APRA CPS 234, CCPA
 * **CVE/CWE correlation:** exploitability aware risk scoring via OSV.dev and Dependabot
 * **Interactive data flow diagrams:** editable Cytoscape.js diagrams with trust boundaries, drag-and-drop nodes, and labeled data flows
 * **Prioritized remediation roadmap:** Immediate / 30 Days / Quarterly / Annual

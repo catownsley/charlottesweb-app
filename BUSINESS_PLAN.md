@@ -12,7 +12,7 @@ This document outlines the complete business plan for CharlottesWeb, a multi-fra
 
 CharlottesWeb is a Compliance Intelligence platform for organizations handling regulated data (PHI, PII, financial records). Companies processing sensitive data often lack in-house security leadership yet face significant regulatory, financial, and reputational risk in the event of a breach.
 
-CharlottesWeb automates regulatory mapping by ingesting structured metadata about an organization's data types, data flows, infrastructure, and application stack. The platform correlates applicable regulatory requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) with real world exploitable vulnerabilities (via OSV.dev/CVE/CWE), secure coding risk patterns, and infrastructure misconfigurations to produce a prioritized remediation roadmap and audit-ready evidence package.
+CharlottesWeb automates regulatory mapping by ingesting structured metadata about an organization's data types, data flows, infrastructure, and application stack. The platform correlates applicable regulatory requirements (HIPAA, NIST 800-53, GDPR, SOX, SOC 2, PCI DSS, FedRAMP, APRA CPS 234, CCPA) with real world exploitable vulnerabilities (via OSV.dev/CVE/CWE), secure coding risk patterns, and infrastructure misconfigurations to produce a prioritized remediation roadmap and audit-ready evidence package.
 
 **Our goal:** Become the automated compliance intelligence and audit preparation layer for modern companies building on AWS, Azure, and AI-enabled stacks that handle regulated data.
 
@@ -30,7 +30,7 @@ We shift compliance from **manual spreadsheets + expensive consultants** to **au
 
 Most compliance tools map controls to frameworks. CharlottesWeb maps:
 
-- Regulatory requirements (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA)
+- Regulatory requirements (HIPAA, NIST 800-53, GDPR, SOX, SOC 2, PCI DSS, FedRAMP, APRA CPS 234, CCPA)
 - Infrastructure components
 * Known vulnerabilities (CVE via OSV.dev)
 - Common weakness patterns (CWE)
@@ -81,7 +81,7 @@ Most compliance tools map controls to frameworks. CharlottesWeb maps:
 | **Static Compliance Platforms** | Drata, Vanta | Framework-based, not exploit-based | We correlate CVEs/CWEs to regulatory exposure |
 | **Traditional Consultants** | Boutique firms | Expensive, episodic, manual | Automated + optional advisory tier |
 | **Enterprise GRC Platforms** | Archer, ServiceNow | Heavy, enterprise-focused | Startup-focused, lightweight deployment |
-| **Security Scanners** | Snyk, Prisma, etc. | Findings lack compliance translation | We translate technical findings into regulatory impact across 7 frameworks |
+| **Security Scanners** | Snyk, Prisma, etc. | Findings lack compliance translation | We translate technical findings into regulatory impact across 9 frameworks |
 
 ---
 
@@ -105,7 +105,7 @@ Most compliance tools map controls to frameworks. CharlottesWeb maps:
 
 #### Processing Layer
 
-- Multi-framework regulatory mapping (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA)
+- Multi-framework regulatory mapping (HIPAA, NIST 800-53, GDPR, SOX, SOC 2, PCI DSS, FedRAMP, APRA CPS 234, CCPA)
 - Cross-framework control correlation
 * OSV.dev ingestion (CVE correlation)
 - CWE ingestion

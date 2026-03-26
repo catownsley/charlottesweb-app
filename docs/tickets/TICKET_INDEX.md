@@ -306,7 +306,7 @@ This file is the single roadmap and ticket source for phase-based execution.
 - **Evidence URL attachments** with input sanitization (PR #55)
 - **Dark mode** with purple color palette and softer severity colors (PRs #53, #54)
 - **MITRE ATT&CK integration** for threat-informed compliance: translates CWEs into real-world attack techniques with healthcare breach examples
-- **Multi-framework compliance** support: 7 frameworks (HIPAA, NIST 800-53, GDPR, SOX, FedRAMP, APRA CPS 234, CCPA) with 87 cross-framework control mappings
+- **Multi-framework compliance** support: 9 frameworks (HIPAA, NIST 800-53, GDPR, SOX, SOC 2, PCI DSS, FedRAMP, APRA CPS 234, CCPA) with 127 cross-framework control mappings
 - **STRIDE threat model** integrated into architecture documentation
 - **Interactive threat modeling UI** with Cytoscape.js data flow diagrams, STRIDE analysis table, trust boundary visualization, MITRE ATT&CK enrichment, and PNG export
 - **Component name input validation** updated to support real-world names (node.js, vue.js) with backend sanitization
