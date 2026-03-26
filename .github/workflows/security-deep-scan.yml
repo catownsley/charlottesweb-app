@@ -82,4 +82,4 @@ jobs:
       - name: Scan dependencies (FAIL on vulnerabilities)
         run: |
           echo "::notice::Strict mode: Build will FAIL if vulnerabilities found"
-          pip-audit -r requirements.txt --desc --strict
+          pip-audit -r requirements.txt --desc --strict --ignore-vuln CVE-2026-4539  # pygments: no fix available, local-access-only regex complexity
