@@ -2,7 +2,7 @@
 
 > AI-Powered Threat Modeling and Automated Compliance for Applications that Protect Regulated Data
 
-Charlotte's Web combines AI-driven threat analysis with multi-framework compliance automation**. Use metadata about your software stack (applications and infrastructure) to get a complete STRIDE threat model in minutes, while simultaneously mapping your stack against HIPAA, NIST 800-53, GDPR, SOX, SOC 2, PCI DSS, FedRAMP, APRA CPS 234, and CCPA. Real vulnerabilities from your actual software stack are correlated with regulatory controls to produce prioritized, actionable remediation roadmaps.
+Charlotte's Web combines AI-driven threat analysis with multi-framework compliance automation. It uses metadata about your software stack (applications and infrastructure) to get a complete STRIDE threat model in minutes, while simultaneously mapping your stack against HIPAA, NIST 800-53, GDPR, SOX, SOC 2, PCI DSS, FedRAMP, APRA CPS 234, and CCPA. Real vulnerabilities from your actual software stack are correlated with regulatory controls to produce prioritized, actionable remediation roadmaps.
 
 ## AI Threat Model
 
