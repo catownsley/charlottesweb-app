@@ -163,7 +163,7 @@ python -c "import secrets; print(secrets.token_urlsafe(24))"
 | `VALID_API_KEYS` | Optional | **Required** | Comma-separated list |
 | `API_KEY_REQUIRED` | false | **true** | Enforce authentication |
 | `DEBUG` | true | **false** | Disable debug info |
-| `DATABASE_URL` | SQLite | PostgreSQL | Use strong password in prod |
+| `DATABASE_URL` | PostgreSQL (localhost) | PostgreSQL | Use strong password |
 | `CORS_ORIGINS` | localhost | **Whitelist only** | Never use `*` in production |
 | `ANTHROPIC_API_KEY` | Optional | Optional | Required for AI threat model |
 | `ANTHROPIC_MODEL` | claude-sonnet-4-6 | claude-sonnet-4-6 | Claude model for AI threat model |
@@ -332,7 +332,7 @@ grep "assessment_created" audit.log | python -m json.tool
 - □ Set `DEBUG=false`
 - □ Set `APP_ENV=production`
 - □ Whitelist `CORS_ORIGINS` (no wildcard)
-- □ Use PostgreSQL (not SQLite)
+- □ Configure PostgreSQL with password authentication
 - □ Enable HTTPS/TLS
 - □ Rotate secrets quarterly
 - □ No hardcoded secrets in Python files

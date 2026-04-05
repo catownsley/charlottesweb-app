@@ -1,4 +1,8 @@
-"""Database session and engine configuration."""
+"""Database session and engine configuration.
+
+Uses PostgreSQL as the database backend. Connection is configured
+via the DATABASE_URL environment variable.
+"""
 
 from collections.abc import Generator
 from typing import TypeVar
@@ -9,20 +13,10 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from src.config import settings
 
-# Create engine
-sqlite_connect_args = {}
-if "sqlite" in settings.database_url:
-    sqlite_connect_args = {
-        "check_same_thread": False,
-        "timeout": 10,  # Wait up to 10s for database lock
-        "isolation_level": None,  # Enable autocommit mode
-    }
-
 engine = create_engine(
     settings.database_url,
-    connect_args=sqlite_connect_args,
     echo=settings.debug,
-    pool_pre_ping=True,  # Test connection before using
+    pool_pre_ping=True,
 )
 
 # Session factory

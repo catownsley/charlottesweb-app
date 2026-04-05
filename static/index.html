@@ -870,10 +870,11 @@
                     <label style="font-size: 13px; color: #c9b8e8; margin-bottom: 4px; display: block;">Load a sample stack:</label>
                     <select id="sampleManifestSelect" style="width: 100%; padding: 8px; border: 1px solid #3d3556; border-radius: 4px; margin-bottom: 8px; background: #2a2440; color: #e0d8f0;">
                         <option value="">-- Select a sample stack --</option>
-                        <option value="charlottesweb">Charlotte's Web (Python, FastAPI, SQLAlchemy)</option>
+                        <option value="charlottesweb">Charlotte's Web (Python, FastAPI, PostgreSQL)</option>
                         <option value="spring-legacy">Spring Legacy App (Log4j, Jackson, PostgreSQL)</option>
                         <option value="healthcare-api">Healthcare API (Spring Boot, Hibernate, MySQL)</option>
                         <option value="microservices">Microservices Stack (Netty, gRPC, Redis, Kafka)</option>
+                        <option value="memento">Memento (Python, PostgreSQL, pgvector, transformers)</option>
                     </select>
 
                     <label style="font-size: 13px; color: #c9b8e8; margin-bottom: 4px; display: block;">Or upload / paste your own:</label>
@@ -1632,7 +1633,23 @@
                     {name: 'defusedxml', version: '0.7.1'},
                     {name: 'python-dateutil', version: '2.9.0.post0'},
                     {name: 'Python', version: '3.14.3'},
-                    {name: 'SQLite', version: '3.43.2'}
+                    {name: 'PostgreSQL', version: '17.9'}
+                ]
+            },
+            'memento': {
+                orgName: 'Memento',
+                components: [
+                    {name: 'anthropic', version: '0.52.0'},
+                    {name: 'psycopg2-binary', version: '2.9.10'},
+                    {name: 'pgvector', version: '0.3.6'},
+                    {name: 'sentence-transformers', version: '4.1.0'},
+                    {name: 'transformers', version: '4.57.6'},
+                    {name: 'torch', version: '2.11.0'},
+                    {name: 'cryptography', version: '46.0.6'},
+                    {name: 'python-dotenv', version: '1.1.0'},
+                    {name: 'Python', version: '3.14.3'},
+                    {name: 'PostgreSQL', version: '17.9'},
+                    {name: 'pgvector-extension', version: '0.8.2'}
                 ]
             }
         };

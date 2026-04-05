@@ -40,7 +40,7 @@ DO:
   - Rotate secrets quarterly or after compromise
   - Whitelist CORS origins in production
   - Require API keys in production
-  - Use PostgreSQL in production
+  - Use PostgreSQL with password authentication
   - Enable HTTPS/TLS always
   - Log authentication failures
   - Use strong database passwords
@@ -51,7 +51,7 @@ DON'T:
   - Use weak/default secrets
   - Use DEBUG=true in production
   - Use CORS wildcard origins
-  - Use SQLite in production
+  - Use passwordless database auth
   - Share secrets via chat/email
   - Skip TLS
   - Log secret values
@@ -120,8 +120,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_SQLITE_DB_PATH = BASE_DIR / "charlottesweb.db"
-DEFAULT_SQLITE_DATABASE_URL = f"sqlite:///{DEFAULT_SQLITE_DB_PATH.as_posix()}"
+DEFAULT_DATABASE_URL = "postgresql://localhost/charlottesweb"
 
 
 class Settings(BaseSettings):
@@ -160,10 +159,7 @@ class Settings(BaseSettings):
     # DATABASE SETTINGS
     # ========================================================================
 
-    database_url: str = (
-        DEFAULT_SQLITE_DATABASE_URL  # SQLite for dev, PostgreSQL for prod
-    )
-    # Production example: "postgresql://user:pass@localhost/charlottesweb"
+    database_url: str = DEFAULT_DATABASE_URL
 
     # Development convenience flag. When true, startup drops and recreates all tables.
     # Keep false by default to avoid accidental data loss on restart.
@@ -405,7 +401,7 @@ def validate_security_config() -> list[str]:
     - Missing CORS origin whitelist in production
     - Debug mode enabled in production
     - API key authentication disabled in production
-    - SQLite database in production (not scalable/concurrent-safe)
+    - Non-PostgreSQL database in production
 
     Returns:
         List of warning messages (empty if all validations pass)
@@ -449,12 +445,11 @@ def validate_security_config() -> list[str]:
                 "Set API_KEY_REQUIRED=true and VALID_API_KEYS"
             )
 
-        # Check 5: SQLite not recommended for production
-        if "sqlite" in settings.database_url.lower():
+        # Check 5: PostgreSQL required
+        if "postgresql" not in settings.database_url.lower():
             warnings.append(
-                "[WARNING] PRODUCTION: SQLite not recommended for production. "
-                "Use PostgreSQL for better concurrency and reliability. "
-                "Set DATABASE_URL=postgresql://..."
+                "[WARNING] PRODUCTION: PostgreSQL is required. "
+                "Set DATABASE_URL=postgresql://user:password@host/charlottesweb"
             )
 
         # Check 6: Rate limiting should be enabled

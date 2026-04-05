@@ -27,8 +27,7 @@ env/
 # Local artifacts
 issue_import.log
 issues.json
-charlottesweb.db
-test_charlottesweb.db
+*.db
 audit.log
 app.db
 

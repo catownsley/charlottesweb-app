@@ -90,7 +90,7 @@ charlottesweb-app/
 * **Runtime:** Python 3.14.3
 * **Backend API:** FastAPI 0.135.1, Uvicorn 0.41.0, Pydantic 2.12.5
 * **Config:** pydantic-settings 2.13.1, `.env`-based configuration
-* **Database:** SQLite + SQLAlchemy 2.0.48, Alembic 1.18.4
+* **Database:** PostgreSQL 17 + SQLAlchemy 2.0.48, psycopg2, Alembic 1.18.4
 * **Security:** PyJWT 2.12.1, passlib 1.7.4, slowapi 0.1.9
 * **Testing:** pytest 9.0.2, pytest-asyncio 1.3.0, httpx 0.28.1
 * **CI/CD Security:** CodeQL, Bandit, pip-audit
