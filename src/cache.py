@@ -142,7 +142,7 @@ def cached(
 class PersistentCache:
     """Database-backed cache that survives server restarts.
 
-    Same get/set/invalidate interface as TTLCache but stores entries in SQLite.
+    Same get/set/invalidate interface as TTLCache but stores entries in PostgreSQL.
     Swap to Redis in production by replacing this class.
 
     Each cache has a namespace (e.g., "nvd", "ai_threat_model") to keep

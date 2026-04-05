@@ -19,7 +19,7 @@ from src.models import (
 
 
 def _migrate_control_columns() -> None:
-    """Add new nullable columns to controls table if they don't exist (SQLite compat)."""
+    """Add new nullable columns to controls table if they don't exist."""
     inspector = inspect(engine)
     if "controls" not in inspector.get_table_names():
         return

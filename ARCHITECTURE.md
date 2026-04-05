@@ -254,7 +254,7 @@ RemediationTask:
 ### Backend (Current)
 - **Language:** Python 3.14+
 - **Framework:** FastAPI (async, OpenAPI auto-generation, type hints)
-- **Database:** SQLite (development), PostgreSQL planned for production
+- **Database:** PostgreSQL 17
 - **ORM:** SQLAlchemy 2.0
 - **Migrations:** Alembic
 - **Security:** PyJWT, passlib, slowapi (rate limiting)

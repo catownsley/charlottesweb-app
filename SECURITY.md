@@ -266,9 +266,9 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 - [ ] **Enable API key authentication** (`API_KEY_REQUIRED=true`)
 - [ ] **Generate and distribute API keys** to authorized clients
 - [ ] **Configure CORS origins** (don't use `*` in production)
-- [ ] **Use PostgreSQL** instead of SQLite
+- [ ] **Configure PostgreSQL** with password authentication
 ```bash
-DATABASE_URL=postgresql://user:pass@host:5432/dbname
+DATABASE_URL=postgresql://user:password@host/charlottesweb
 ```
 - [ ] **Obtain valid TLS certificate** (Let's Encrypt recommended)
 - [ ] **Set up log rotation** for `audit.log`
@@ -354,7 +354,7 @@ pip-compile --generate-hashes --output-file=requirements.lock requirements.txt
 2. Strong SECRET_KEY (32+ characters)
 3. CORS explicit whitelist (no wildcard `*`)
 4. API authentication enabled (`API_KEY_REQUIRED=true`)
-5. PostgreSQL recommended for production (not SQLite)
+5. PostgreSQL with password authentication required
 6. Rate limiting enabled (`RATE_LIMIT_ENABLED=true`)
 
 **Example Output:**
@@ -366,7 +366,7 @@ Security Warnings: 0
 SECURITY: DEBUG=True in production!
 SECURITY: CORS allows all origins (*) in production!
 ️ SECURITY: API authentication disabled in production.
-️ PRODUCTION: SQLite not recommended for production.
+️ PRODUCTION: PostgreSQL is required.
 ```
 
 **Integration:**

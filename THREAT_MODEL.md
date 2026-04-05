@@ -35,7 +35,7 @@ flowchart LR
     end
 
     subgraph TB3[Trust Boundary 3: Persistence Layer]
-        DB[(SQLite/PostgreSQL\nOrganizations, Profiles, Assessments,\nFindings, Evidence, Controls)]
+        DB[(PostgreSQL 17\nOrganizations, Profiles, Assessments,\nFindings, Evidence, Controls)]
     end
 
     subgraph TB4[Trust Boundary 4: External Intel Services]
@@ -499,10 +499,10 @@ The following 12 threats were identified by running Charlotte's Web against its 
 | S-AI.1 | CRITICAL | Tampering | HTTP traffic without mandatory TLS allows interception/modification of requests, tokens, and payloads | **Mitigated** (HTTPSEnforcementMiddleware + HSTS + port 8443 TLS) |
 | S-AI.2 | HIGH | Spoofing | JWT crit header bypass (PyJWT) allows forged tokens with weak algorithms | **Mitigated** (PyJWT 2.12.1 installed, strict HS256 pinning, 60-min expiry) |
 | S-AI.3 | HIGH | Spoofing | Absent MFA means stolen credentials yield full account access | **Planned** (TOTP via pyotp) |
-| S-AI.4 | HIGH | Tampering | SQLite on filesystem with no encryption at rest; host compromise = full data access | **Accepted (Dev)** Production requires PostgreSQL/SQLCipher |
+| S-AI.4 | HIGH | Tampering | Database without encryption at rest; host compromise = full data access | **Partial** PostgreSQL with scram-sha-256 auth; encryption at rest via OS-level disk encryption |
 | S-AI.5 | HIGH | DoS | SlowAPI is sole DoS control; no upstream proxy to enforce connection-level limits | **Partial** (rate limiting exists, no reverse proxy) |
 | S-AI.6 | HIGH | DoS | python-multipart ReDoS can stall the async event loop | **Mitigated** (python-multipart 0.0.22 patches ReDoS; CVE-2024-24762/CVE-2024-53981) |
-| S-AI.7 | HIGH | Elevation | SQLite has no database-level RBAC; leaked connection string = full table access | **Accepted (Dev)** PostgreSQL migration planned |
+| S-AI.7 | HIGH | Elevation | Single database role with full privileges; leaked connection string = full table access | **Partial** PostgreSQL with scram-sha-256 auth; least-privilege roles planned |
 | S-AI.8 | HIGH | Elevation | FastAPI CSRF (CVE-2021-32677) on cookie-authenticated endpoints | **Mitigated** (FastAPI 0.135.1 includes fix from 0.65.2+; API uses Bearer tokens, not cookies) |
 | S-AI.9 | MEDIUM | Repudiation | Insufficient audit logging prevents forensic investigation | **Partial** (JSON structured audit logging exists with request correlation, API key masking; needs SIEM + append-only sink) |
 | S-AI.10 | MEDIUM | Info Disclosure | requests library may leak Proxy-Authorization headers on redirects | **Mitigated** (requests 2.32.5 includes fix; verify=True never overridden) |
@@ -521,7 +521,7 @@ Priority-ordered remediation steps from the AI threat model analysis (27 finding
 | 2 | **Verify and pin python-multipart 0.0.22** with hash pinning. Confirm UPLOAD_KEEP_FILENAME is False. Deploy nginx client_max_body_size and timeout limits upstream of Uvicorn. | Path traversal (CVE-2026-24486, CRITICAL) + ReDoS create unauthenticated attack surface. Path traversal can lead to RCE. | **Mitigated** (0.0.22 installed; no file upload endpoints exist) |
 | 3 | **Implement mandatory MFA (TOTP via pyotp)** for all user accounts. Two-step login: password verification issues pre-auth token; TOTP exchanges for full session JWT. | Single-factor auth is next most likely attack vector after transport. HIPAA 164.312(a)(1) gap. | **Planned** |
 | 4 | **Implement structured audit logging middleware** that records all authentication events, endpoint access, and error conditions to an append-only log sink. Configure 180-day minimum retention. | Without audit logs, cannot detect attacks, perform forensics, or demonstrate HIPAA 164.312(b) compliance. | **Partial** (JSON structured logging exists with request correlation and key masking; needs SIEM + append-only sink) |
-| 5 | **Enable SQLite encryption** using SQLCipher with env-injected key, or migrate to PostgreSQL with pgcrypto and role-based access control separating DDL user from DML user. | Database file fully readable by any OS-level access. HIPAA 164.312(a)(2)(iv). | **Accepted (Dev)** PostgreSQL planned for production |
+| 5 | **Configure PostgreSQL role-based access control** separating DDL user from DML user. Enable encryption at rest via OS-level disk encryption or cloud-managed encrypted volumes. | Database accessible to any user with the connection string. HIPAA 164.312(a)(2)(iv). | **Partial** PostgreSQL with scram-sha-256 auth deployed; least-privilege roles planned |
 | 6 | **Rotate JWT signing secrets.** Assert minimum 32-byte secret at startup. Set 15-minute token expiry with refresh rotation. Pin algorithms=['HS256'] in all decode calls. | Weak JWT secrets combined with crit-header bypass represent spoofing risk. | **Partial** (strict HS256 + 60-min expiry enforced; needs key length assertion + refresh rotation) |
 | 7 | **Document formal HIPAA Risk Analysis** covering: asset inventory, threat identification, vulnerability assessment, impact/likelihood analysis, risk determination. Use this threat model as input artifact. | HIPAA 164.308(a)(1)(ii)(A) foundational requirement. Regulators treat absence as systemic compliance failure. | **Planned** |
 
@@ -537,7 +537,7 @@ Sections 7-10 were added after running Charlotte's Web against itself, using the
 |-------------|-------|-------------|
 | **Mitigated** | 6 | TLS enforcement + HSTS, python-multipart ReDoS (0.0.22), PyJWT crit header (2.12.1), FastAPI CSRF (0.135.1), requests redirect leak (2.32.5), error handling (no stack traces in prod) |
 | **Partially Mitigated** | 2 | Audit logging (JSON structured logging exists, needs SIEM + append-only sink), rate limiting (60/min per IP, needs reverse proxy + per-endpoint tuning) |
-| **Accepted Risk (Dev)** | 2 | SQLite encryption at rest, SQLite RBAC (PostgreSQL migration planned for production) |
+| **Partially Mitigated** | 2 | PostgreSQL encryption at rest (OS-level), PostgreSQL RBAC (least-privilege roles planned) |
 | **Open** | 1 | Alembic migrations need dedicated DDL-only DB user and CI-only execution |
 | **Remediation Planned** | 3 | MFA (pyotp), passlib to argon2-cffi migration, HIPAA risk analysis documentation |
 
@@ -550,7 +550,7 @@ Sections 7-10 were added after running Charlotte's Web against itself, using the
 ### 7.1 Known CVEs in Dependencies (TB2 Application Service)
 **Attack:** Attacker exploits publicly disclosed vulnerabilities in installed packages.
 
-**OSV.dev Scan Results (2026-03-16):** 6 components with known CVEs across 16 components (14 PyPI packages + Python 3.14.3 + SQLite 3.43.2). Cross-ecosystem scanning via OSV.dev surfaces advisories from Debian, Ubuntu, openSUSE, and GHSA databases. Several findings are scanner false positives (version already patched) or namespace confusion (npm vs PyPI).
+**OSV.dev Scan Results (2026-03-16):** 6 components with known CVEs across 16 components (14 PyPI packages + Python 3.14.3 + PostgreSQL 17.9). Cross-ecosystem scanning via OSV.dev surfaces advisories from Debian, Ubuntu, openSUSE, and GHSA databases. Several findings are scanner false positives (version already patched) or namespace confusion (npm vs PyPI).
 
 | Component | Version | CVEs | Severity | Status |
 |-----------|---------|------|----------|--------|
@@ -568,7 +568,7 @@ Sections 7-10 were added after running Charlotte's Web against itself, using the
 | Component | Version | Risk | Action |
 |-----------|---------|------|--------|
 | passlib | 1.7.4 | **Maintenance risk** | Minimally maintained project. Migrate password hashing to argon2-cffi (Argon2id algorithm, OWASP recommended). Passlib can wrap argon2-cffi as a transitional step. |
-| SQLite | 3.43.2 | **Version age** | Released September 2023. Verify Python 3.14 distribution bundles an up-to-date SQLite version. Monitor for upstream CVEs. |
+| PostgreSQL | 17.9 | **Monitor** | Current version. Monitor for upstream CVEs. Ensure scram-sha-256 authentication is enforced. |
 | python-multipart | 0.0.22 | **Monitor** | No known CVEs at this version. Previous versions (0.0.5-0.0.6) had critical ReDoS vulnerabilities. Ensure input validation is enforced at the application layer. |
 
 **Recommended cadence:** Weekly `pip-audit` or Dependabot scanning. Pin all dependencies with exact versions and validate hashes.
@@ -577,21 +577,21 @@ Sections 7-10 were added after running Charlotte's Web against itself, using the
 
 ## 8. Data Protection Gaps
 
-### 8.1 Data at Rest: Unencrypted SQLite Database (TB3 Persistence Layer)
-**Attack:** Attacker with filesystem access reads or exfiltrates the entire database without needing application credentials.
+### 8.1 Data at Rest: PostgreSQL Database Encryption (TB3 Persistence Layer)
+**Attack:** Attacker with host access reads database contents without application credentials.
 
 | Component | Current Risk | Mitigation |
 |-----------|-------------|-----------|
-| TB3 SQLite database stored as plaintext file | **HIGH** | No encryption at rest |
-| Single file contains all org data, assessments, findings | **HIGH** | Full data exposure on file compromise |
-| File permissions may allow broader access | **MEDIUM** | OS-level access control only |
+| PostgreSQL data directory on local filesystem | **MEDIUM** | scram-sha-256 auth required, localhost only |
+| Database contains all org data, assessments, findings | **MEDIUM** | Auth prevents unauthenticated access |
+| No transparent data encryption configured | **MEDIUM** | Relies on OS-level disk encryption |
 
-**Current Disposition:** Accepted risk for development. Production guidance requires PostgreSQL with storage-level encryption.
+**Current Disposition:** Partially mitigated. PostgreSQL requires password authentication (scram-sha-256). Database is localhost only.
 
 **Recommended Hardening:**
-* Development: Restrict file permissions (`chmod 600`, owned by app service account)
-* Production: Migrate to PostgreSQL with encrypted storage (AWS RDS encryption, Azure TDE)
-* Alternative: SQLCipher for encrypted SQLite if single-file deployment is required
+* Enable FileVault (macOS) or equivalent full-disk encryption
+* Production: Use cloud-managed encrypted storage (AWS RDS encryption, Azure TDE)
+* Implement least-privilege PostgreSQL roles (separate DDL and DML users)
 
 ### 8.2 Data in Transit: TLS Enforcement (TB1 ↔ TB2 boundary)
 **Status: Mitigated**
@@ -643,7 +643,7 @@ If the application scope changes to include PHI, a full HIPAA gap analysis must 
 |----------|--------|-----------|-----------------|--------|
 | **CRITICAL** | Spoofing 1.2, Elevation 6.1 | User auth + org membership checks | TB1 ↔ TB2 ↔ TB3 | Open |
 | **CRITICAL** | Information Disclosure 4.1 | Row-level security + caller auth | TB2 ↔ TB3 | Open |
-| ⚠️ **HIGH** | Data at Rest 8.1 | SQLite encryption or PostgreSQL migration | TB3 | Accepted (Dev) |
+| ⚠️ **HIGH** | Data at Rest 8.1 | PostgreSQL encryption at rest + RBAC | TB3 | Partial (scram-sha-256 auth, needs RBAC) |
 | ⚠️ **HIGH** | Authentication 9.1 | MFA implementation (pyotp/TOTP) | TB1 → TB2 | Planned |
 | ⚠️ **HIGH** | Tampering 2.2 | Finding audit trail + versioning | TB2 ↔ TB3 | Open |
 | ⚠️ **HIGH** | Repudiation 3.1 | SIEM + log encryption + hash chain | TB2 ↔ TB5 | Partial (logging exists, needs SIEM) |
@@ -654,7 +654,7 @@ If the application scope changes to include PHI, a full HIPAA gap analysis must 
 | **MEDIUM** | Secret Exposure S-AI.2 | SecretStr + secrets manager | TB2 Config | Partial (key masking exists) |
 | **MEDIUM** | JWT Key Weakness S-AI.3 | 512-bit secret + refresh rotation | TB2 Auth | Partial (strict algo + expiry exists) |
 | **MEDIUM** | Alembic Integrity S-AI.4 | Signed commits + CI-only migrations | TB2 Deploy | Open |
-| **MEDIUM** | SQLite Contention S-AI.5 | WAL mode + PostgreSQL migration | TB3 | Accepted (Dev) |
+| **MITIGATED** | Database Contention S-AI.5 | PostgreSQL connection pooling | TB3 | Mitigated |
 | **LOW** | File Upload S-AI.6 | Implement scaffolded controls when enabled | TB2 R_COMP | N/A (no upload endpoints) |
 | **MITIGATED** | Data in Transit 8.2 | TLS enforcement + HSTS + port 8443 | TB1 ↔ TB2 | Mitigated |
 | **MITIGATED** | Error Handling 4.2 | Debug disabled in prod, generic errors | TB2 | Mitigated |
@@ -815,7 +815,7 @@ graph LR
         alembic["Alembic Migration Runner"]
     end
     subgraph Data Layer
-        sqlite_db[("SQLite Database (SQLAlchemy ORM)")]
+        postgres_db[("PostgreSQL 17 (SQLAlchemy ORM)")]
     end
     subgraph External Services
         anthropic_api{"Anthropic Claude API"}
@@ -825,7 +825,7 @@ graph LR
     fastapi_app -->|Internal middleware chain| slowapi
     fastapi_app -->|Internal middleware chain Bearer token| jwt_auth
     fastapi_app -->|Internal multipart form/file data| multipart
-    fastapi_app -->|SQLAlchemy ORM JDBC/SQL (local file)| sqlite_db
-    alembic -->|DDL migrations SQL| sqlite_db
+    fastapi_app -->|SQLAlchemy ORM SQL via psycopg2| postgres_db
+    alembic -->|DDL migrations SQL| postgres_db
     fastapi_app -->|HTTPS REST prompt and response data| anthropic_api
 ```
