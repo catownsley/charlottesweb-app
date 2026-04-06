@@ -7,7 +7,7 @@ pydantic-settings==2.13.1
 # Database
 sqlalchemy==2.0.48
 alembic==1.18.4
-psycopg2-binary==2.9.10
+psycopg2-binary==2.9.11
 
 # Security
 PyJWT==2.12.1                     # JWT token handling
