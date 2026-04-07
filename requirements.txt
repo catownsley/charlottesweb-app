@@ -26,5 +26,5 @@ anthropic==0.89.0
 
 # Utilities
 python-dateutil==2.9.0.post0
-requests==2.33.0
+requests==2.33.1
 defusedxml==0.7.1
