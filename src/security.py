@@ -19,7 +19,6 @@ Security Features:
 import logging
 import secrets
 from datetime import UTC, datetime, timedelta
-from urllib.parse import urlparse
 
 import jwt
 from fastapi import Depends, HTTPException, Request, Security, status
@@ -304,9 +303,7 @@ def get_jwks_client() -> jwt.PyJWKClient:
         jwks_uri = f"{issuer}/.well-known/jwks.json"
 
     _jwks_client = jwt.PyJWKClient(jwks_uri)
-    logger.info(
-        "OAuth JWKS client initialized for host: %s", urlparse(jwks_uri).hostname
-    )
+    logger.info("OAuth JWKS client initialized")
     return _jwks_client
 
 
