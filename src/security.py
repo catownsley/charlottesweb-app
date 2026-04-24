@@ -303,7 +303,7 @@ def get_jwks_client() -> jwt.PyJWKClient:
         jwks_uri = f"{issuer}/.well-known/jwks.json"
 
     _jwks_client = jwt.PyJWKClient(jwks_uri)
-    logger.info("OAuth JWKS client initialized for: %s", jwks_uri)
+    logger.info("OAuth JWKS client initialized")
     return _jwks_client
 
 
