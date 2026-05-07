@@ -109,18 +109,21 @@ jobs:
       - name: Verify requirements.lock matches requirements.txt
         run: |
           # Back up the committed lock, regenerate to the same filename so
-          # the auto-generated header (which encodes the output filename)
-          # stays identical between committed and fresh.
+          # the auto-generated header stays identical between committed and
+          # fresh. Use --no-annotate to suppress the "# via" source comments
+          # which can differ by platform (e.g. greenlet is listed via
+          # sqlalchemy on Linux but not on Mac arm64 because the marker
+          # platform_machine==aarch64 does not match arm64).
           cp requirements.lock requirements.lock.committed
-          pip-compile --quiet --generate-hashes --output-file=requirements.lock requirements.txt
+          pip-compile --quiet --generate-hashes --no-annotate --output-file=requirements.lock requirements.txt
           # Compare bodies only (skip the first 7 header lines which encode
-          # the pip-compile command and can vary by invocation).
+          # the pip-compile invocation).
           if ! diff <(tail -n +8 requirements.lock.committed) <(tail -n +8 requirements.lock) > /dev/null; then
             echo "::error::requirements.lock is out of sync with requirements.txt"
             echo ""
             echo "To fix locally:"
             echo "  pip install pip-tools"
-            echo "  pip-compile --generate-hashes --output-file=requirements.lock requirements.txt"
+            echo "  pip-compile --generate-hashes --no-annotate --output-file=requirements.lock requirements.txt"
             echo "  git add requirements.lock && git commit"
             echo ""
             echo "Body diff:"
