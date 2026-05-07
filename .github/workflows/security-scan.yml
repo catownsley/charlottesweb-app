@@ -108,8 +108,14 @@ jobs:
 
       - name: Verify requirements.lock matches requirements.txt
         run: |
-          pip-compile --generate-hashes --output-file=requirements.lock.fresh requirements.txt
-          if ! diff -q requirements.lock requirements.lock.fresh > /dev/null; then
+          # Back up the committed lock, regenerate to the same filename so
+          # the auto-generated header (which encodes the output filename)
+          # stays identical between committed and fresh.
+          cp requirements.lock requirements.lock.committed
+          pip-compile --quiet --generate-hashes --output-file=requirements.lock requirements.txt
+          # Compare bodies only (skip the first 7 header lines which encode
+          # the pip-compile command and can vary by invocation).
+          if ! diff <(tail -n +8 requirements.lock.committed) <(tail -n +8 requirements.lock) > /dev/null; then
             echo "::error::requirements.lock is out of sync with requirements.txt"
             echo ""
             echo "To fix locally:"
@@ -117,8 +123,8 @@ jobs:
             echo "  pip-compile --generate-hashes --output-file=requirements.lock requirements.txt"
             echo "  git add requirements.lock && git commit"
             echo ""
-            echo "Diff:"
-            diff requirements.lock requirements.lock.fresh || true
+            echo "Body diff:"
+            diff <(tail -n +8 requirements.lock.committed) <(tail -n +8 requirements.lock) || true
             exit 1
           fi
           echo "Lock file in sync"
