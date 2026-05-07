@@ -87,3 +87,38 @@ jobs:
       - name: Verify dependency integrity (hash check)
         run: |
           pip install --no-deps --require-hashes --dry-run -r requirements.lock
+
+  lock-sync:
+    name: Lock File Sync
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install pip-tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-tools
+
+      - name: Verify requirements.lock matches requirements.txt
+        run: |
+          pip-compile --generate-hashes --output-file=requirements.lock.fresh requirements.txt
+          if ! diff -q requirements.lock requirements.lock.fresh > /dev/null; then
+            echo "::error::requirements.lock is out of sync with requirements.txt"
+            echo ""
+            echo "To fix locally:"
+            echo "  pip install pip-tools"
+            echo "  pip-compile --generate-hashes --output-file=requirements.lock requirements.txt"
+            echo "  git add requirements.lock && git commit"
+            echo ""
+            echo "Diff:"
+            diff requirements.lock requirements.lock.fresh || true
+            exit 1
+          fi
+          echo "Lock file in sync"
