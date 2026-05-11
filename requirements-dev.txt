@@ -3,5 +3,5 @@
 # Development tools
 black==26.3.1
 ruff==0.15.12
-mypy==1.20.2
+mypy==2.0.0
 pre-commit==4.5.1
