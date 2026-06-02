@@ -24,6 +24,16 @@ updates:
     ignore:
       - dependency-name: "fastapi"
         update-types: ["version-update:semver-major"]
+    # Combine all minor and patch bumps into a single weekly PR.
+    # Major bumps are left out of the group so they still arrive
+    # as individual PRs for deliberate review.
+    groups:
+      python_minor_and_patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -38,3 +48,7 @@ updates:
       include: "scope"
     labels:
       - "ci/cd"
+    groups:
+      github_actions_all:
+        patterns:
+          - "*"
