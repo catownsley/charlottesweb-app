@@ -1,0 +1,56 @@
+name: Sync requirements lock
+
+# Manually regenerate requirements.lock from requirements.txt and commit it
+# back to a branch. Run this on a Dependabot branch after requirements.txt
+# changes so the Lock File Sync check passes and auto-merge can proceed.
+#
+# Trigger from the Actions tab (Run workflow, pick the branch) or with:
+#   gh workflow run sync-lock.yml -f branch=BRANCH_NAME
+#
+# This uses the built in token, which has write access on a manual dispatch,
+# so no personal access token is required.
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to regenerate and commit the lock file on"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  sync_lock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install pip-tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-tools
+
+      - name: Regenerate lock file
+        run: |
+          pip-compile --quiet --generate-hashes --no-annotate --output-file=requirements.lock requirements.txt
+
+      - name: Commit and push if the lock changed
+        run: |
+          if git diff --quiet requirements.lock; then
+            echo "Lock file already in sync. Nothing to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add requirements.lock
+            git commit -m "chore(deps): sync requirements.lock with requirements.txt"
+            git push origin HEAD:${{ inputs.branch }}
+          fi
