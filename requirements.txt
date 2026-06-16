@@ -11,11 +11,11 @@ psycopg2-binary==2.9.11
 greenlet==3.5.0                   # Required by SQLAlchemy on Linux for async support; pinned for cross-platform lock stability
 
 # Security
-PyJWT==2.12.1                     # JWT token handling
-cryptography==47.0.0              # RS256 token validation (external IdP/OAuth)
+PyJWT==2.13.0                     # JWT token handling
+cryptography==48.0.1              # RS256 token validation (external IdP/OAuth)
 passlib[bcrypt]==1.7.4           # Password hashing
 slowapi==0.1.9                    # Rate limiting
-python-multipart==0.0.27          # Form data parsing
+python-multipart==0.0.31          # Form data parsing
 
 # Testing
 pytest==9.0.3
