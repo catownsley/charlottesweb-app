@@ -7,6 +7,7 @@ from typing import Any, TypedDict
 
 import requests
 
+from src.api_client import BaseApiClient
 from src.utils import sanitize_log_value
 
 logger = logging.getLogger(__name__)
@@ -128,63 +129,29 @@ def parse_cvss_v3_score(vector: str) -> float | None:
         return None
 
 
-class OSVService:
+class OSVService(BaseApiClient):
     """Service for querying OSV.dev API for vulnerability information."""
+
+    service_name = "OSV API"
+    error_class = OSVApiError
+    backoff_seconds = RETRY_BACKOFF_SECONDS
 
     BASE_URL = "https://api.osv.dev/v1"
 
     def __init__(self, max_retries: int = MAX_RETRIES) -> None:
-        self.max_retries = max_retries
+        super().__init__(max_retries=max_retries)
 
-    def _request(
-        self,
-        method: str,
-        path: str,
-        json_body: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """Make an OSV API request with retry on transient failures."""
-        url = f"{self.BASE_URL}/{path}"
-        last_error: Exception | None = None
-        attempts = max(1, self.max_retries)
-
-        for attempt in range(attempts):
-            try:
-                response = requests.request(
-                    method,
-                    url,
-                    json=json_body,
-                    timeout=REQUEST_TIMEOUT_SECONDS,
-                )
-
-                if response.status_code >= 500:
-                    last_error = OSVApiError(f"OSV API returned {response.status_code}")
-                    if attempt < attempts - 1:
-                        time.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
-                        continue
-                    raise last_error
-
-                if response.status_code == 400:
-                    logger.warning(
-                        "OSV API 400 response: %s",
-                        sanitize_log_value(response.text),
-                    )
-                    raise OSVApiError("OSV API bad request (invalid query parameters)")
-
-                response.raise_for_status()
-                return response.json()
-
-            except requests.exceptions.RequestException as e:
-                last_error = e
-                logger.warning(
-                    "OSV API request failed (attempt %d/%d): %s",
-                    attempt + 1,
-                    attempts,
-                    sanitize_log_value(str(e)),
-                )
-                if attempt < attempts - 1:
-                    time.sleep(RETRY_BACKOFF_SECONDS * (attempt + 1))
-
-        raise OSVApiError(f"OSV API failed after {attempts} attempts: {last_error}")
+    def _handle_status(
+        self, response: requests.Response, attempt: int, attempts: int
+    ) -> float | None:
+        """OSV returns 400 for malformed queries; treat that as fatal, not transient."""
+        if response.status_code == 400:
+            logger.warning(
+                "OSV API 400 response: %s",
+                sanitize_log_value(response.text),
+            )
+            raise OSVApiError("OSV API bad request (invalid query parameters)")
+        return super()._handle_status(response, attempt, attempts)
 
     def _extract_cvss(self, vuln: dict[str, Any]) -> tuple[float | None, str | None]:
         """Extract CVSS score and severity from an OSV vulnerability record."""
@@ -286,7 +253,7 @@ class OSVService:
             if page_token:
                 body["page_token"] = page_token
 
-            data = self._request("POST", "query", json_body=body)
+            data = self._request("POST", f"{self.BASE_URL}/query", json_body=body)
             vulns_raw = data.get("vulns", [])
 
             for vuln_raw in vulns_raw:
