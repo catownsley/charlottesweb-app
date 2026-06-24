@@ -68,6 +68,10 @@ class DependabotService(BaseApiClient):
         self._cache: dict[str, tuple[list[dict[str, Any]], datetime]] = {}
         self._cache_ttl = timedelta(hours=24)
 
+        # True when the most recent fetch failed, so callers can distinguish a
+        # genuine "no alerts" from a fetch that did not complete.
+        self.last_fetch_failed: bool = False
+
     def get_alerts(
         self,
         state: str = "open",
@@ -82,6 +86,7 @@ class DependabotService(BaseApiClient):
         Returns:
             List of alert dictionaries with vulnerability details
         """
+        self.last_fetch_failed = False
         cache_key = f"alerts:{state}:{ecosystem or 'all'}"
 
         # Check cache
@@ -125,9 +130,15 @@ class DependabotService(BaseApiClient):
             return results
 
         except DependabotApiError as e:
-            logger.error("GitHub API request failed: %s", sanitize_log_value(str(e)))
+            self.last_fetch_failed = True
+            logger.error(
+                "Dependabot fetch failed; returning no alerts, but the scan did NOT "
+                "complete. This is not the same as zero vulnerabilities: %s",
+                sanitize_log_value(str(e)),
+            )
             return []
         except Exception as e:
+            self.last_fetch_failed = True
             logger.error(
                 "Error processing Dependabot response: %s", sanitize_log_value(str(e))
             )

@@ -71,7 +71,18 @@ class BaseApiClient:
                     json=json_body,
                     headers=self.headers or None,
                     timeout=self.timeout_seconds,
+                    allow_redirects=False,
                 )
+
+                # These are fixed-endpoint APIs, so a redirect is never expected.
+                # Following one could forward auth headers (e.g. NVD's apiKey, which
+                # requests does not strip from custom headers) to another host, and
+                # could downgrade HTTPS to HTTP. Treat any redirect as a hard failure.
+                if 300 <= response.status_code < 400:
+                    raise self.error_class(
+                        f"{self.service_name} returned an unexpected redirect "
+                        f"(status {response.status_code}); not following for security"
+                    )
 
                 retry_after = self._handle_status(response, attempt, attempts)
                 if retry_after is not None:
