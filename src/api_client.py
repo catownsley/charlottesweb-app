@@ -50,8 +50,11 @@ class BaseApiClient:
         *,
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> Any:
         """Make a request with retry on transient failures, returning parsed JSON.
+
+        Returns whatever the endpoint's JSON decodes to (an object for most APIs,
+        an array for some, e.g. GitHub).
 
         Raises ``error_class`` if the API stays unreachable or returns an error
         across all attempts.

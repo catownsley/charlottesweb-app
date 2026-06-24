@@ -4,15 +4,24 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
-import requests
-
+from src.api_client import BaseApiClient
 from src.utils import sanitize_log_value
 
 logger = logging.getLogger(__name__)
 
 
-class DependabotService:
+class DependabotApiError(Exception):
+    """Raised when the GitHub Dependabot API returns an error or is unreachable."""
+
+    pass
+
+
+class DependabotService(BaseApiClient):
     """Service for querying GitHub Dependabot alerts as threat intelligence."""
+
+    service_name = "GitHub Dependabot API"
+    error_class = DependabotApiError
+    timeout_seconds = 10
 
     BASE_URL = "https://api.github.com"
 
@@ -43,6 +52,7 @@ class DependabotService:
             repo_name: GitHub repository name (e.g., "charlottesweb-app")
             github_token: GitHub personal access token (optional, for private repos)
         """
+        super().__init__()
         self.repo_owner = repo_owner
         self.repo_name = repo_name
         self.github_token = github_token
@@ -88,15 +98,7 @@ class DependabotService:
             if ecosystem:
                 params["ecosystem"] = ecosystem
 
-            response = requests.get(
-                url,
-                params=params,
-                headers=self.headers,
-                timeout=10,
-            )
-            response.raise_for_status()
-
-            raw_alerts = response.json()
+            raw_alerts = self._request("GET", url, params=params)
             alerts: list[dict[str, Any]]
             if isinstance(raw_alerts, list):
                 typed_alerts = cast(list[dict[str, Any]], raw_alerts)
@@ -122,7 +124,7 @@ class DependabotService:
             logger.info("Fetched %s Dependabot alerts (state: %s)", len(results), state)
             return results
 
-        except requests.exceptions.RequestException as e:
+        except DependabotApiError as e:
             logger.error("GitHub API request failed: %s", sanitize_log_value(str(e)))
             return []
         except Exception as e:
