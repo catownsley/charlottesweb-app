@@ -1,18 +1,41 @@
+# Copyright (C) 2026 Charlotte Townsley
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """GitHub Dependabot integration for supply chain vulnerability intelligence."""
 
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
-import requests
-
+from src.api_client import BaseApiClient
 from src.utils import sanitize_log_value
 
 logger = logging.getLogger(__name__)
 
 
-class DependabotService:
+class DependabotApiError(Exception):
+    """Raised when the GitHub Dependabot API returns an error or is unreachable."""
+
+    pass
+
+
+class DependabotService(BaseApiClient):
     """Service for querying GitHub Dependabot alerts as threat intelligence."""
+
+    service_name = "GitHub Dependabot API"
+    error_class = DependabotApiError
+    timeout_seconds = 10
 
     BASE_URL = "https://api.github.com"
 
@@ -43,6 +66,7 @@ class DependabotService:
             repo_name: GitHub repository name (e.g., "charlottesweb-app")
             github_token: GitHub personal access token (optional, for private repos)
         """
+        super().__init__()
         self.repo_owner = repo_owner
         self.repo_name = repo_name
         self.github_token = github_token
@@ -58,6 +82,10 @@ class DependabotService:
         self._cache: dict[str, tuple[list[dict[str, Any]], datetime]] = {}
         self._cache_ttl = timedelta(hours=24)
 
+        # True when the most recent fetch failed, so callers can distinguish a
+        # genuine "no alerts" from a fetch that did not complete.
+        self.last_fetch_failed: bool = False
+
     def get_alerts(
         self,
         state: str = "open",
@@ -72,6 +100,7 @@ class DependabotService:
         Returns:
             List of alert dictionaries with vulnerability details
         """
+        self.last_fetch_failed = False
         cache_key = f"alerts:{state}:{ecosystem or 'all'}"
 
         # Check cache
@@ -88,15 +117,7 @@ class DependabotService:
             if ecosystem:
                 params["ecosystem"] = ecosystem
 
-            response = requests.get(
-                url,
-                params=params,
-                headers=self.headers,
-                timeout=10,
-            )
-            response.raise_for_status()
-
-            raw_alerts = response.json()
+            raw_alerts = self._request("GET", url, params=params)
             alerts: list[dict[str, Any]]
             if isinstance(raw_alerts, list):
                 typed_alerts = cast(list[dict[str, Any]], raw_alerts)
@@ -122,10 +143,16 @@ class DependabotService:
             logger.info("Fetched %s Dependabot alerts (state: %s)", len(results), state)
             return results
 
-        except requests.exceptions.RequestException as e:
-            logger.error("GitHub API request failed: %s", sanitize_log_value(str(e)))
+        except DependabotApiError as e:
+            self.last_fetch_failed = True
+            logger.error(
+                "Dependabot fetch failed; returning no alerts, but the scan did NOT "
+                "complete. This is not the same as zero vulnerabilities: %s",
+                sanitize_log_value(str(e)),
+            )
             return []
         except Exception as e:
+            self.last_fetch_failed = True
             logger.error(
                 "Error processing Dependabot response: %s", sanitize_log_value(str(e))
             )

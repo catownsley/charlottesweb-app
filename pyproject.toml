@@ -7,6 +7,7 @@ name = "charlottesweb"
 version = "0.3.0"
 description = "Multi-Framework Compliance Intelligence Platform for Regulated Data"
 requires-python = ">=3.14"
+license = "GPL-3.0-only"
 
 [tool.setuptools.packages.find]
 include = ["src*"]

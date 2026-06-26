@@ -1,29 +1,29 @@
 # Core API
-fastapi==0.137.0
+fastapi==0.138.0
 uvicorn[standard]==0.49.0
 pydantic==2.13.4
 pydantic-settings==2.14.2
 
 # Database
-sqlalchemy==2.0.50
+sqlalchemy==2.0.51
 alembic==1.18.4
 psycopg2-binary==2.9.12
-greenlet==3.5.1                   # Required by SQLAlchemy on Linux for async support; pinned for cross-platform lock stability
+greenlet==3.5.2                   # Required by SQLAlchemy on Linux for async support; pinned for cross-platform lock stability
 
 # Security
 PyJWT==2.13.0                     # JWT token handling
-cryptography==48.0.0              # RS256 token validation (external IdP/OAuth)
+cryptography==49.0.0              # RS256 token validation (external IdP/OAuth)
 passlib[bcrypt]==1.7.4           # Password hashing
 slowapi==0.1.10                    # Rate limiting
 python-multipart==0.0.32          # Form data parsing
 
 # Testing
-pytest==9.1.0
+pytest==9.1.1
 pytest-asyncio==1.4.0
 httpx==0.28.1
 
 # AI / LLM
-anthropic==0.109.1
+anthropic==0.111.0
 
 # Utilities
 python-dateutil==2.9.0.post0
