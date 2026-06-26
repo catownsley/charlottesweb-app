@@ -1,3 +1,17 @@
+# Copyright (C) 2026 Charlotte Townsley
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """NVD CPE dictionary integration for component and version discovery.
 
 Vulnerability lookups are handled by osv_service.py (OSV.dev).
@@ -6,12 +20,12 @@ via the NVD CPE (Common Platform Enumeration) API.
 """
 
 import logging
-import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import requests
 
+from src.api_client import BaseApiClient
 from src.utils import sanitize_log_value
 
 logger = logging.getLogger(__name__)
@@ -32,8 +46,12 @@ RATE_LIMIT_RETRY_ATTEMPTS = 3
 RATE_LIMIT_BACKOFF_SECONDS = 6  # NVD rate limit resets every 30s; 6s * 3 retries = 18s
 
 
-class NVDService:
+class NVDService(BaseApiClient):
     """Service for querying NVD CPE dictionary for component/version discovery."""
+
+    service_name = "NVD API"
+    error_class = NVDApiError
+    backoff_seconds = RATE_LIMIT_BACKOFF_SECONDS
 
     CPE_URL = "https://services.nvd.nist.gov/rest/json/cpes/2.0"
     CVE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
@@ -41,58 +59,28 @@ class NVDService:
     def __init__(
         self, api_key: str | None = None, max_retries: int = RATE_LIMIT_RETRY_ATTEMPTS
     ) -> None:
+        super().__init__(max_retries=max_retries)
         self.api_key = api_key
-        self.max_retries = max_retries
-        self.headers: dict[str, str] = {}
         if api_key:
             self.headers["apiKey"] = api_key
 
         self._cache: dict[str, tuple[list[str], datetime]] = {}
         self._cache_ttl = timedelta(hours=CACHE_TTL_HOURS)
 
-    def _request_with_retry(
-        self, params: dict[str, str | int], *, url: str | None = None
-    ) -> dict[str, Any]:
-        """Make an NVD API request with retry on rate limit (429)."""
-        target_url = url or self.CPE_URL
-        last_error: Exception | None = None
-        attempts = max(1, self.max_retries)
-
-        for attempt in range(attempts):
-            try:
-                response = requests.get(
-                    target_url,
-                    params=params,
-                    headers=self.headers,
-                    timeout=REQUEST_TIMEOUT_SECONDS,
-                )
-
-                if response.status_code == 429:
-                    wait = RATE_LIMIT_BACKOFF_SECONDS * (attempt + 1)
-                    logger.warning(
-                        "NVD rate limited (429), waiting %ds (attempt %d/%d)",
-                        wait,
-                        attempt + 1,
-                        attempts,
-                    )
-                    time.sleep(wait)
-                    continue
-
-                response.raise_for_status()
-                return response.json()
-
-            except requests.exceptions.RequestException as e:
-                last_error = e
-                logger.warning(
-                    "NVD API request failed (attempt %d/%d): %s",
-                    attempt + 1,
-                    attempts,
-                    sanitize_log_value(str(e)),
-                )
-                if attempt < attempts - 1:
-                    time.sleep(RATE_LIMIT_BACKOFF_SECONDS)
-
-        raise NVDApiError(f"NVD API failed after {attempts} attempts: {last_error}")
+    def _handle_status(
+        self, response: requests.Response, attempt: int, attempts: int
+    ) -> float | None:
+        """NVD rate-limits with 429; retry on it with backoff instead of failing."""
+        if response.status_code == 429:
+            wait = self.backoff_seconds * (attempt + 1)
+            logger.warning(
+                "NVD rate limited (429), waiting %ds (attempt %d/%d)",
+                wait,
+                attempt + 1,
+                attempts,
+            )
+            return wait
+        return super()._handle_status(response, attempt, attempts)
 
     # Common CPE naming mismatches: user-friendly names → NVD vendor:product.
     _CPE_ALIASES: dict[str, list[tuple[str, str, str]]] = {
@@ -197,7 +185,7 @@ class NVDService:
                 "keywordSearch": component_name,
                 "resultsPerPage": VERSION_SEARCH_MAX_RESULTS,
             }
-            data = self._request_with_retry(params, url=self.CPE_URL)
+            data = self._request("GET", self.CPE_URL, params=params)
 
             for product_entry in data.get("products", []):
                 cpe = product_entry.get("cpe", {})
@@ -277,7 +265,7 @@ class NVDService:
                 "cpeMatchString": cpe_match,
                 "resultsPerPage": 10000,
             }
-            data = self._request_with_retry(params, url=self.CPE_URL)
+            data = self._request("GET", self.CPE_URL, params=params)
             products = data.get("products", [])
 
             versions_set: set[str] = set()
@@ -358,7 +346,7 @@ class NVDService:
                 "keywordSearch": normalized_prefix,
                 "resultsPerPage": VERSION_SEARCH_MAX_RESULTS,
             }
-            data = self._request_with_retry(params, url=self.CPE_URL)
+            data = self._request("GET", self.CPE_URL, params=params)
 
             for product_entry in data.get("products", []):
                 cpe = product_entry.get("cpe", {})
@@ -496,7 +484,7 @@ class NVDService:
                 param_key: cpe_name,
                 "resultsPerPage": max_results,
             }
-            data = self._request_with_retry(params, url=self.CVE_URL)
+            data = self._request("GET", self.CVE_URL, params=params)
 
             results = [
                 self._parse_nvd_cve(entry.get("cve", {}))
