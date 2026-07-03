@@ -68,8 +68,8 @@
 
 ### Dependencies
 - [ ] No new dependencies without security review
-- [ ] Dependencies scanned: `pip-audit -r requirements.txt` (zero vulnerabilities required)
-- [ ] requirements.txt pinned to specific versions
+- [ ] Dependencies scanned with pip-audit (zero vulnerabilities required)
+- [ ] `pyproject.toml` and `uv.lock` committed together and in sync (`uv lock --locked`)
 
 ---
 
