@@ -1,6 +1,6 @@
 # Core API
-fastapi==0.138.1
-uvicorn[standard]==0.49.0
+fastapi==0.139.0
+uvicorn[standard]==0.50.0
 pydantic==2.13.4
 pydantic-settings==2.14.2
 
@@ -23,7 +23,7 @@ pytest-asyncio==1.4.0
 httpx==0.28.1
 
 # AI / LLM
-anthropic==0.112.0
+anthropic==0.116.0
 
 # Utilities
 python-dateutil==2.9.0.post0
