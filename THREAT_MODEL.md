@@ -559,7 +559,7 @@ Sections 7-10 were added after running Charlotte's Web against itself, using the
 | pyjwt | 2.12.1 | DEBIAN-CVE-2025-45768, DEBIAN-CVE-2026-32597, UBUNTU-CVE-2026-32597, UBUNTU-CVE-2025-45768, MAL-2025-48036 | HIGH | **Mitigated** (2.12.1 includes crit header fix; MAL-2025-48036 is npm namespace, not PyPI) |
 | fastapi | 0.135.1 | DEBIAN-CVE-2021-32677, UBUNTU-CVE-2021-32677, UBUNTU-CVE-2024-40627 | MEDIUM | **Mitigated** (0.135.1 is above 0.65.2 fix; CVE-2024-40627 is fastapi-opa, not core FastAPI) |
 | requests | 2.32.5 | DEBIAN-CVE-2023-32681, DEBIAN-CVE-2024-35195, DEBIAN-CVE-2024-47081, UBUNTU-CVE-2024-35195 | MEDIUM | **Mitigated** (2.32.5 includes all fixes; verify=True never overridden) |
-| uvicorn | 0.41.0 | MAL-2025-4901 | LOW | **False positive** (MAL references npm package, not PyPI uvicorn; pin hashes in requirements.txt) |
+| uvicorn | 0.41.0 | MAL-2025-4901 | LOW | **False positive** (MAL references npm package, not PyPI uvicorn; hashes pinned in uv.lock) |
 
 **Previous NVD keyword search results (now deprecated):** Earlier scans using NVD keyword matching flagged 11 CVEs, of which 7 were false positives due to incorrect package attribution. The migration to OSV.dev cross-ecosystem scanning surfaces real advisories but also includes cross-distribution and namespace-squatting findings that require triage.
 

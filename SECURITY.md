@@ -313,11 +313,12 @@ DATABASE_URL=postgresql://user:password@host/charlottesweb
 - **Runs:** On every pull request + nightly
 - **Quick Scan:** Reports vulnerabilities (non-blocking on PR)
 - **Strict Scan:** Fails build if vulnerabilities found (nightly only)
-- **Coverage:** All dependencies in requirements.txt against OSV/PyPI advisory database
+- **Coverage:** All production dependencies (exported from `uv.lock`) against OSV/PyPI advisory database
 
 **Example Output:**
 ```bash
-$ pip-audit -r requirements.txt
+$ uv export --no-emit-project --no-dev --format requirements-txt -o requirements-audit.txt
+$ uvx pip-audit -r requirements-audit.txt
 No known vulnerabilities found
 ```
 
@@ -327,14 +328,14 @@ No known vulnerabilities found
 - Reduced attack surface by 80% (4 deps → 0 deps for HS256)
 
 #### 4. Dependency Hash Verification (Supply Chain Security)
-- **File:** [`requirements.lock`](requirements.lock)
+- **File:** [`uv.lock`](uv.lock)
 - **Workflow:** Security Scan (PR Quick)
 - **Purpose:** Prevent supply chain attacks by verifying SHA256 hashes of all dependencies
-- **How it works:** `requirements.lock` contains pinned versions AND cryptographic hashes for every package (including transitive dependencies). CI runs `pip install --no-deps --require-hashes --dry-run` to verify that packages on PyPI match the expected hashes. The `--no-deps` flag prevents pip from resolving platform specific transitive dependencies not in the lock file (e.g., `greenlet` on Linux). If a package has been tampered with or swapped, the hash won't match and the build fails.
+- **How it works:** `uv.lock` contains pinned versions AND cryptographic hashes for every package (including transitive dependencies). CI runs `uv sync --locked`, which installs strictly from the lock and verifies that every package matches its recorded hash. A separate `uv lock --locked` check asserts the lock is in sync with `pyproject.toml`. If a package has been tampered with or swapped, the hash won't match and the build fails.
 
 **Regenerating after dependency changes:**
 ```bash
-pip-compile --generate-hashes --output-file=requirements.lock requirements.txt
+uv lock
 ```
 
 **What this protects against:**
@@ -415,7 +416,7 @@ Charlotte's Web ingests only software metadata (component names, versions, infra
 |---|---|---|
 | Static analysis (SAST) | Bandit + CodeQL on every PR | NIST SA-11, PCI DSS 6.3 |
 | Dependency vulnerability scanning | pip-audit against OSV.dev database | NIST SI-2, SOC 2 CC7.1 |
-| Dependency hash pinning | SHA256 hashes in requirements.lock, verified in CI | NIST SI-7, OWASP A06 |
+| Dependency hash pinning | SHA256 hashes in uv.lock, verified in CI | NIST SI-7, OWASP A06 |
 | Pinned dependency versions | All direct and transitive dependencies version locked | NIST CM-7, OWASP A06 |
 
 ### OWASP Top 10 2021 Coverage
@@ -479,17 +480,15 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 ### Automated Testing
 ```bash
-# Install security scanning tools
-pip install bandit pip-audit
-
 # Scan for common security issues
-bandit -r src/
+uvx bandit -r src/
 
 # Check for vulnerable dependencies
-pip-audit -r requirements.txt
+uv export --no-emit-project --no-dev --format requirements-txt -o requirements-audit.txt
+uvx pip-audit -r requirements-audit.txt
 
 # Run unit tests
-pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
 ### Manual Testing

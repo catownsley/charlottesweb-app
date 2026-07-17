@@ -7,13 +7,13 @@
 ```bash
 cd /Users/ct/Python/charlottesweb-app
 
-# Create/activate virtual environment (if not already active)
-python3.14 -m venv ../.venv
-source ../.venv/bin/activate
+# Install dependencies. uv creates .venv and installs the project plus its
+# dev tools strictly from uv.lock, verifying every package against the
+# hashes recorded there for supply chain security.
+uv sync
 
-# Install dependencies (with hash verification for supply chain security)
-pip install --require-hashes -r requirements.lock
-pip install -r requirements-dev.txt
+# Run commands inside the environment with `uv run`, e.g. `uv run pytest`,
+# or activate it with `source .venv/bin/activate`.
 ```
 
 ### 2. Set Up Environment
@@ -287,13 +287,13 @@ When `OAUTH_ENABLED=false` (default), API key authentication is used.
 
 ### Dependency Integrity (Supply Chain Security)
 
-Dependencies are hash-pinned in `requirements.lock` to prevent supply chain attacks. If you add or upgrade a dependency in `requirements.txt`, regenerate the lock file:
+Dependencies are declared in `pyproject.toml` and hash-pinned in `uv.lock` to prevent supply chain attacks. If you add or upgrade a dependency, edit `pyproject.toml` and regenerate the lock:
 
 ```bash
-pip-compile --generate-hashes --output-file=requirements.lock requirements.txt
+uv lock
 ```
 
-Always commit both `requirements.txt` and `requirements.lock` together. CI verifies hashes on every PR.
+Commit both `pyproject.toml` and `uv.lock` together. CI verifies on every PR that the lock is in sync and that all packages match their recorded hashes.
 
 ### Rate Limiting
 

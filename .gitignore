@@ -34,3 +34,6 @@ app.db
 # TLS certificates
 certs/
 generated_reports/
+
+# uv pip-audit export (generated in CI)
+requirements-audit.txt
