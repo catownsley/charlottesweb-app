@@ -10,7 +10,7 @@ requires-python = ">=3.14"
 license = "GPL-3.0-only"
 dependencies = [
     # Core API
-    "fastapi>=0.140.0",
+    "fastapi>=0.141.1",
     "uvicorn[standard]>=0.52.0",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
@@ -30,7 +30,7 @@ dependencies = [
     "pytest-asyncio>=1.4.0",
     "httpx>=0.28.1",
     # AI / LLM
-    "anthropic>=0.120.0",
+    "anthropic>=0.120.2",
     # Utilities
     "python-dateutil>=2.9.0.post0",
     "requests>=2.34.2",
@@ -40,7 +40,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "black>=26.5.1",
-    "ruff>=0.16.0",
+    "ruff>=0.16.1",
     "mypy>=2.3.0",
     "pre-commit>=4.6.1",
 ]
