@@ -16,7 +16,7 @@ dependencies = [
     "pydantic-settings>=2.14.2",
     # Database
     "sqlalchemy>=2.0.51",
-    "alembic>=1.18.4",
+    "alembic>=1.19.0",
     "psycopg2-binary>=2.9.12",
     "greenlet>=3.5.4",                 # Required by SQLAlchemy on Linux for async support
     # Security
