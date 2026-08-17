@@ -13,12 +13,12 @@ dependencies = [
     "fastapi>=0.141.1",
     "uvicorn[standard]>=0.52.3",
     "pydantic>=2.13.4",
-    "pydantic-settings>=2.14.2",
+    "pydantic-settings>=2.15.0",
     # Database
-    "sqlalchemy>=2.0.51",
-    "alembic>=1.19.0",
+    "sqlalchemy>=2.0.52",
+    "alembic>=1.19.1",
     "psycopg2-binary>=2.9.12",
-    "greenlet>=3.5.4",                 # Required by SQLAlchemy on Linux for async support
+    "greenlet>=3.5.5",                 # Required by SQLAlchemy on Linux for async support
     # Security
     "PyJWT>=2.13.0",                   # JWT token handling
     "cryptography>=50.0.0",            # RS256 token validation (external IdP/OAuth)
@@ -30,7 +30,7 @@ dependencies = [
     "pytest-asyncio>=1.4.0",
     "httpx>=0.28.1",
     # AI / LLM
-    "anthropic>=0.120.2",
+    "anthropic>=0.122.0",
     # Utilities
     "python-dateutil>=2.9.0.post0",
     "requests>=2.34.2",
@@ -40,9 +40,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     "black>=26.5.1",
-    "ruff>=0.16.1",
+    "ruff>=0.16.3",
     "mypy>=2.3.0",
-    "pre-commit>=4.6.1",
+    "pre-commit>=4.6.2",
 ]
 
 [tool.setuptools.packages.find]
