@@ -29,7 +29,7 @@ Log Format:
 
 Security Considerations:
 - Never log PHI (Protected Health Information)
-- Never log full API keys (last 4 chars only)
+- Never log API keys or anything derived from them (caller slot in VALID_API_KEYS only)
 - Never log passwords or sensitive data
 - Protect audit.log with appropriate file permissions
 - Implement log rotation to prevent disk fill
@@ -41,6 +41,7 @@ Compliance:
 - SOC 2: CC7.1 - System Monitoring
 """
 
+import hmac
 import json
 import logging
 from datetime import UTC, datetime
@@ -49,6 +50,7 @@ from typing import Any
 
 from fastapi import Request
 
+from src.config import settings
 from src.utils import sanitize_log_value
 
 # Configure dedicated audit logger (separate from application logs)
@@ -150,6 +152,41 @@ class AuditLevel(StrEnum):
     CRITICAL = "critical"  # Security incident
 
 
+def resolve_caller_slot(presented: str) -> int | None:
+    """Return the 1-based slot of the presented credential in VALID_API_KEYS.
+
+    Audit events are correlated to a caller by slot number in the configured
+    list, so nothing derived from the credential itself is written to disk.
+    Returns None when the credential is not in the list, which can happen
+    when API_KEY_REQUIRED is false. Comparison is constant time.
+    """
+    for position, candidate in enumerate(settings.valid_api_keys, start=1):
+        if hmac.compare_digest(candidate, presented):
+            return position
+    return None
+
+
+def _sanitize_details(value: Any, *, max_length: int = 1000) -> Any:
+    """Recursively scrub strings inside an audit details structure.
+
+    Strings are passed through sanitize_log_value. Dict keys are coerced to
+    sanitized strings. Numbers, booleans and None pass through unchanged so
+    the JSON types in the log stay stable.
+    """
+    if isinstance(value, str):
+        return sanitize_log_value(value, max_length=max_length)
+    if isinstance(value, dict):
+        return {
+            sanitize_log_value(str(k), max_length=100): _sanitize_details(
+                v, max_length=max_length
+            )
+            for k, v in value.items()
+        }
+    if isinstance(value, list | tuple):
+        return [_sanitize_details(v, max_length=max_length) for v in value]
+    return value
+
+
 def log_audit_event(
     action: AuditAction,
     request: Request | None = None,
@@ -170,7 +207,7 @@ def log_audit_event(
         action: What happened (from AuditAction enum)
         request: FastAPI Request object (captures IP, user agent, path, etc.)
         user_id: ID of authenticated user (for user-specific actions)
-        api_key: API key used (will be masked to last 4 chars only)
+        api_key: API key used (logged only as its slot number in VALID_API_KEYS)
         resource_type: Type of resource affected (e.g., 'organization', 'assessment')
         resource_id: ID of specific resource affected
         details: Additional context (free-form dict, don't include PHI)
@@ -197,7 +234,7 @@ def log_audit_event(
                 "user_agent": "curl/7.88.1"
             },
             "user_id": "user-123",
-            "api_key_suffix": "xyz9",
+            "caller_slot": 2,
             "resource_type": "assessment",
             "resource_id": "assessment-abc",
             "details": {"organization_id": "org-456"}
@@ -250,31 +287,34 @@ def log_audit_event(
 
     # User identification (for user-specific actions)
     if user_id:
-        log_entry["user_id"] = user_id
+        log_entry["user_id"] = sanitize_log_value(str(user_id))
 
-    # API key tracking (SECURITY: Only last 4 characters)
-    # Never log full API keys - they are credentials
-    # Last 4 chars provide enough info to identify which key without exposing it
+    # Caller tracking (SECURITY: never log the key or anything derived from it)
+    # The slot number in VALID_API_KEYS is enough to tell which caller it was
+    # without putting credential material, or a hash of it, in the log.
     if api_key:
-        # Only log last 4 characters of API key for security
-        log_entry["api_key_suffix"] = api_key[-4:] if len(api_key) >= 4 else "****"
+        log_entry["caller_slot"] = resolve_caller_slot(api_key)
 
     # Resource information (what was accessed/modified)
     # Helps identify which resource was affected by the action
     if resource_type:
         log_entry["resource_type"] = resource_type  # E.g., "organization", "assessment"
     if resource_id:
-        log_entry["resource_id"] = resource_id  # E.g., "org-123", "assessment-456"
+        log_entry["resource_id"] = sanitize_log_value(str(resource_id))
 
     # Additional context-specific details
     # Use this for action-specific information
     # Example: {"name": "Acme Corp", "industry": "healthcare"}
     # SECURITY: Don't include PHI or sensitive data
+    # Every string inside details is scrubbed of newlines and control
+    # characters so that a user supplied value cannot forge a log line.
     if details:
-        log_entry["details"] = details
+        log_entry["details"] = _sanitize_details(details)
 
     # Serialize to JSON (one line per event for easy parsing)
-    log_message = json.dumps(log_entry)
+    # json.dumps never emits a raw newline, but the explicit scrub makes the
+    # one line per event guarantee visible at the write site.
+    log_message = json.dumps(log_entry).replace("\r", "\\r").replace("\n", "\\n")
 
     # Write to audit log at appropriate severity level
     # Maps AuditLevel to Python logging levels

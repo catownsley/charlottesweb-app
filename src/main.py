@@ -266,10 +266,19 @@ async def validation_exception_handler(
     Production: Return generic message to prevent reconnaissance
     """
     # Log as security alert (could be attack attempt)
+    # Log only field locations and error types. The full error list carries
+    # the submitted input values, which must never reach the audit log.
+    safe_errors = [
+        {
+            "loc": ".".join(str(part) for part in err.get("loc", ())),
+            "type": str(err.get("type", "")),
+        }
+        for err in exc.errors()
+    ]
     log_security_alert(
         request=request,
         alert_type="validation_error",
-        description=f"Request validation failed: {exc.errors()}",
+        description=f"Request validation failed: {safe_errors}",
         severity=AuditLevel.WARNING,
     )
 
