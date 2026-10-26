@@ -153,7 +153,7 @@ X-RateLimit-Reset: 1709582400
 "path": "/api/v1/assessments",
 "user_agent": "curl/7.88.1"
 },
-"api_key_suffix": "xyz9",
+"caller_slot": 2,
 "resource_type": "assessment",
 "resource_id": "abc123",
 "details": {"organization_id": "org-456"}
@@ -397,7 +397,7 @@ Charlotte's Web ingests only software metadata (component names, versions, infra
 |---|---|---|
 | Structured audit logging | JSON formatted, all auth and CRUD events recorded | SOC 2 CC7.1, NIST AU-2/AU-3, HIPAA 164.312(b) |
 | Request tracing | Unique request ID propagated across log entries | SOC 2 CC7.1, NIST AU-3 |
-| Authentication event logging | Login attempts, failures, key usage (last 4 chars only) | NIST AU-2, PCI DSS 10.2 |
+| Authentication event logging | Login attempts, failures, key usage (caller slot in VALID_API_KEYS only, never key material) | NIST AU-2, PCI DSS 10.2 |
 | Startup configuration validation | 7 security checks run at boot, warnings logged for misconfigurations | NIST CM-6, SOC 2 CC8.1 |
 
 ### Data Protection
@@ -562,7 +562,8 @@ python -c "from src.security import generate_api_key; print(generate_api_key())"
 ```
 2. **Review audit logs** for unauthorized access
 ```bash
-grep "api_key_suffix: <last-4-chars>" audit.log
+# caller_slot is the key's 1-based position in VALID_API_KEYS at the time of the event
+grep '"caller_slot": <position>' audit.log
 ```
 3. **Notify affected parties**
 4. **Document incident**
